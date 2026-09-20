@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Secretos y datos locales
+.env
+/data/
+.viralgen/
+*.sqlite3
+*.sqlite3-journal
+*.log
+*.log.*

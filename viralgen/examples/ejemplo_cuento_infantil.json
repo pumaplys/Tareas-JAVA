@@ -1,0 +1,365 @@
+{
+  "schema_version": "1.0",
+  "job_id": "606377e8-4c10-4743-b52c-bed9b28d31bc",
+  "created_at": "2026-09-20T23:14:18Z",
+  "channel": "infantil",
+  "profile_id": "infantil_cuentos",
+  "language": "es",
+  "target_platforms": [
+    "youtube_shorts"
+  ],
+  "simulation": true,
+  "control": {
+    "production_status": "ready_for_production",
+    "warnings": [],
+    "prompt_version": "v1",
+    "config_hash": "8f3a22e6c31ab210a58c124dee080234a0272908d4304868d22e0f848f2cbd75",
+    "source_pack_hash": null
+  },
+  "idea": {
+    "title": "Lumi y una manzana brillante",
+    "premise": "Lumi encuentra una manzana brillante mientras piensa en aprender a compartir la merienda; con Tobi y Nube busca una forma justa de resolverlo y descubre que compartir hace la merienda mas dulce.",
+    "topic": "aprender a compartir la merienda",
+    "selected_idea_id": "idea_1",
+    "editorial_score": 82.0,
+    "score_components": {
+      "hook": 3.0,
+      "clarity": 4.0,
+      "payoff": 4.0,
+      "visual_potential": 5.0,
+      "novelty": 5.0
+    },
+    "score_rationale": "gancho 3.0 (Valoracion simulada de gancho: 3/5 segun el banco de frases del mock.); claridad 4.0; cumplimiento 4.0; potencial visual 5.0; novedad 5.00 (similitud lexica maxima 0.00 frente al historial del canal).",
+    "hook_variants": [
+      {
+        "hook_id": "hook_a",
+        "text": "Lumi encontro algo brillante"
+      },
+      {
+        "hook_id": "hook_b",
+        "text": "Hoy el bosque tenia un problema"
+      },
+      {
+        "hook_id": "hook_c",
+        "text": "Mira lo que paso aqui"
+      }
+    ],
+    "selected_hook_id": "hook_a",
+    "educational_goal": "Aprender que compartir hace la merienda mas dulce.",
+    "experiment_tag": "v1-mock-mock-deterministic-v1-infantil_cuentos"
+  },
+  "video": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "aspect_ratio": "9:16",
+    "target_duration_s": 50.0,
+    "estimated_duration_s": 50.3,
+    "actual_duration_s": null
+  },
+  "narration": {
+    "full_text": "Lumi encontro algo brillante. Nadie esperaba una manana asi, el bosque todavia estaba medio dormido. Lumi apreto su bufanda verde sin decir nada, ninguno sabia como repartirlo sin enfadarse. Se turnaron sin discutir ni empujar, todo encajo mejor de lo previsto, sin prisa. Midieron las partes con una hoja grande, nadie tuvo que gritar para entenderse, entonces. La prisa dejo de tener sentido, pensaron juntos una idea bastante sencilla, muy contentos. Los dos se miraron muy aliviados, el reparto dejo contentos a todos, otra vez. Ahora ya sabes que compartir hace la merienda mas dulce, igual que el dia anterior.",
+    "word_count": 100,
+    "target_wpm": 125,
+    "voice_direction": "Voz calida y pausada de cuentacuentos, con sonrisa audible; respira entre escenas y baja el ritmo en el aprendizaje final.",
+    "pronunciation_notes": [
+      "Lumi: se lee tal cual se escribe.",
+      "Tobi: se lee tal cual se escribe."
+    ]
+  },
+  "visual_bible": {
+    "style_prompt": "Soft hand-painted storybook illustration for young children, rounded shapes, thick gentle outlines, warm diffused light, cozy forest world, simple uncluttered backgrounds, friendly faces, no text anywhere in the image",
+    "color_palette": [
+      "#F7E3C3",
+      "#8FBF7A",
+      "#3F7A6B",
+      "#E9A26A",
+      "#5B4B8A"
+    ],
+    "negative_prompt": "no text, no letters, no captions, no watermark, no logo, no brand, no signature, no scary faces, no weapons, no realistic photo style, no extra limbs, no distorted hands",
+    "characters": [
+      {
+        "character_id": "lumi",
+        "name": "Lumi",
+        "description": "Zorrita joven de pelaje naranja claro con punta de la cola color crema, orejas grandes y redondeadas, ojos ambar muy expresivos, estatura pequena y postura curiosa.",
+        "wardrobe": "Bufanda corta de punto verde musgo y una mochila de tela beige con un boton de madera."
+      },
+      {
+        "character_id": "tobi",
+        "name": "Tobi",
+        "description": "Erizo regordete de puas marron oscuro con puntas claras, hocico gris, cejas expresivas y andar lento y tranquilo.",
+        "wardrobe": "Chaleco de pana azul con dos bolsillos delanteros y una hoja seca prendida como broche."
+      },
+      {
+        "character_id": "nube",
+        "name": "Nube",
+        "description": "Buho blanco y gris de plumaje mullido, cabeza redonda, ojos grandes color miel; hace de voz serena que ayuda a nombrar lo que se siente.",
+        "wardrobe": "Pequenas gafas redondas de montura dorada apoyadas en el pico."
+      }
+    ]
+  },
+  "scenes": [
+    {
+      "scene_id": "sc_01",
+      "order": 1,
+      "beat": "hook",
+      "narration_text": "Lumi encontro algo brillante. Nadie esperaba una manana asi, el bosque todavia estaba medio dormido.",
+      "pause_after_s": 0.3,
+      "word_count": 15,
+      "estimated_start_s": 0.0,
+      "estimated_end_s": 7.5,
+      "estimated_duration_s": 7.5,
+      "character_ids": [
+        "lumi"
+      ],
+      "visual": {
+        "asset_type": "video",
+        "image_prompt": "Storybook forest scene, Lumi, Tobi in a warm clearing, hook moment of the story, medium shot at eye level, soft morning light from the left, gentle rounded shapes, no text in the image",
+        "motion_prompt": "slow push-in of about five percent, steady and calm",
+        "continuity_notes": "Primera escena: fija paleta, luz y encuadre de referencia para el resto."
+      },
+      "captions": {
+        "emphasis_words": [
+          "brillante"
+        ],
+        "overlay_text": null
+      },
+      "audio": {
+        "sfx_description": "Hojas que crujen suavemente",
+        "sfx_cue": "scene_start",
+        "music_mood": "Instrumental suave y luminoso, sin percusion fuerte; debe ser musica de uso comercial permitido."
+      },
+      "claim_refs": []
+    },
+    {
+      "scene_id": "sc_02",
+      "order": 2,
+      "beat": "context",
+      "narration_text": "Lumi apreto su bufanda verde sin decir nada, ninguno sabia como repartirlo sin enfadarse.",
+      "pause_after_s": 0.3,
+      "word_count": 14,
+      "estimated_start_s": 7.5,
+      "estimated_end_s": 14.52,
+      "estimated_duration_s": 7.02,
+      "character_ids": [
+        "tobi"
+      ],
+      "visual": {
+        "asset_type": "image",
+        "image_prompt": "Storybook forest scene, Lumi, Tobi in a warm clearing, context moment of the story, medium shot at eye level, soft morning light from the left, gentle rounded shapes, no text in the image",
+        "motion_prompt": "slight lateral drift to the right, constant speed",
+        "continuity_notes": "Mantiene los personajes, la paleta y la direccion de la luz de la escena anterior."
+      },
+      "captions": {
+        "emphasis_words": [
+          "repartirlo"
+        ],
+        "overlay_text": null
+      },
+      "audio": {
+        "sfx_description": null,
+        "sfx_cue": "scene_start",
+        "music_mood": "Instrumental suave y luminoso, sin percusion fuerte; debe ser musica de uso comercial permitido."
+      },
+      "claim_refs": []
+    },
+    {
+      "scene_id": "sc_03",
+      "order": 3,
+      "beat": "development",
+      "narration_text": "Se turnaron sin discutir ni empujar, todo encajo mejor de lo previsto, sin prisa.",
+      "pause_after_s": 0.3,
+      "word_count": 14,
+      "estimated_start_s": 14.52,
+      "estimated_end_s": 21.54,
+      "estimated_duration_s": 7.02,
+      "character_ids": [
+        "nube"
+      ],
+      "visual": {
+        "asset_type": "image",
+        "image_prompt": "Storybook forest scene, Lumi, Tobi in a warm clearing, development moment of the story, medium shot at eye level, soft morning light from the left, gentle rounded shapes, no text in the image",
+        "motion_prompt": "gentle parallax with a small tilt down",
+        "continuity_notes": "Mantiene los personajes, la paleta y la direccion de la luz de la escena anterior."
+      },
+      "captions": {
+        "emphasis_words": [
+          "empujar"
+        ],
+        "overlay_text": null
+      },
+      "audio": {
+        "sfx_description": null,
+        "sfx_cue": "scene_end",
+        "music_mood": "Instrumental suave y luminoso, sin percusion fuerte; debe ser musica de uso comercial permitido."
+      },
+      "claim_refs": []
+    },
+    {
+      "scene_id": "sc_04",
+      "order": 4,
+      "beat": "development",
+      "narration_text": "Midieron las partes con una hoja grande, nadie tuvo que gritar para entenderse, entonces.",
+      "pause_after_s": 0.3,
+      "word_count": 14,
+      "estimated_start_s": 21.54,
+      "estimated_end_s": 28.56,
+      "estimated_duration_s": 7.02,
+      "character_ids": [
+        "lumi"
+      ],
+      "visual": {
+        "asset_type": "image",
+        "image_prompt": "Storybook forest scene, Lumi, Tobi in a warm clearing, development moment of the story, medium shot at eye level, soft morning light from the left, gentle rounded shapes, no text in the image",
+        "motion_prompt": "gentle parallax with a small tilt down",
+        "continuity_notes": "Mantiene los personajes, la paleta y la direccion de la luz de la escena anterior."
+      },
+      "captions": {
+        "emphasis_words": [
+          "Midieron"
+        ],
+        "overlay_text": null
+      },
+      "audio": {
+        "sfx_description": null,
+        "sfx_cue": "scene_end",
+        "music_mood": "Instrumental suave y luminoso, sin percusion fuerte; debe ser musica de uso comercial permitido."
+      },
+      "claim_refs": []
+    },
+    {
+      "scene_id": "sc_05",
+      "order": 5,
+      "beat": "development",
+      "narration_text": "La prisa dejo de tener sentido, pensaron juntos una idea bastante sencilla, muy contentos.",
+      "pause_after_s": 0.3,
+      "word_count": 14,
+      "estimated_start_s": 28.56,
+      "estimated_end_s": 35.58,
+      "estimated_duration_s": 7.02,
+      "character_ids": [
+        "tobi"
+      ],
+      "visual": {
+        "asset_type": "image",
+        "image_prompt": "Storybook forest scene, Lumi, Tobi in a warm clearing, development moment of the story, medium shot at eye level, soft morning light from the left, gentle rounded shapes, no text in the image",
+        "motion_prompt": "gentle parallax with a small tilt down",
+        "continuity_notes": "Mantiene los personajes, la paleta y la direccion de la luz de la escena anterior."
+      },
+      "captions": {
+        "emphasis_words": [
+          "pensaron"
+        ],
+        "overlay_text": null
+      },
+      "audio": {
+        "sfx_description": null,
+        "sfx_cue": "scene_end",
+        "music_mood": "Instrumental suave y luminoso, sin percusion fuerte; debe ser musica de uso comercial permitido."
+      },
+      "claim_refs": []
+    },
+    {
+      "scene_id": "sc_06",
+      "order": 6,
+      "beat": "resolution",
+      "narration_text": "Los dos se miraron muy aliviados, el reparto dejo contentos a todos, otra vez.",
+      "pause_after_s": 0.3,
+      "word_count": 14,
+      "estimated_start_s": 35.58,
+      "estimated_end_s": 42.6,
+      "estimated_duration_s": 7.02,
+      "character_ids": [
+        "nube"
+      ],
+      "visual": {
+        "asset_type": "video",
+        "image_prompt": "Storybook forest scene, Lumi, Tobi in a warm clearing, resolution moment of the story, medium shot at eye level, soft morning light from the left, gentle rounded shapes, no text in the image",
+        "motion_prompt": "slow pull-back that reveals the whole scene",
+        "continuity_notes": "Mantiene los personajes, la paleta y la direccion de la luz de la escena anterior."
+      },
+      "captions": {
+        "emphasis_words": [
+          "reparto"
+        ],
+        "overlay_text": null
+      },
+      "audio": {
+        "sfx_description": null,
+        "sfx_cue": "scene_end",
+        "music_mood": "Instrumental suave y luminoso, sin percusion fuerte; debe ser musica de uso comercial permitido."
+      },
+      "claim_refs": []
+    },
+    {
+      "scene_id": "sc_07",
+      "order": 7,
+      "beat": "close",
+      "narration_text": "Ahora ya sabes que compartir hace la merienda mas dulce, igual que el dia anterior.",
+      "pause_after_s": 0.5,
+      "word_count": 15,
+      "estimated_start_s": 42.6,
+      "estimated_end_s": 50.3,
+      "estimated_duration_s": 7.7,
+      "character_ids": [
+        "lumi",
+        "tobi"
+      ],
+      "visual": {
+        "asset_type": "image",
+        "image_prompt": "Storybook forest scene, Lumi, Tobi in a warm clearing, close moment of the story, medium shot at eye level, soft morning light from the left, gentle rounded shapes, no text in the image",
+        "motion_prompt": "hold almost still with a very slow breathing zoom",
+        "continuity_notes": "Ultima escena: repite el encuadre de la primera con la luz un punto mas calida."
+      },
+      "captions": {
+        "emphasis_words": [
+          "merienda"
+        ],
+        "overlay_text": null
+      },
+      "audio": {
+        "sfx_description": "Brisa corta y calida",
+        "sfx_cue": "scene_end",
+        "music_mood": "Instrumental suave y luminoso, sin percusion fuerte; debe ser musica de uso comercial permitido."
+      },
+      "claim_refs": []
+    }
+  ],
+  "loop": {
+    "enabled": false,
+    "opening_scene_id": null,
+    "closing_scene_id": null,
+    "connection_explanation": null
+  },
+  "evidence": {
+    "claims": [],
+    "facts": [],
+    "verification_level": "none"
+  },
+  "publishing": [
+    {
+      "platform": "youtube_shorts",
+      "title": "Lumi y una manzana brillante",
+      "caption": "Lumi encuentra una manzana brillante mientras piensa en aprender a compartir la merienda; con Tobi y Nube busca una forma justa de resolverlo y descubre que compartir hace la merienda mas dulce. Un cuento corto para ver en familia.",
+      "hashtags": [
+        "cuentosinfantiles",
+        "cuentocorto",
+        "paraninos",
+        "aprenderjugando"
+      ],
+      "made_for_kids": true,
+      "ai_disclosure_review_required": true
+    }
+  ],
+  "provenance": {
+    "provider": "mock",
+    "model": "mock-deterministic-v1",
+    "request_ids": [
+      "mock-ideas-c26d538bfb9e",
+      "mock-script-5a119f25e30e"
+    ],
+    "input_tokens": 1966,
+    "output_tokens": 3261,
+    "estimated_cost_usd": null
+  }
+}

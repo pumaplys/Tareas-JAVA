@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "pack_id": "pruebas_pendientes",
+  "description": "Catalogo de PRUEBA sin ningun hecho aprobado.",
+  "facts": [
+    {
+      "fact_id": "f_1",
+      "claim_text": "Hecho de prueba uno: la pieza uno reparte la fuerza a lo largo de toda la tira sin llegar a romperse.",
+      "source_url": "https://example.org/prueba/1",
+      "source_title": "Ficha de prueba uno",
+      "evidence_excerpt": "Extracto ficticio de prueba para el hecho uno. No es una fuente real.",
+      "checked_at": "2026-02-01T10:00:00Z",
+      "review_status": "pending",
+      "demo_only": true
+    },
+    {
+      "fact_id": "f_2",
+      "claim_text": "Hecho de prueba dos: la pieza dos reparte la fuerza a lo largo de toda la tira sin llegar a romperse.",
+      "source_url": "https://example.org/prueba/2",
+      "source_title": "Ficha de prueba dos",
+      "evidence_excerpt": "Extracto ficticio de prueba para el hecho dos. No es una fuente real.",
+      "checked_at": "2026-02-01T10:00:00Z",
+      "review_status": "pending",
+      "demo_only": true
+    },
+    {
+      "fact_id": "f_7",
+      "claim_text": "Hecho de prueba siete: la pieza siete reparte la fuerza a lo largo de toda la tira sin llegar a romperse.",
+      "source_url": "https://example.org/prueba/7",
+      "source_title": "Ficha de prueba siete",
+      "evidence_excerpt": "Extracto ficticio de prueba para el hecho siete. No es una fuente real.",
+      "checked_at": "2026-02-01T10:00:00Z",
+      "review_status": "rejected",
+      "demo_only": true
+    }
+  ]
+}

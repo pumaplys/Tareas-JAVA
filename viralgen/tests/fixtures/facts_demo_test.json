@@ -1,0 +1,67 @@
+{
+  "schema_version": "1.0",
+  "pack_id": "pruebas_demo",
+  "description": "Catalogo de PRUEBA. Entradas ficticias, demo_only=true: solo valido en simulacion.",
+  "facts": [
+    {
+      "fact_id": "f_1",
+      "claim_text": "Hecho de prueba uno: la pieza uno reparte la fuerza a lo largo de toda la tira sin llegar a romperse.",
+      "source_url": "https://example.org/prueba/1",
+      "source_title": "Ficha de prueba uno",
+      "evidence_excerpt": "Extracto ficticio de prueba para el hecho uno. No es una fuente real.",
+      "checked_at": "2026-02-01T10:00:00Z",
+      "review_status": "approved",
+      "demo_only": true
+    },
+    {
+      "fact_id": "f_2",
+      "claim_text": "Hecho de prueba dos: la pieza dos reparte la fuerza a lo largo de toda la tira sin llegar a romperse.",
+      "source_url": "https://example.org/prueba/2",
+      "source_title": "Ficha de prueba dos",
+      "evidence_excerpt": "Extracto ficticio de prueba para el hecho dos. No es una fuente real.",
+      "checked_at": "2026-02-01T10:00:00Z",
+      "review_status": "approved",
+      "demo_only": true
+    },
+    {
+      "fact_id": "f_3",
+      "claim_text": "Hecho de prueba tres: la pieza tres reparte la fuerza a lo largo de toda la tira sin llegar a romperse.",
+      "source_url": "https://example.org/prueba/3",
+      "source_title": "Ficha de prueba tres",
+      "evidence_excerpt": "Extracto ficticio de prueba para el hecho tres. No es una fuente real.",
+      "checked_at": "2026-02-01T10:00:00Z",
+      "review_status": "approved",
+      "demo_only": true
+    },
+    {
+      "fact_id": "f_4",
+      "claim_text": "Hecho de prueba cuatro: la pieza cuatro reparte la fuerza a lo largo de toda la tira sin llegar a romperse.",
+      "source_url": "https://example.org/prueba/4",
+      "source_title": "Ficha de prueba cuatro",
+      "evidence_excerpt": "Extracto ficticio de prueba para el hecho cuatro. No es una fuente real.",
+      "checked_at": "2026-02-01T10:00:00Z",
+      "review_status": "approved",
+      "demo_only": true
+    },
+    {
+      "fact_id": "f_5",
+      "claim_text": "Hecho de prueba cinco: la pieza cinco reparte la fuerza a lo largo de toda la tira sin llegar a romperse.",
+      "source_url": "https://example.org/prueba/5",
+      "source_title": "Ficha de prueba cinco",
+      "evidence_excerpt": "Extracto ficticio de prueba para el hecho cinco. No es una fuente real.",
+      "checked_at": "2026-02-01T10:00:00Z",
+      "review_status": "approved",
+      "demo_only": true
+    },
+    {
+      "fact_id": "f_9",
+      "claim_text": "Hecho de prueba nueve: la pieza nueve reparte la fuerza a lo largo de toda la tira sin llegar a romperse.",
+      "source_url": "https://example.org/prueba/9",
+      "source_title": "Ficha de prueba nueve",
+      "evidence_excerpt": "Extracto ficticio de prueba para el hecho nueve. No es una fuente real.",
+      "checked_at": "2026-02-01T10:00:00Z",
+      "review_status": "pending",
+      "demo_only": true
+    }
+  ]
+}

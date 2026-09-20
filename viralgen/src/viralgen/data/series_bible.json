@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0",
+  "series": [
+    {
+      "series_id": "bosque_lumina",
+      "title": "El bosque de Lumina",
+      "style_prompt": "Soft hand-painted storybook illustration for young children, rounded shapes, thick gentle outlines, warm diffused light, cozy forest world, simple uncluttered backgrounds, friendly faces, no text anywhere in the image",
+      "color_palette": ["#F7E3C3", "#8FBF7A", "#3F7A6B", "#E9A26A", "#5B4B8A"],
+      "negative_prompt": "no text, no letters, no captions, no watermark, no logo, no brand, no signature, no scary faces, no weapons, no realistic photo style, no extra limbs, no distorted hands",
+      "characters": [
+        {
+          "character_id": "lumi",
+          "name": "Lumi",
+          "description": "Zorrita joven de pelaje naranja claro con punta de la cola color crema, orejas grandes y redondeadas, ojos ambar muy expresivos, estatura pequena y postura curiosa.",
+          "wardrobe": "Bufanda corta de punto verde musgo y una mochila de tela beige con un boton de madera."
+        },
+        {
+          "character_id": "tobi",
+          "name": "Tobi",
+          "description": "Erizo regordete de puas marron oscuro con puntas claras, hocico gris, cejas expresivas y andar lento y tranquilo.",
+          "wardrobe": "Chaleco de pana azul con dos bolsillos delanteros y una hoja seca prendida como broche."
+        },
+        {
+          "character_id": "nube",
+          "name": "Nube",
+          "description": "Buho blanco y gris de plumaje mullido, cabeza redonda, ojos grandes color miel; hace de voz serena que ayuda a nombrar lo que se siente.",
+          "wardrobe": "Pequenas gafas redondas de montura dorada apoyadas en el pico."
+        }
+      ]
+    },
+    {
+      "series_id": "curiosidades_mesa",
+      "title": "La mesa de las curiosidades",
+      "style_prompt": "Clean editorial 3D-illustration look, matte materials, single hero object centered on a seamless studio backdrop, soft key light with a long gentle shadow, shallow depth of field, calm modern palette, no text anywhere in the image",
+      "color_palette": ["#101418", "#F2F0EB", "#2E6F9E", "#D9622B", "#8C8F94"],
+      "negative_prompt": "no text, no letters, no numbers, no captions, no watermark, no logo, no brand, no UI overlay, no charts with labels, no human faces in close-up, no gore",
+      "characters": [
+        {
+          "character_id": "mano_narradora",
+          "name": "Mano narradora",
+          "description": "Par de manos adultas de tono neutro, unas cortas y limpias, que entran en cuadro para senalar, girar o sostener el objeto protagonista; nunca se ve el rostro.",
+          "wardrobe": "Punos de camisa gris claro remangados dos vueltas, sin reloj ni anillos."
+        }
+      ]
+    }
+  ]
+}

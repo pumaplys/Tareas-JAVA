@@ -1,0 +1,67 @@
+{
+  "schema_version": "1.0",
+  "pack_id": "demo_objetos_cotidianos",
+  "description": "CATALOGO DE DEMOSTRACION. Las entradas son ficticias y apuntan a example.org, un dominio reservado para ejemplos. No son fuentes reales ni estan verificadas: sirven para probar el mecanismo de evidencia. Por eso todas llevan demo_only=true y el modo real las rechaza.",
+  "facts": [
+    {
+      "fact_id": "demo_cremallera_dientes",
+      "claim_text": "Los dientes de una cremallera encajan por parejas alternas, de modo que cada uno sujeta al siguiente y reparte la tension a lo largo de toda la tira.",
+      "source_url": "https://example.org/demo/cremallera",
+      "source_title": "Ficha de demostracion: mecanismo de la cremallera",
+      "evidence_excerpt": "Entrada ficticia de demostracion. El cierre funciona porque la corredera obliga a los dientes a entrelazarse en un orden fijo.",
+      "checked_at": "2026-01-15T09:00:00Z",
+      "review_status": "approved",
+      "demo_only": true
+    },
+    {
+      "fact_id": "demo_lata_reborde",
+      "claim_text": "El reborde enrollado del borde de una lata aporta rigidez sin anadir material, porque una curva cerrada resiste mejor la deformacion que una chapa plana.",
+      "source_url": "https://example.org/demo/lata",
+      "source_title": "Ficha de demostracion: borde de las latas",
+      "evidence_excerpt": "Entrada ficticia de demostracion. El doblez del borde convierte una lamina fina en una pieza mucho mas dificil de abollar.",
+      "checked_at": "2026-01-15T09:05:00Z",
+      "review_status": "approved",
+      "demo_only": true
+    },
+    {
+      "fact_id": "demo_velcro_ganchos",
+      "claim_text": "El cierre de velcro combina una cara con ganchos rigidos y otra con bucles blandos, y se despega por tiras porque los ganchos ceden de uno en uno.",
+      "source_url": "https://example.org/demo/velcro",
+      "source_title": "Ficha de demostracion: ganchos y bucles",
+      "evidence_excerpt": "Entrada ficticia de demostracion. La separacion progresiva explica el sonido caracteristico al abrirlo.",
+      "checked_at": "2026-01-16T10:30:00Z",
+      "review_status": "approved",
+      "demo_only": true
+    },
+    {
+      "fact_id": "demo_lapiz_grafito",
+      "claim_text": "La mina de un lapiz mezcla grafito y arcilla, y la proporcion de arcilla determina lo duro que resulta el trazo.",
+      "source_url": "https://example.org/demo/lapiz",
+      "source_title": "Ficha de demostracion: dureza del lapiz",
+      "evidence_excerpt": "Entrada ficticia de demostracion. Mas arcilla, trazo mas claro y mina mas dura.",
+      "checked_at": "2026-01-16T10:45:00Z",
+      "review_status": "approved",
+      "demo_only": true
+    },
+    {
+      "fact_id": "demo_paraguas_varillas",
+      "claim_text": "Las varillas de un paraguas forman triangulos al abrirse, y esa geometria reparte el empuje del viento hacia el mastil central.",
+      "source_url": "https://example.org/demo/paraguas",
+      "source_title": "Ficha de demostracion: estructura del paraguas",
+      "evidence_excerpt": "Entrada ficticia de demostracion. Cuando una varilla se dobla, el triangulo deja de cerrar y el paraguas se invierte.",
+      "checked_at": "2026-01-17T08:00:00Z",
+      "review_status": "approved",
+      "demo_only": true
+    },
+    {
+      "fact_id": "demo_pendiente_revision",
+      "claim_text": "Entrada de ejemplo que sigue pendiente de revision y por tanto nunca debe usarse en un guion.",
+      "source_url": "https://example.org/demo/pendiente",
+      "source_title": "Ficha de demostracion: pendiente de revision",
+      "evidence_excerpt": "Entrada ficticia de demostracion, incluida para probar que el filtro descarta review_status=pending.",
+      "checked_at": "2026-01-17T08:10:00Z",
+      "review_status": "pending",
+      "demo_only": true
+    }
+  ]
+}

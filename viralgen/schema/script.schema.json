@@ -1,0 +1,1148 @@
+{
+  "$defs": {
+    "AssetType": {
+      "description": "Tipo de medio que el modulo 3 debera producir para la escena.",
+      "enum": [
+        "image",
+        "video"
+      ],
+      "title": "AssetType",
+      "type": "string"
+    },
+    "Beat": {
+      "description": "Funcion narrativa de cada escena.",
+      "enum": [
+        "hook",
+        "context",
+        "development",
+        "resolution",
+        "close"
+      ],
+      "title": "Beat",
+      "type": "string"
+    },
+    "Channel": {
+      "description": "Canal editorial. Determina la direccion creativa y las validaciones.",
+      "enum": [
+        "infantil",
+        "curiosidades"
+      ],
+      "title": "Channel",
+      "type": "string"
+    },
+    "Claim": {
+      "additionalProperties": false,
+      "description": "Afirmacion factual del guion ligada a uno o varios hechos del catalogo.",
+      "properties": {
+        "claim_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "claim_text": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Claim Text",
+          "type": "string"
+        },
+        "scene_ids": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+            "type": "string"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Scene Ids",
+          "type": "array"
+        },
+        "fact_ids": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+            "type": "string"
+          },
+          "maxItems": 6,
+          "minItems": 1,
+          "title": "Fact Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "claim_id",
+        "claim_text",
+        "scene_ids",
+        "fact_ids"
+      ],
+      "title": "Claim",
+      "type": "object"
+    },
+    "Control": {
+      "additionalProperties": false,
+      "description": "Estado del documento y trazabilidad de la configuracion usada.",
+      "properties": {
+        "production_status": {
+          "$ref": "#/$defs/ProductionStatus",
+          "description": "ready_for_production solo significa que el plan puede pasar a producir medios: no autoriza publicaciones ni certifica monetizacion."
+        },
+        "warnings": {
+          "description": "Motivos legibles por los que el documento requiere revision.",
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Warnings",
+          "type": "array"
+        },
+        "prompt_version": {
+          "description": "Version de las plantillas de prompt.",
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Prompt Version",
+          "type": "string"
+        },
+        "config_hash": {
+          "description": "SHA-256 de ajustes + perfil + biblia visual.",
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Config Hash",
+          "type": "string"
+        },
+        "source_pack_hash": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "SHA-256 del catalogo de hechos usado; null si no aplica.",
+          "title": "Source Pack Hash"
+        }
+      },
+      "required": [
+        "production_status",
+        "prompt_version",
+        "config_hash"
+      ],
+      "title": "Control",
+      "type": "object"
+    },
+    "Evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "claims": {
+          "items": {
+            "$ref": "#/$defs/Claim"
+          },
+          "maxItems": 20,
+          "title": "Claims",
+          "type": "array"
+        },
+        "facts": {
+          "description": "Solo los registros del catalogo realmente utilizados.",
+          "items": {
+            "$ref": "#/$defs/FactRecord"
+          },
+          "maxItems": 30,
+          "title": "Facts",
+          "type": "array"
+        },
+        "verification_level": {
+          "$ref": "#/$defs/VerificationLevel"
+        }
+      },
+      "required": [
+        "verification_level"
+      ],
+      "title": "Evidence",
+      "type": "object"
+    },
+    "FactRecord": {
+      "additionalProperties": false,
+      "description": "Registro copiado literalmente del catalogo importado.\n\nLos campos de procedencia NO se confian al modelo: se copian del catalogo.",
+      "properties": {
+        "fact_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Fact Id",
+          "type": "string"
+        },
+        "claim_text": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Claim Text",
+          "type": "string"
+        },
+        "source_url": {
+          "maxLength": 2048,
+          "minLength": 8,
+          "title": "Source Url",
+          "type": "string"
+        },
+        "source_title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Source Title",
+          "type": "string"
+        },
+        "evidence_excerpt": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Evidence Excerpt",
+          "type": "string"
+        },
+        "checked_at": {
+          "format": "date-time",
+          "title": "Checked At",
+          "type": "string"
+        },
+        "review_status": {
+          "$ref": "#/$defs/ReviewStatus"
+        },
+        "demo_only": {
+          "title": "Demo Only",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "fact_id",
+        "claim_text",
+        "source_url",
+        "source_title",
+        "evidence_excerpt",
+        "checked_at",
+        "review_status",
+        "demo_only"
+      ],
+      "title": "FactRecord",
+      "type": "object"
+    },
+    "HookVariant": {
+      "additionalProperties": false,
+      "description": "Alternativa de gancho. Solo la seleccionada forma parte de la narracion.",
+      "properties": {
+        "hook_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Hook Id",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "hook_id",
+        "text"
+      ],
+      "title": "HookVariant",
+      "type": "object"
+    },
+    "Idea": {
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "premise": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Premise",
+          "type": "string"
+        },
+        "topic": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Topic",
+          "type": "string"
+        },
+        "selected_idea_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Selected Idea Id",
+          "type": "string"
+        },
+        "editorial_score": {
+          "description": "20 x (0,25*hook + 0,20*clarity + 0,20*payoff + 0,15*visual_potential + 0,20*novelty). Es una heuristica editorial, no una probabilidad de viralidad.",
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Editorial Score",
+          "type": "number"
+        },
+        "score_components": {
+          "$ref": "#/$defs/ScoreComponents"
+        },
+        "score_rationale": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Score Rationale",
+          "type": "string"
+        },
+        "hook_variants": {
+          "items": {
+            "$ref": "#/$defs/HookVariant"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "title": "Hook Variants",
+          "type": "array"
+        },
+        "selected_hook_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Selected Hook Id",
+          "type": "string"
+        },
+        "educational_goal": {
+          "anyOf": [
+            {
+              "maxLength": 600,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Educational Goal"
+        },
+        "experiment_tag": {
+          "description": "Etiqueta para comparar tandas: prompt_version + modelo + perfil.",
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Experiment Tag",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "premise",
+        "topic",
+        "selected_idea_id",
+        "editorial_score",
+        "score_components",
+        "score_rationale",
+        "hook_variants",
+        "selected_hook_id",
+        "experiment_tag"
+      ],
+      "title": "Idea",
+      "type": "object"
+    },
+    "Loop": {
+      "additionalProperties": false,
+      "description": "Conexion narrativa entre final e inicio. No es repetir material.",
+      "properties": {
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "opening_scene_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Opening Scene Id"
+        },
+        "closing_scene_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Closing Scene Id"
+        },
+        "connection_explanation": {
+          "anyOf": [
+            {
+              "maxLength": 600,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Connection Explanation"
+        }
+      },
+      "required": [
+        "enabled"
+      ],
+      "title": "Loop",
+      "type": "object"
+    },
+    "Narration": {
+      "additionalProperties": false,
+      "properties": {
+        "full_text": {
+          "description": "Concatenacion en orden de narration_text de las escenas (la construye la app).",
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Full Text",
+          "type": "string"
+        },
+        "word_count": {
+          "maximum": 5000,
+          "minimum": 1,
+          "title": "Word Count",
+          "type": "integer"
+        },
+        "target_wpm": {
+          "maximum": 260,
+          "minimum": 60,
+          "title": "Target Wpm",
+          "type": "integer"
+        },
+        "voice_direction": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Voice Direction",
+          "type": "string"
+        },
+        "pronunciation_notes": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 12,
+          "title": "Pronunciation Notes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "full_text",
+        "word_count",
+        "target_wpm",
+        "voice_direction"
+      ],
+      "title": "Narration",
+      "type": "object"
+    },
+    "Platform": {
+      "description": "Plataformas de destino previstas para el modulo 5.",
+      "enum": [
+        "youtube_shorts",
+        "instagram_reels",
+        "tiktok"
+      ],
+      "title": "Platform",
+      "type": "string"
+    },
+    "ProductionStatus": {
+      "description": "Estado del documento exportado.\n\n``ready_for_production`` significa unicamente que el plan puede pasar a\nproducir medios. No autoriza publicaciones ni certifica monetizacion.",
+      "enum": [
+        "ready_for_production",
+        "needs_review"
+      ],
+      "title": "ProductionStatus",
+      "type": "string"
+    },
+    "Provenance": {
+      "additionalProperties": false,
+      "description": "Datos de uso tomados de respuestas reales del proveedor.",
+      "properties": {
+        "provider": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Provider",
+          "type": "string"
+        },
+        "model": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Model",
+          "type": "string"
+        },
+        "request_ids": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Request Ids",
+          "type": "array"
+        },
+        "input_tokens": {
+          "minimum": 0,
+          "title": "Input Tokens",
+          "type": "integer"
+        },
+        "output_tokens": {
+          "minimum": 0,
+          "title": "Output Tokens",
+          "type": "integer"
+        },
+        "estimated_cost_usd": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "null si no hay tarifas explicitas configuradas para el modelo.",
+          "title": "Estimated Cost Usd"
+        }
+      },
+      "required": [
+        "provider",
+        "model",
+        "input_tokens",
+        "output_tokens"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "PublishingPlan": {
+      "additionalProperties": false,
+      "description": "Borrador por plataforma. Sin horarios, privacidad ni promesas de ingresos.",
+      "properties": {
+        "platform": {
+          "$ref": "#/$defs/Platform"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "caption": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Caption",
+          "type": "string"
+        },
+        "hashtags": {
+          "items": {
+            "maxLength": 48,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 12,
+          "title": "Hashtags",
+          "type": "array"
+        },
+        "made_for_kids": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Made For Kids"
+        },
+        "ai_disclosure_review_required": {
+          "const": true,
+          "default": true,
+          "title": "Ai Disclosure Review Required",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "platform",
+        "title",
+        "caption"
+      ],
+      "title": "PublishingPlan",
+      "type": "object"
+    },
+    "ReviewStatus": {
+      "description": "Estado de revision de un hecho en el catalogo importado.",
+      "enum": [
+        "approved",
+        "pending",
+        "rejected"
+      ],
+      "title": "ReviewStatus",
+      "type": "string"
+    },
+    "Scene": {
+      "additionalProperties": false,
+      "properties": {
+        "scene_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Scene Id",
+          "type": "string"
+        },
+        "order": {
+          "maximum": 40,
+          "minimum": 1,
+          "title": "Order",
+          "type": "integer"
+        },
+        "beat": {
+          "$ref": "#/$defs/Beat"
+        },
+        "narration_text": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Narration Text",
+          "type": "string"
+        },
+        "pause_after_s": {
+          "description": "Pausa al FINAL de la escena, en segundos.",
+          "maximum": 1.5,
+          "minimum": 0.0,
+          "title": "Pause After S",
+          "type": "number"
+        },
+        "word_count": {
+          "maximum": 400,
+          "minimum": 1,
+          "title": "Word Count",
+          "type": "integer"
+        },
+        "estimated_start_s": {
+          "maximum": 600,
+          "minimum": 0,
+          "title": "Estimated Start S",
+          "type": "number"
+        },
+        "estimated_end_s": {
+          "maximum": 600,
+          "minimum": 0,
+          "title": "Estimated End S",
+          "type": "number"
+        },
+        "estimated_duration_s": {
+          "exclusiveMinimum": 0,
+          "maximum": 120,
+          "title": "Estimated Duration S",
+          "type": "number"
+        },
+        "character_ids": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Character Ids",
+          "type": "array"
+        },
+        "visual": {
+          "$ref": "#/$defs/SceneVisual"
+        },
+        "captions": {
+          "$ref": "#/$defs/SceneCaptions"
+        },
+        "audio": {
+          "$ref": "#/$defs/SceneAudio"
+        },
+        "claim_refs": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+            "type": "string"
+          },
+          "maxItems": 6,
+          "title": "Claim Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "scene_id",
+        "order",
+        "beat",
+        "narration_text",
+        "pause_after_s",
+        "word_count",
+        "estimated_start_s",
+        "estimated_end_s",
+        "estimated_duration_s",
+        "visual",
+        "captions",
+        "audio"
+      ],
+      "title": "Scene",
+      "type": "object"
+    },
+    "SceneAudio": {
+      "additionalProperties": false,
+      "description": "Los tiempos finales de los efectos dependeran del audio real (modulo 2).",
+      "properties": {
+        "sfx_description": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sfx Description"
+        },
+        "sfx_cue": {
+          "$ref": "#/$defs/SfxCue"
+        },
+        "music_mood": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Music Mood"
+        }
+      },
+      "required": [
+        "sfx_cue"
+      ],
+      "title": "SceneAudio",
+      "type": "object"
+    },
+    "SceneCaptions": {
+      "additionalProperties": false,
+      "description": "Los subtitulos completos provienen de narration_text, sin resumirla.\n\nEste modulo no genera timestamps de palabra ni archivos SRT/ASS.",
+      "properties": {
+        "emphasis_words": {
+          "items": {
+            "maxLength": 48,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Emphasis Words",
+          "type": "array"
+        },
+        "overlay_text": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Overlay Text"
+        }
+      },
+      "title": "SceneCaptions",
+      "type": "object"
+    },
+    "SceneVisual": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_type": {
+          "$ref": "#/$defs/AssetType"
+        },
+        "image_prompt": {
+          "description": "Prompt autocontenido de imagen: personajes, accion, encuadre, iluminacion.",
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Image Prompt",
+          "type": "string"
+        },
+        "motion_prompt": {
+          "description": "Movimiento solicitado, separado del prompt de imagen.",
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Motion Prompt",
+          "type": "string"
+        },
+        "continuity_notes": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Continuity Notes",
+          "type": "string"
+        }
+      },
+      "required": [
+        "asset_type",
+        "image_prompt",
+        "motion_prompt",
+        "continuity_notes"
+      ],
+      "title": "SceneVisual",
+      "type": "object"
+    },
+    "ScoreComponents": {
+      "additionalProperties": false,
+      "description": "Componentes de la puntuacion editorial, todos entre 0 y 5.\n\n``novelty`` la calcula la aplicacion: 5 x (1 - similitud maxima).\nLos otros cuatro los razona el modelo y se guardan tal cual.",
+      "properties": {
+        "hook": {
+          "maximum": 5,
+          "minimum": 0,
+          "title": "Hook",
+          "type": "number"
+        },
+        "clarity": {
+          "maximum": 5,
+          "minimum": 0,
+          "title": "Clarity",
+          "type": "number"
+        },
+        "payoff": {
+          "maximum": 5,
+          "minimum": 0,
+          "title": "Payoff",
+          "type": "number"
+        },
+        "visual_potential": {
+          "maximum": 5,
+          "minimum": 0,
+          "title": "Visual Potential",
+          "type": "number"
+        },
+        "novelty": {
+          "maximum": 5,
+          "minimum": 0,
+          "title": "Novelty",
+          "type": "number"
+        }
+      },
+      "required": [
+        "hook",
+        "clarity",
+        "payoff",
+        "visual_potential",
+        "novelty"
+      ],
+      "title": "ScoreComponents",
+      "type": "object"
+    },
+    "SfxCue": {
+      "description": "Momento aproximado del efecto de sonido dentro de la escena.\n\nLos tiempos definitivos dependen del audio real (modulo 2).",
+      "enum": [
+        "scene_start",
+        "scene_end"
+      ],
+      "title": "SfxCue",
+      "type": "string"
+    },
+    "VerificationLevel": {
+      "description": "Alcance real de la verificacion del guion.\n\n* ``none``              - ficcion pura, sin afirmaciones factuales.\n* ``source_pack_only``  - toda afirmacion enlaza con el catalogo aportado.\n  El sistema restringe la generacion a esas fuentes; NO verifica de forma\n  independiente que la fuente respalde semanticamente la afirmacion.\n* ``needs_review``      - hay ambiguedad detectada; requiere revision humana.",
+      "enum": [
+        "none",
+        "source_pack_only",
+        "needs_review"
+      ],
+      "title": "VerificationLevel",
+      "type": "string"
+    },
+    "Video": {
+      "additionalProperties": false,
+      "properties": {
+        "width": {
+          "maximum": 4320,
+          "minimum": 240,
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "maximum": 7680,
+          "minimum": 240,
+          "title": "Height",
+          "type": "integer"
+        },
+        "fps": {
+          "maximum": 120,
+          "minimum": 1,
+          "title": "Fps",
+          "type": "integer"
+        },
+        "aspect_ratio": {
+          "enum": [
+            "9:16",
+            "1:1",
+            "4:5",
+            "16:9"
+          ],
+          "title": "Aspect Ratio",
+          "type": "string"
+        },
+        "target_duration_s": {
+          "exclusiveMinimum": 0,
+          "maximum": 600,
+          "title": "Target Duration S",
+          "type": "number"
+        },
+        "estimated_duration_s": {
+          "description": "Calculado localmente a partir de palabras y pausas.",
+          "exclusiveMinimum": 0,
+          "maximum": 600,
+          "title": "Estimated Duration S",
+          "type": "number"
+        },
+        "actual_duration_s": {
+          "default": null,
+          "description": "Lo rellenara el modulo 2 tras medir la voz real.",
+          "title": "Actual Duration S",
+          "type": "null"
+        }
+      },
+      "required": [
+        "width",
+        "height",
+        "fps",
+        "aspect_ratio",
+        "target_duration_s",
+        "estimated_duration_s"
+      ],
+      "title": "Video",
+      "type": "object"
+    },
+    "VisualBible": {
+      "additionalProperties": false,
+      "properties": {
+        "style_prompt": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Style Prompt",
+          "type": "string"
+        },
+        "color_palette": {
+          "items": {
+            "maxLength": 48,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 8,
+          "minItems": 2,
+          "title": "Color Palette",
+          "type": "array"
+        },
+        "negative_prompt": {
+          "description": "Incluye evitar texto y marcas de agua: los rotulos se anaden en montaje.",
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Negative Prompt",
+          "type": "string"
+        },
+        "characters": {
+          "items": {
+            "$ref": "#/$defs/VisualCharacter"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Characters",
+          "type": "array"
+        }
+      },
+      "required": [
+        "style_prompt",
+        "color_palette",
+        "negative_prompt",
+        "characters"
+      ],
+      "title": "VisualBible",
+      "type": "object"
+    },
+    "VisualCharacter": {
+      "additionalProperties": false,
+      "description": "Personaje estable de la serie. No se reinventa entre episodios.",
+      "properties": {
+        "character_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Character Id",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "description": {
+          "description": "Aspecto estable del personaje.",
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "wardrobe": {
+          "description": "Ropa estable del personaje.",
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Wardrobe",
+          "type": "string"
+        }
+      },
+      "required": [
+        "character_id",
+        "name",
+        "description",
+        "wardrobe"
+      ],
+      "title": "VisualCharacter",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Contrato JSON del modulo 1. Lo consumen los modulos 2-5. schema_version=1.0.",
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "job_id": {
+      "pattern": "^[0-9a-f\\-]{36}$",
+      "title": "Job Id",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "channel": {
+      "$ref": "#/$defs/Channel"
+    },
+    "profile_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "language": {
+      "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+      "title": "Language",
+      "type": "string"
+    },
+    "target_platforms": {
+      "items": {
+        "$ref": "#/$defs/Platform"
+      },
+      "maxItems": 3,
+      "minItems": 1,
+      "title": "Target Platforms",
+      "type": "array"
+    },
+    "simulation": {
+      "title": "Simulation",
+      "type": "boolean"
+    },
+    "control": {
+      "$ref": "#/$defs/Control"
+    },
+    "idea": {
+      "$ref": "#/$defs/Idea"
+    },
+    "video": {
+      "$ref": "#/$defs/Video"
+    },
+    "narration": {
+      "$ref": "#/$defs/Narration"
+    },
+    "visual_bible": {
+      "$ref": "#/$defs/VisualBible"
+    },
+    "scenes": {
+      "items": {
+        "$ref": "#/$defs/Scene"
+      },
+      "maxItems": 20,
+      "minItems": 3,
+      "title": "Scenes",
+      "type": "array"
+    },
+    "loop": {
+      "$ref": "#/$defs/Loop"
+    },
+    "evidence": {
+      "$ref": "#/$defs/Evidence"
+    },
+    "publishing": {
+      "items": {
+        "$ref": "#/$defs/PublishingPlan"
+      },
+      "maxItems": 3,
+      "minItems": 1,
+      "title": "Publishing",
+      "type": "array"
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    }
+  },
+  "required": [
+    "job_id",
+    "created_at",
+    "channel",
+    "profile_id",
+    "language",
+    "target_platforms",
+    "simulation",
+    "control",
+    "idea",
+    "video",
+    "narration",
+    "visual_bible",
+    "scenes",
+    "loop",
+    "evidence",
+    "publishing",
+    "provenance"
+  ],
+  "title": "viralgen script document",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

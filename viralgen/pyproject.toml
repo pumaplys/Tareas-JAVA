@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "viralgen"
+version = "0.1.0"
+description = "Modulo 1: generador de ideas, guiones y prompts de medios (plan JSON validado)"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+license = { text = "MIT" }
+dependencies = [
+    "pydantic>=2.13,<3",
+    "pydantic-settings>=2.15,<3",
+    "openai>=3.16,<4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.1,<10",
+]
+
+[project.scripts]
+viralgen = "viralgen.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+viralgen = ["data/*.json", "prompts/v1/*.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["error::DeprecationWarning:viralgen.*"]
