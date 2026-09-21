@@ -96,6 +96,9 @@ class VoiceOutcome:
     requests_new: int = 0
     requests_total: int = 0
     reused: bool = False
+    partial: bool = False
+    pending_scenes: list[str] = field(default_factory=list)
+    available_paths: list[str] = field(default_factory=list)
     error_code: str | None = None
     error_message: str | None = None
 
@@ -114,6 +117,9 @@ class VoiceOutcome:
             "requests_new": self.requests_new,
             "requests_total": self.requests_total,
             "reused": self.reused,
+            "partial": self.partial,
+            "pending_scenes": self.pending_scenes,
+            "available_paths": self.available_paths,
             "exit_code": int(self.exit_code),
         }
         if self.error_code:
@@ -144,7 +150,6 @@ class VoicePipeline:
         )
         self.data_dir = settings.effective_data_dir(simulation=request.simulation)
         self.issues: list[VoiceIssue] = []
-        self.blocking_known = False
 
     # -- Entrada principal -------------------------------------------------
 
@@ -418,7 +423,14 @@ class VoicePipeline:
         guardados = self.voice_storage.load_clips(self.voice_run_id)
         escenas = sorted(document.scenes, key=lambda item: item.order)
         clip_info: dict[str, dict] = {}
+        alineaciones: dict[str, AlignmentResult] = {}
+        tolerancia = self.settings.voice_alignment_tolerance_ms / 1000.0
+        escenas_pendientes: list[str] = []
 
+        # Secuencia por escena: sintetizar -> guardar audio -> comprobar su
+        # alineacion -> recuperacion configurada para ESA escena. Si queda un
+        # bloqueo sin resolver, se corta: no se piden ni sintesis ni
+        # alineaciones de las escenas siguientes.
         for indice, escena in enumerate(escenas):
             peticion = SynthesisRequest(
                 scene_id=escena.scene_id,
@@ -453,6 +465,12 @@ class VoicePipeline:
                     "request_id": reutilizado["request_id"],
                     "characters_sent": int(reutilizado["characters_sent"]),
                 }
+                alineaciones[escena.scene_id] = self._check_scene_alignment(
+                    escena, clip_info[escena.scene_id], run_dir, provider, tolerancia, identidad
+                )
+                if not alineaciones[escena.scene_id].usable:
+                    escenas_pendientes = [item.scene_id for item in escenas[indice + 1 :]]
+                    break
                 continue
 
             resultado = provider.synthesize(peticion, self.budget)
@@ -491,6 +509,23 @@ class VoicePipeline:
                 "characters_sent": resultado.characters_sent,
             }
 
+            alineaciones[escena.scene_id] = self._check_scene_alignment(
+                escena, clip_info[escena.scene_id], run_dir, provider, tolerancia, identidad
+            )
+            if not alineaciones[escena.scene_id].usable:
+                escenas_pendientes = [item.scene_id for item in escenas[indice + 1 :]]
+                break
+
+        # --- Corte por bloqueo sin resolver -------------------------------
+        if escenas_pendientes:
+            # Trabajo PARCIAL: es un resultado valido. Se conservan clips,
+            # hashes, estado y contadores en SQLite, no se construye un maestro
+            # incompleto y no se publica ningun voice.json que aparente tener
+            # todas las escenas.
+            return self._partial_outcome(
+                document, run_dir, clip_info, alineaciones, escenas_pendientes, temp_dir
+            )
+
         # --- Medicion y maestro ------------------------------------------
         medidas = build_measured_timeline(
             [
@@ -514,10 +549,8 @@ class VoicePipeline:
         master_sha = sha256_file(master_path)
         duracion = esperadas / self.fmt.sample_rate_hz
 
-        # --- Alineacion ---------------------------------------------------
-        palabras, escenas_manifiesto = self._align(
-            escenas, medidas, clip_info, run_dir, provider
-        )
+        # --- Alineacion (ya resuelta escena a escena) ----------------------
+        palabras, escenas_manifiesto = self._align(escenas, medidas, clip_info, alineaciones)
 
         # --- Duracion -----------------------------------------------------
         objetivo = document.video.target_duration_s
@@ -679,17 +712,61 @@ class VoicePipeline:
             if medida.pause_samples:
                 yield silence_bytes(medida.pause_samples, self.fmt)
 
-    def _align(self, escenas, medidas, clip_info, run_dir: Path, provider: VoiceProvider):
+    def _check_scene_alignment(
+        self,
+        escena,
+        datos: dict,
+        run_dir: Path,
+        provider: VoiceProvider,
+        tolerancia: float,
+        identidad: str,
+    ) -> AlignmentResult:
+        """Comprueba la alineacion de UNA escena y ejecuta su recuperacion.
+
+        Se llama justo despues de guardar el audio de esa escena. Si el
+        resultado no es utilizable, registra el bloqueo con su motivo: el
+        llamador corta ahi y no pide nada mas.
+        """
+        duracion_clip = datos["samples"] / self.fmt.sample_rate_hz
+        resultado = self._resolve_alignment(
+            escena, datos, duracion_clip, tolerancia, run_dir, provider, identidad
+        )
+
+        for ajuste in resultado.adjustments:
+            self._issue(
+                "ajuste_de_alineacion",
+                f"{escena.scene_id}: {ajuste}",
+                IssueSeverity.INFO,
+                blocking=False,
+                scene_id=escena.scene_id,
+            )
+
+        if not resultado.usable:
+            self._issue(
+                "alineacion_no_utilizable",
+                f"{escena.scene_id}: " + ("; ".join(resultado.issues) or "sin alineacion"),
+                IssueSeverity.ERROR,
+                blocking=True,
+                scene_id=escena.scene_id,
+            )
+            logger.error(
+                "bloqueo en %s: se detienen las solicitudes de las escenas siguientes",
+                escena.scene_id,
+            )
+        return resultado
+
+    def _align(self, escenas, medidas, clip_info, alineaciones: dict):
+        """Arma palabras y escenas del manifiesto con lo ya resuelto.
+
+        No emite ninguna peticion: las alineaciones se decidieron escena a
+        escena durante la sintesis.
+        """
         palabras: list[VoiceWord] = []
         manifiesto: list[VoiceScene] = []
-        tolerancia = self.settings.voice_alignment_tolerance_ms / 1000.0
 
         for escena, medida in zip(escenas, medidas, strict=True):
             datos = clip_info[escena.scene_id]
-            duracion_clip = datos["samples"] / self.fmt.sample_rate_hz
-            resultado = self._resolve_alignment(
-                escena, datos, duracion_clip, tolerancia, run_dir, provider
-            )
+            resultado = alineaciones[escena.scene_id]
 
             if resultado.usable:
                 destacadas = emphasis_set(list(escena.captions.emphasis_words))
@@ -707,23 +784,6 @@ class VoicePipeline:
                             emphasis=is_emphasis(palabra.text, destacadas),
                         )
                     )
-            else:
-                self.blocking_known = True
-                self._issue(
-                    "alineacion_no_utilizable",
-                    f"{escena.scene_id}: " + ("; ".join(resultado.issues) or "sin alineacion"),
-                    IssueSeverity.ERROR,
-                    blocking=True,
-                    scene_id=escena.scene_id,
-                )
-            for ajuste in resultado.adjustments:
-                self._issue(
-                    "ajuste_de_alineacion",
-                    f"{escena.scene_id}: {ajuste}",
-                    IssueSeverity.INFO,
-                    blocking=False,
-                    scene_id=escena.scene_id,
-                )
 
             normalizado = None
             bruto = (datos.get("alignment") or {}).get("normalized_alignment")
@@ -757,13 +817,78 @@ class VoicePipeline:
             )
         return palabras, manifiesto
 
+    def _partial_outcome(
+        self,
+        document: ScriptDocument,
+        run_dir: Path,
+        clip_info: dict,
+        alineaciones: dict,
+        pendientes: list[str],
+        temp_dir: Path,
+    ) -> VoiceOutcome:
+        """Cierra un trabajo PARCIAL tras un bloqueo sin resolver.
+
+        No se construye maestro ni se publica manifiesto: faltan medios. Todo
+        lo obtenido (clips, hashes, estado y contadores) queda en SQLite, de
+        modo que reanudar reutilice los clips y respete el presupuesto
+        historico.
+        """
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        bloqueantes = [issue for issue in self.issues if issue.blocking]
+        motivo = bloqueantes[-1].message if bloqueantes else "bloqueo sin detalle"
+
+        self.voice_storage.update_run(
+            self.voice_run_id,
+            status="needs_review",
+            voice_status="needs_review",
+            error_code="voice_blocked_partial",
+            error_message=(
+                f"{motivo}. Se detuvieron las solicitudes: quedan {len(pendientes)} "
+                f"escenas sin sintetizar ({', '.join(pendientes)})."
+            )[:2000],
+        )
+        totales = self.voice_storage.request_totals(document.job_id)
+        disponibles = [str(run_dir / datos["path"]) for datos in clip_info.values()]
+        logger.warning(
+            "trabajo parcial %s: %d escenas con audio, %d pendientes",
+            self.voice_run_id,
+            len(clip_info),
+            len(pendientes),
+        )
+        return VoiceOutcome(
+            voice_run_id=self.voice_run_id,
+            job_id=document.job_id,
+            status="needs_review",
+            exit_code=ExitCode.NEEDS_REVIEW,
+            simulation=self.request.simulation,
+            manifest_path=None,
+            master_path=None,
+            measured_duration_s=None,
+            admissible_for_assembly=False,
+            admission_reasons=[motivo],
+            issues=[issue.model_dump(mode="json") for issue in self.issues],
+            requests_new=self.budget.used_this_run,
+            requests_total=int(totales["requests"]),
+            partial=True,
+            pending_scenes=list(pendientes),
+            available_paths=disponibles,
+        )
+
     def _resolve_alignment(
-        self, escena, datos, duracion_clip: float, tolerancia: float, run_dir: Path, provider
+        self,
+        escena,
+        datos,
+        duracion_clip: float,
+        tolerancia: float,
+        run_dir: Path,
+        provider,
+        identidad: str,
     ) -> AlignmentResult:
         """Elige la mejor alineacion disponible para una escena."""
         guardada = datos.get("alignment") or {}
         principal = _alignment_from_dict(guardada.get("alignment"))
         normalizada = _alignment_from_dict(guardada.get("normalized_alignment"))
+        forzada_guardada = _alignment_from_dict(guardada.get("forced_alignment"))
 
         if principal is not None:
             resultado = build_alignment(
@@ -797,19 +922,42 @@ class VoicePipeline:
             if resultado.usable:
                 return resultado
 
+        if forzada_guardada is not None:
+            # Recuperacion ya pedida en una ejecucion anterior: se reevalua en
+            # local, sin gastar otra solicitud.
+            resultado = build_alignment(
+                forzada_guardada,
+                escena.narration_text,
+                clip_duration_s=duracion_clip,
+                tolerance_s=tolerancia,
+                method=AlignmentMethod.FORCED_ALIGNMENT,
+            )
+            if resultado.usable:
+                return resultado
+            return resultado
+
+        if guardada.get("recovery_attempted"):
+            # Ya se intento y no sirvio: repetirlo gastaria solicitudes en
+            # silencio, asi que no se repite.
+            fallo.issues.append(
+                "la recuperacion por alineacion forzada ya se intento sin exito"
+            )
+            return fallo
+
         if (
             self.settings.voice_allow_forced_alignment
             and provider.supports_forced_alignment
-            and not self.blocking_known
             and self.budget.can_spend()
         ):
+            forzada = None
             try:
                 forzada = provider.force_align(
                     run_dir / datos["path"], escena.narration_text, self.budget
                 )
             except ViralgenError as exc:
                 fallo.issues.append(f"la alineacion forzada fallo: {exc.message[:200]}")
-                forzada = None
+            # Se deja constancia del intento, haya salido bien o mal.
+            self._persist_recovery(escena.scene_id, datos, identidad, forzada)
             if forzada is not None:
                 resultado = build_alignment(
                     forzada,
@@ -823,7 +971,38 @@ class VoicePipeline:
                 if resultado.usable:
                     return resultado
                 fallo = resultado
+        elif self.settings.voice_allow_forced_alignment and not self.budget.can_spend():
+            fallo.issues.append("sin presupuesto para intentar la alineacion forzada")
+        elif not self.settings.voice_allow_forced_alignment:
+            fallo.issues.append(
+                "recuperacion desactivada (VOICE_ALLOW_FORCED_ALIGNMENT=false)"
+            )
         return fallo
+
+    def _persist_recovery(
+        self, scene_id: str, datos: dict, identidad: str, forzada
+    ) -> None:
+        """Guarda el intento de recuperacion junto al clip.
+
+        Asi una reanudacion no vuelve a pedir la misma alineacion forzada.
+        """
+        alineacion = dict(datos.get("alignment") or {})
+        alineacion["recovery_attempted"] = True
+        alineacion["forced_alignment"] = _alignment_to_dict(forzada)
+        datos["alignment"] = alineacion
+        self.voice_storage.save_clip(
+            self.voice_run_id,
+            {
+                "scene_id": scene_id,
+                "identity_sha256": identidad,
+                "clip_path": datos["path"],
+                "clip_sha256": datos["sha256"],
+                "clip_samples": datos["samples"],
+                "alignment": alineacion,
+                "request_id": datos.get("request_id"),
+                "characters_sent": int(datos.get("characters_sent", 0)),
+            },
+        )
 
     def _issue(
         self,

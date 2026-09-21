@@ -615,7 +615,7 @@ source .venv/bin/activate
 pytest -q
 ```
 
-Resultado de la ejecución en este entorno: **246 pruebas correctas y 1 saltada**
+Resultado de la ejecución en este entorno: **257 pruebas correctas y 1 saltada**
 (Python 3.12, sin red y sin claves). La saltada es la decodificación MP3, que
 necesita FFmpeg y aquí no está instalado; el salto se informa explícitamente y
 **no equivale a haberla pasado**.
@@ -944,9 +944,63 @@ Si falta una alineación utilizable, **se conserva el audio**. Con
 `VOICE_ALLOW_FORCED_ALIGNMENT=true` se puede pedir `POST /v1/forced-alignment`
 sobre ese WAV y el texto original: cuenta contra el mismo presupuesto y **no
 regenera la voz**. El resultado se vuelve a validar igual que cualquier otro —
-una puntuación del proveedor no es una probabilidad de exactitud—. Si sigue sin
-servir, el manifiesto queda `needs_review` con el motivo y se dejan de pedir
-alineaciones adicionales; los clips obtenidos se conservan.
+una puntuación del proveedor no es una probabilidad de exactitud—.
+
+### Un bloqueo detiene TODAS las solicitudes nuevas
+
+La secuencia por escena es: sintetizar → guardar su audio → comprobar su
+alineación → ejecutar la recuperación configurada **para esa escena**. Si la
+recuperación está desactivada o termina sin resolver el problema, se persiste
+`needs_review` con el motivo y **se termina sin pedir las escenas siguientes**:
+ni síntesis ni alineaciones.
+
+Los reintentos transitorios acotados de la operación **en curso** conservan su
+política; no son una forma de seguir procesando otras escenas.
+
+**Un trabajo parcial es un resultado válido.** Se conservan los clips, sus
+hashes, el estado y los contadores en SQLite. No se construye un maestro
+incompleto y **no se publica un `voice.json` que aparente contener todas las
+escenas** cuando faltan medios. El resumen de la CLI lo dice con campos
+estructurados:
+
+```json
+{
+  "voice_status": "needs_review",
+  "partial": true,
+  "manifest_path": null,
+  "master_path": null,
+  "pending_scenes": ["sc_04", "sc_05", "sc_06", "sc_07"],
+  "available_paths": ["…/audio/scenes/sc_01.wav", "…/audio/scenes/sc_02.wav", "…"],
+  "requests_new": 3,
+  "exit_code": 10
+}
+```
+
+Un bloqueo en la **última** escena no deja nada pendiente, así que sí produce un
+manifiesto completo con `needs_review`: el esquema 1.0 solo conoce `ready` y
+`needs_review` para manifiestos completos, y un corte parcial no inventa un
+tercer estado.
+
+La ausencia de un efecto opcional **no** detiene nada: es una incidencia con
+`blocking=false` y `severity=info`. Lo que bloquea lleva `blocking=true` y
+`severity=error`. La distinción está en esos campos, no en el texto del mensaje.
+
+**Repetir sin resolver el bloqueo no gasta solicitudes nuevas.** Al reanudar se
+reutilizan los clips guardados (identidad + hash), la alineación se reevalúa en
+local y el corte vuelve a producirse con `requests_new: 0`. Una recuperación
+que ya se intentó y falló queda marcada junto al clip y **no se repite**.
+
+**Cómo resolver ese estado** (hace falta una acción explícita; ninguna es
+automática):
+
+1. Activar `VOICE_ALLOW_FORCED_ALIGNMENT=true`, o
+2. corregir el guion y volver a exportarlo con el módulo 1, o
+3. cambiar de voz, modelo o parámetros.
+
+Las tres cambian el *fingerprint* de la ejecución, así que **hay que usar una
+`--voice-key` nueva**: repetir la misma clave con otra solicitud produce
+conflicto a propósito. Los clips ya pagados siguen en SQLite bajo su ejecución
+anterior.
 
 ### Sonido opcional
 
@@ -999,19 +1053,40 @@ procesa un clip cada vez y el WAV maestro se construye por bloques. Los
 temporales regenerables se borran tras consolidar; maestro, manifiesto y clips
 se conservan.
 
-### Admisión para el módulo 4
+### Admisión para el módulo 4: tres veredictos separados
 
 `viralgen voice validate` revalida **desde los archivos reales**: el guion y su
 propia admisión, el SHA-256 de sus bytes, el manifiesto, los hashes y el formato
 de todos los WAV, la cobertura de escenas sin huecos, que las palabras cubran la
-narración y caigan dentro del clip de su escena, el origen real de ambos
-artefactos y la duración medida frente al rango del perfil y al ±10 %.
-**No se fía del booleano guardado en `voice.json`.**
+narración y caigan dentro del clip de su escena, el origen de ambos artefactos y
+la duración medida frente al rango del perfil y al ±10 %.
+**No se fía del booleano guardado en `voice.json`.** Es de **solo lectura**: no
+modifica ningún archivo ni cambia el origen declarado.
 
-Informa por separado la **validez del contrato** y la **admisión para
-producción**: un manifiesto puede ser válido y aun así no servir para montar.
-Los incumplimientos quedan `needs_review`; no se alarga con silencio, bucles ni
-cambios de velocidad para satisfacer una duración.
+El informe lleva **siempre los tres**, nunca uno solo:
+
+| Campo | Qué significa |
+| --- | --- |
+| `contract_valid` | Los archivos cumplen su contrato y se pueden leer. Es lo mínimo; **no autoriza nada**. |
+| `admissible_for_preview` | Además, todo cuadra: hashes, medios, cobertura, palabras y duración. Sirve para **CI y revisión de recorridos de prueba**. Ignora únicamente el origen (`origin_checks`: `voz_real`, `guion_real`). |
+| `admissible_for_assembly` | Lo anterior **y** ambos artefactos son reales. **El único que autoriza producir medios.** |
+
+`--allow-simulation` cambia **solo cuál de ellos decide el código de salida**,
+para que CI pueda terminar en 0 con archivos de prueba. El resumen sigue
+llevando `admissible_for_assembly: false` y `simulation: true`, y `checks` es
+idéntico en los dos modos. Los módulos posteriores deben leer
+`admissible_for_assembly`; **no pueden tomar el código de salida de una
+validación de pruebas como autorización para producir**.
+
+Ejemplo real sobre el ejemplo simulado incluido: `contract_valid: true`,
+`admissible_for_preview: true`, `admissible_for_assembly: false`,
+`preview_reasons: []` y `reasons` con los dos motivos de origen.
+
+Un manifiesto `needs_review` se rechaza **también** en pruebas (`voz_lista` y
+`sin_bloqueos` no están entre los `origin_checks`), y un hash o una estructura
+incorrectos se rechazan en ambos modos. Los incumplimientos quedan
+`needs_review`; no se alarga con silencio, bucles ni cambios de velocidad para
+satisfacer una duración.
 
 ### Ejemplo simulado incluido
 
@@ -1029,8 +1104,16 @@ viralgen voice validate \
 El PCM son **señales de prueba** (un tono con envolvente) generadas con la
 biblioteca estándar, **no voz hablada**, y sus tiempos por carácter son
 sintéticos: sirven para ejercitar el recorrido y las pruebas, no son evidencia
-de la precisión del proveedor real. Sin `--allow-simulation` el mismo comando
-devuelve **no admisible**, que es lo correcto.
+de la precisión del proveedor real ni de su sincronización.
+
+Ese comando termina en 0 porque `admissible_for_preview` es `true`; el mismo
+resumen sigue diciendo `admissible_for_assembly: false`. Sin
+`--allow-simulation` el código de salida es 10, que es lo correcto.
+
+El ejemplo sirve para comprobar aritmética, hashes y recuperación:
+1 211 462 muestras / 24 000 Hz = 50,477583 s, y esa cifra coincide con la suma
+de `clip_samples + pause_samples` de las siete escenas. **Eso verifica la
+aritmética, no la calidad de una voz hablada.**
 
 ### Reproducir por perfil
 

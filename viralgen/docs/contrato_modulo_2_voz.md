@@ -35,9 +35,37 @@ producción, aunque salgan `ready_for_production`.
 `viralgen voice validate --script … --manifest …`. Revalida el guion, compara
 el hash de sus bytes, valida el manifiesto, comprueba los hashes y el formato
 de todos los WAV, la cobertura de escenas sin huecos, que las palabras cubran
-la narración y caigan dentro del clip de su escena, el origen real de ambos
+la narración y caigan dentro del clip de su escena, el origen de ambos
 artefactos y la duración medida frente al rango del perfil y al ±10 %.
 **No se fía del booleano `admissible_for_assembly` guardado en el manifiesto.**
+
+Devuelve **tres veredictos separados**, nunca uno solo:
+
+| Campo | Qué autoriza |
+| --- | --- |
+| `contract_valid` | Nada. Solo dice que los archivos se leen y cumplen su contrato. |
+| `admissible_for_preview` | Revisión y CI de recorridos de **prueba**. Ignora únicamente `origin_checks` (`voz_real`, `guion_real`). |
+| `admissible_for_assembly` | **Producir medios.** Es el que debe leer el módulo 4. |
+
+`--allow-simulation` cambia solo cuál decide el código de salida. Una salida
+simulada conserva siempre `simulation=true` y `admissible_for_assembly=false`:
+que su recorrido de pruebas sea correcto no la convierte en material de
+producción. **No tomes el código de salida de una validación de pruebas como
+autorización.** La validación es de solo lectura: no modifica `script.json` ni
+`voice.json` ni cambia el origen declarado.
+
+### Trabajos parciales: puede no haber manifiesto
+
+Si una escena queda con un bloqueo sin resolver, el módulo 2 **detiene todas
+las solicitudes nuevas** —síntesis y alineaciones— y no publica `voice.json`:
+sería un manifiesto que aparenta tener todas las escenas cuando faltan medios.
+El trabajo queda en SQLite con sus clips, hashes y contadores, y el resumen de
+la CLI lo indica con `partial: true`, `manifest_path: null`, `pending_scenes` y
+`available_paths`.
+
+Consecuencia para quien consume: **si no hay `voice.json`, no hay nada que
+montar.** Un manifiesto completo siempre es `ready` o `needs_review`; el estado
+parcial no es un tercer valor del esquema 1.0, es la ausencia del archivo.
 
 ---
 

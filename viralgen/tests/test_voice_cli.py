@@ -64,23 +64,63 @@ def test_voice_generate_y_reutilizacion(cli, guion) -> None:
     assert repetido["requests_total"] == resumen["requests_total"]
 
 
-def test_voice_validate_separa_contrato_y_admision(cli, guion) -> None:
+def test_voice_validate_separa_contrato_pruebas_y_produccion(cli, guion) -> None:
+    """Los tres veredictos van siempre, y --allow-simulation solo cambia el exit."""
     _, generado, _ = cli(
         "voice", "generate", "--script", guion, "--voice-key", "val", "--mock", "--seed", "5"
     )
     manifiesto = generado["manifest_path"]
 
-    codigo, informe, _ = cli("voice", "validate", "--script", guion, "--manifest", manifiesto)
+    # Modo produccion (por defecto).
+    codigo, produccion, _ = cli("voice", "validate", "--script", guion, "--manifest", manifiesto)
     assert codigo == ExitCode.NEEDS_REVIEW
-    assert informe["contract_valid"] is True  # el contrato si es valido
-    assert informe["admissible_for_assembly"] is False  # pero no sirve para montar
-    assert informe["reasons"]
+    assert produccion["mode"] == "production"
+    assert produccion["contract_valid"] is True
+    assert produccion["admissible_for_preview"] is True
+    assert produccion["admissible_for_assembly"] is False
+    assert produccion["reasons"]
+    assert produccion["preview_reasons"] == []
 
-    codigo, informe, _ = cli(
+    # Modo pruebas: termina bien para CI...
+    codigo, pruebas, _ = cli(
         "voice", "validate", "--script", guion, "--manifest", manifiesto, "--allow-simulation"
     )
     assert codigo == ExitCode.OK
-    assert informe["admissible_for_assembly"] is True
+    assert pruebas["mode"] == "preview"
+    assert pruebas["admissible_for_preview"] is True
+    # ...pero la salida simulada SIGUE siendo inadmisible para produccion.
+    assert pruebas["admissible_for_assembly"] is False
+    assert any("simulation=true" in motivo for motivo in pruebas["reasons"])
+
+    # Los dos modos ven exactamente los mismos hechos.
+    assert pruebas["checks"] == produccion["checks"]
+    assert pruebas["origin_checks"] == ["guion_real", "voz_real"]
+
+
+def test_un_bloqueo_parcial_se_comunica_en_el_resumen(cli, guion, monkeypatch) -> None:
+    """La CLI informa del estado parcial y de las rutas realmente disponibles."""
+    from viralgen.voice.providers import mock as modulo_mock
+
+    original = modulo_mock.MockVoiceProvider.synthesize
+
+    def sin_alineacion(self, request, budget):
+        resultado = original(self, request, budget)
+        resultado.alignment = None
+        resultado.normalized_alignment = None
+        return resultado
+
+    monkeypatch.setattr(modulo_mock.MockVoiceProvider, "synthesize", sin_alineacion)
+    codigo, resumen, _ = cli(
+        "voice", "generate", "--script", guion, "--voice-key", "parcial", "--mock", "--seed", "5"
+    )
+    assert codigo == ExitCode.NEEDS_REVIEW
+    assert resumen["partial"] is True
+    assert resumen["manifest_path"] is None
+    assert resumen["master_path"] is None
+    assert resumen["pending_scenes"]
+    assert resumen["available_paths"]
+    assert all(Path(ruta).is_file() for ruta in resumen["available_paths"])
+    assert any(issue["blocking"] for issue in resumen["issues"])
 
 
 def test_voice_validate_no_genera_audio(cli, guion, tmp_path) -> None:

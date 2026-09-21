@@ -294,32 +294,169 @@ def test_el_presupuesto_persiste_entre_procesos(voice_settings, script_path) -> 
 
 
 class ProveedorSinAlineacion(MockVoiceProvider):
+    """Audio valido, alineacion inutilizable en la escena indicada."""
+
+    def __init__(self, romper_en: str | None = None, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.romper_en = romper_en
+        self.sintetizadas: list[str] = []
+
     def synthesize(self, request, budget):
         resultado = super().synthesize(request, budget)
-        resultado.alignment = None
-        resultado.normalized_alignment = None
+        self.sintetizadas.append(request.scene_id)
+        if self.romper_en is None or request.scene_id == self.romper_en:
+            resultado.alignment = None
+            resultado.normalized_alignment = None
         return resultado
 
 
-def test_sin_alineacion_utilizable_queda_needs_review(voice_settings, script_path) -> None:
-    """Se conserva el audio, pero el manifiesto no es admisible."""
+def _escenas_del_guion(script: Path) -> list[str]:
+    guion = json.loads(script.read_text(encoding="utf-8"))
+    return [escena["scene_id"] for escena in guion["scenes"]]
+
+
+def test_un_bloqueo_detiene_las_escenas_siguientes(voice_settings, script_path) -> None:
+    """Prueba focalizada del corte: escena intermedia sin alineacion utilizable.
+
+    Recibe audio valido, su recuperacion esta desactivada, y a partir de ahi no
+    se emite ninguna peticion mas. Se conservan el audio obtenido y el
+    presupuesto.
+    """
+    escenas = _escenas_del_guion(script_path)
+    assert len(escenas) >= 5
+    intermedia = escenas[2]
+
+    proveedor = ProveedorSinAlineacion(
+        romper_en=intermedia, settings=voice_settings, seed=5
+    )
+    peticion = VoiceJobRequest(
+        script_path=script_path, voice_key="corte", simulation=True, seed=5
+    )
+    resultado = VoicePipeline(voice_settings, peticion, provider=proveedor).run()
+
+    # Se sintetizo hasta la escena problematica, ni una mas.
+    assert proveedor.sintetizadas == escenas[:3]
+    assert resultado.partial is True
+    assert resultado.pending_scenes == escenas[3:]
+    assert resultado.status == "needs_review"
+    assert resultado.exit_code == ExitCode.NEEDS_REVIEW
+
+    # No se publica un manifiesto que aparente tener todas las escenas.
+    assert resultado.manifest_path is None
+    assert resultado.master_path is None
+
+    # El audio obtenido se conserva y las rutas del resumen son reales.
+    assert len(resultado.available_paths) == 3
+    for ruta in resultado.available_paths:
+        assert Path(ruta).is_file()
+
+    # El presupuesto refleja exactamente lo gastado.
+    assert resultado.requests_new == 3
+    assert resultado.requests_total == 3
+
+    # El bloqueo esta en campos estructurados, no en el texto.
+    bloqueantes = [issue for issue in resultado.issues if issue["blocking"]]
+    assert len(bloqueantes) == 1
+    assert bloqueantes[0]["code"] == "alineacion_no_utilizable"
+    assert bloqueantes[0]["scene_id"] == intermedia
+    assert bloqueantes[0]["severity"] == "error"
+
+
+def test_repetir_un_bloqueo_no_gasta_solicitudes_nuevas(voice_settings, script_path) -> None:
+    """Reanudar reutiliza los clips y no gasta nada mientras el bloqueo siga."""
+    escenas = _escenas_del_guion(script_path)
+    intermedia = escenas[2]
+    peticion = VoiceJobRequest(
+        script_path=script_path, voice_key="corte-repetido", simulation=True, seed=5
+    )
+
+    primero = VoicePipeline(
+        voice_settings,
+        peticion,
+        provider=ProveedorSinAlineacion(romper_en=intermedia, settings=voice_settings, seed=5),
+    ).run()
+    assert primero.requests_new == 3
+
+    segundo_proveedor = ProveedorSinAlineacion(
+        romper_en=intermedia, settings=voice_settings, seed=5
+    )
+    segundo = VoicePipeline(voice_settings, peticion, provider=segundo_proveedor).run()
+
+    assert segundo_proveedor.sintetizadas == []  # nada se resintetiza
+    assert segundo.requests_new == 0  # ni una solicitud nueva
+    assert segundo.requests_total == primero.requests_total  # historico intacto
+    assert segundo.partial is True
+    assert segundo.pending_scenes == escenas[3:]
+    assert segundo.manifest_path is None
+
+
+def test_un_aviso_informativo_no_detiene_la_narracion(voice_settings, script_path, run_voice) -> None:
+    """La ausencia de un efecto opcional es informativa, no un bloqueo."""
+    resultado = run_voice(script_path, voice_key="aviso-sfx")
+    assert resultado.exit_code == ExitCode.OK
+    assert resultado.partial is False
+    assert resultado.pending_scenes == []
+
+    informativos = [issue for issue in resultado.issues if issue["code"] == "sfx_desactivado"]
+    assert informativos, "el guion de prueba pide algun efecto"
+    assert all(issue["blocking"] is False for issue in informativos)
+    assert all(issue["severity"] == "info" for issue in informativos)
+    # Y aun asi el manifiesto sale completo y ready.
+    assert _manifest(resultado).control.voice_status is VoiceStatus.READY
+
+
+def test_un_bloqueo_en_la_ultima_escena_produce_manifiesto_completo(
+    voice_settings, script_path
+) -> None:
+    """Si no quedan escenas por pedir, el manifiesto se publica con needs_review.
+
+    El esquema 1.0 solo conoce `ready` y `needs_review` para manifiestos
+    completos: un corte parcial no inventa un tercer estado, simplemente no
+    publica manifiesto.
+    """
+    escenas = _escenas_del_guion(script_path)
+    proveedor = ProveedorSinAlineacion(
+        romper_en=escenas[-1], settings=voice_settings, seed=5
+    )
     resultado = VoicePipeline(
         voice_settings,
-        VoiceJobRequest(script_path=script_path, voice_key="sin-align", simulation=True, seed=5),
-        provider=ProveedorSinAlineacion(settings=voice_settings, seed=5),
+        VoiceJobRequest(
+            script_path=script_path, voice_key="ultima", simulation=True, seed=5
+        ),
+        provider=proveedor,
     ).run()
-    assert resultado.exit_code == ExitCode.NEEDS_REVIEW
-    assert resultado.status == VoiceStatus.NEEDS_REVIEW.value
+
+    assert proveedor.sintetizadas == escenas  # no quedaba nada pendiente
+    assert resultado.partial is False
+    assert resultado.status == "needs_review"
+    assert resultado.manifest_path is not None
     manifiesto = _manifest(resultado)
+    assert manifiesto.control.voice_status.value == "needs_review"
     assert manifiesto.control.admissible_for_assembly is False
-    assert any(issue.blocking for issue in manifiesto.control.issues)
-    assert manifiesto.words == []
-    # El audio se conserva.
-    base = Path(resultado.manifest_path).parent
-    assert (base / manifiesto.master.path).is_file()
-    for escena in manifiesto.scenes:
-        assert (base / escena.clip_path).is_file()
-        assert escena.alignment_status.value in {"missing", "rejected"}
+    assert len(manifiesto.scenes) == len(escenas)
+    # Solo faltan las palabras de la escena bloqueada.
+    escenas_con_palabras = {palabra.scene_id for palabra in manifiesto.words}
+    assert escenas[-1] not in escenas_con_palabras
+    assert len(escenas_con_palabras) == len(escenas) - 1
+
+
+def test_sin_alineacion_en_la_primera_escena_corta_enseguida(
+    voice_settings, script_path
+) -> None:
+    proveedor = ProveedorSinAlineacion(settings=voice_settings, seed=5)
+    resultado = VoicePipeline(
+        voice_settings,
+        VoiceJobRequest(
+            script_path=script_path, voice_key="sin-align", simulation=True, seed=5
+        ),
+        provider=proveedor,
+    ).run()
+    assert len(proveedor.sintetizadas) == 1
+    assert resultado.partial is True
+    assert resultado.requests_new == 1
+    # El audio de la primera escena se conserva para poder recuperar el trabajo.
+    assert len(resultado.available_paths) == 1
+    assert Path(resultado.available_paths[0]).is_file()
 
 
 def test_exportacion_fallida_se_recupera_sin_resintetizar(
@@ -366,3 +503,108 @@ def test_la_migracion_conserva_los_trabajos_anteriores(voice_settings, script_pa
         guiones = almacen.connect().execute("SELECT COUNT(*) AS n FROM scripts").fetchone()["n"]
         VoiceStorage(almacen).migrate()  # idempotente
         assert trabajos >= 1 and guiones >= 1
+
+
+# ---------------------------------------------------------------------------
+# Recuperacion configurada: alineacion forzada
+# ---------------------------------------------------------------------------
+
+
+class ProveedorConRecuperacion(ProveedorSinAlineacion):
+    """Sin alineacion en la sintesis, pero con alineacion forzada disponible."""
+
+    supports_forced_alignment = True
+
+    def __init__(self, recuperacion_valida: bool, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.recuperacion_valida = recuperacion_valida
+        self.recuperaciones = 0
+
+    def force_align(self, audio_path, text, budget):
+        from viralgen.voice.alignment import CharAlignment
+        from viralgen.voice.audio import read_wav_info
+
+        budget.reserve("forced_alignment", None)
+        self.recuperaciones += 1
+        if not self.recuperacion_valida:
+            return None
+        duracion = read_wav_info(audio_path).duration_s
+        n = len(text)
+        paso = duracion / max(n, 1)
+        return CharAlignment(
+            list(text),
+            [i * paso for i in range(n)],
+            [min((i + 1) * paso, duracion) for i in range(n)],
+        )
+
+
+def test_la_recuperacion_resuelve_el_bloqueo_y_el_trabajo_continua(
+    voice_settings, script_path
+) -> None:
+    voice_settings.voice_allow_forced_alignment = True
+    escenas = _escenas_del_guion(script_path)
+    proveedor = ProveedorConRecuperacion(
+        recuperacion_valida=True, romper_en=escenas[2], settings=voice_settings, seed=5
+    )
+    resultado = VoicePipeline(
+        voice_settings,
+        VoiceJobRequest(
+            script_path=script_path, voice_key="recuperado", simulation=True, seed=5
+        ),
+        provider=proveedor,
+    ).run()
+
+    assert proveedor.recuperaciones == 1
+    assert proveedor.sintetizadas == escenas  # continua tras recuperarse
+    assert resultado.partial is False
+    assert resultado.exit_code == ExitCode.OK
+    manifiesto = _manifest(resultado)
+    problematica = next(e for e in manifiesto.scenes if e.scene_id == escenas[2])
+    assert problematica.alignment_method.value == "forced_alignment"
+    # La recuperacion cuenta contra el mismo presupuesto.
+    assert resultado.requests_new == len(escenas) + 1
+
+
+def test_una_recuperacion_fallida_no_se_repite_al_reanudar(
+    voice_settings, script_path
+) -> None:
+    """Repetir sin resolver el bloqueo no gasta solicitudes en silencio."""
+    voice_settings.voice_allow_forced_alignment = True
+    escenas = _escenas_del_guion(script_path)
+    peticion = VoiceJobRequest(
+        script_path=script_path, voice_key="recuperacion-fallida", simulation=True, seed=5
+    )
+
+    primero_proveedor = ProveedorConRecuperacion(
+        recuperacion_valida=False, romper_en=escenas[1], settings=voice_settings, seed=5
+    )
+    primero = VoicePipeline(voice_settings, peticion, provider=primero_proveedor).run()
+    assert primero_proveedor.recuperaciones == 1
+    assert primero.partial is True
+    assert primero.requests_new == 3  # 2 sintesis + 1 recuperacion
+
+    segundo_proveedor = ProveedorConRecuperacion(
+        recuperacion_valida=False, romper_en=escenas[1], settings=voice_settings, seed=5
+    )
+    segundo = VoicePipeline(voice_settings, peticion, provider=segundo_proveedor).run()
+    assert segundo_proveedor.sintetizadas == []
+    assert segundo_proveedor.recuperaciones == 0  # no se reintenta la recuperacion
+    assert segundo.requests_new == 0
+    assert segundo.requests_total == primero.requests_total
+    assert segundo.partial is True
+
+
+def test_sin_recuperacion_configurada_se_dice_en_el_motivo(
+    voice_settings, script_path
+) -> None:
+    assert voice_settings.voice_allow_forced_alignment is False
+    proveedor = ProveedorSinAlineacion(settings=voice_settings, seed=5)
+    resultado = VoicePipeline(
+        voice_settings,
+        VoiceJobRequest(
+            script_path=script_path, voice_key="sin-recuperacion", simulation=True, seed=5
+        ),
+        provider=proveedor,
+    ).run()
+    bloqueante = next(issue for issue in resultado.issues if issue["blocking"])
+    assert "recuperacion desactivada" in bloqueante["message"]

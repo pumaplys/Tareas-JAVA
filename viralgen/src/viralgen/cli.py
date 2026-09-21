@@ -270,26 +270,34 @@ def _run_voice(args: argparse.Namespace, settings: Settings) -> int:
         return int(resultado.exit_code)
 
     if args.voice_command == "validate":
+        # Solo lectura: no toca script.json ni voice.json.
         informe = check_voice_admission(
-            script_path=args.script,
-            manifest_path=args.manifest,
-            settings=settings,
-            require_real=not args.allow_simulation,
+            script_path=args.script, manifest_path=args.manifest, settings=settings
         )
-        # El contrato y la admision se informan por separado: un manifiesto
-        # puede ser valido y aun asi no servir para montar.
-        codigo = ExitCode.OK
+        # Tres veredictos independientes. `--allow-simulation` cambia SOLO cual
+        # de ellos decide el codigo de salida; el resumen los lleva los tres, y
+        # `admissible_for_assembly` sigue siendo false para una simulacion.
+        modo = "preview" if args.allow_simulation else "production"
+        veredicto = (
+            informe.admissible_for_preview
+            if args.allow_simulation
+            else informe.admissible_for_assembly
+        )
         if not informe.contract_valid:
             codigo = ExitCode.VALIDATION
-        elif not informe.admissible:
-            codigo = ExitCode.NEEDS_REVIEW
+        else:
+            codigo = ExitCode.OK if veredicto else ExitCode.NEEDS_REVIEW
         _emit(
             {
                 "script": str(args.script),
                 "manifest": str(args.manifest),
-                "contract_valid": informe.contract_valid,
+                "mode": modo,
                 **informe.to_dict(),
                 "exit_code": int(codigo),
+                "note": (
+                    "El codigo de salida de una validacion en modo preview NO autoriza "
+                    "produccion: los consumidores reales deben leer admissible_for_assembly."
+                ),
             }
         )
         return int(codigo)
