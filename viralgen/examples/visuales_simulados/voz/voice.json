@@ -1,0 +1,823 @@
+{
+  "document_type": "voice_manifest",
+  "schema_version": "1.0",
+  "voice_run_id": "a9455db6-6d4b-4fa5-a0e2-c43b16bb47ad",
+  "job_id": "016495c3-41d9-4123-a8e7-6b3e4ceb6cfb",
+  "created_at": "2026-09-21T19:34:02Z",
+  "simulation": true,
+  "source": {
+    "source_script_schema_version": "1.0",
+    "source_script_sha256": "aeeecbb76d1922a34e180b82582b8047d53f7f416f0e12d8209fe0e00f711c60",
+    "source_profile_id": "curiosidades_corto",
+    "source_channel": "curiosidades",
+    "source_simulation": true,
+    "source_production_status": "ready_for_production"
+  },
+  "provider": {
+    "name": "mock",
+    "model_id": "mock-voice-v1",
+    "voice_id": "mock-voice-curiosidades_corto",
+    "output_format": "mp3_44100_128",
+    "internal_format": "pcm_s16le 24000 Hz 1ch",
+    "effective_settings": {
+      "similarity_boost": 0.8,
+      "stability": 0.45,
+      "style": 0.35,
+      "use_speaker_boost": true
+    },
+    "settings_hash": "e5d9541a391b4bfb67d544d410eba18fd73db7a96f68be33245cd91655c2fdd6",
+    "processing_version": "v1"
+  },
+  "control": {
+    "voice_status": "ready",
+    "issues": [
+      {
+        "code": "ajuste_de_alineacion",
+        "message": "sc_01: 'excepcion.': final 4.9417 s ajustado al fin del clip dentro de tolerancia",
+        "severity": "info",
+        "blocking": false,
+        "scene_id": "sc_01"
+      },
+      {
+        "code": "ajuste_de_alineacion",
+        "message": "sc_05: 'todavia.': final 4.6730 s ajustado al fin del clip dentro de tolerancia",
+        "severity": "info",
+        "blocking": false,
+        "scene_id": "sc_05"
+      },
+      {
+        "code": "sfx_desactivado",
+        "message": "la escena sc_01 pide un efecto y los efectos estan desactivados; el montaje puede seguir solo con narracion",
+        "severity": "info",
+        "blocking": false,
+        "scene_id": "sc_01"
+      },
+      {
+        "code": "sfx_desactivado",
+        "message": "la escena sc_04 pide un efecto y los efectos estan desactivados; el montaje puede seguir solo con narracion",
+        "severity": "info",
+        "blocking": false,
+        "scene_id": "sc_04"
+      }
+    ],
+    "admissible_for_assembly": false
+  },
+  "master": {
+    "path": "audio/narration.wav",
+    "sha256": "4cfe4cb0c462e96d5ec376959eb7979072b2bcc20fea356ec81238d431a75878",
+    "codec": "pcm_s16le",
+    "sample_rate_hz": 24000,
+    "channels": 1,
+    "sample_count": 611272,
+    "actual_duration_s": 25.469667
+  },
+  "scenes": [
+    {
+      "scene_id": "sc_01",
+      "order": 1,
+      "source_text": "Mira otra vez este objeto. Lo tienes delante todos los dias, sin excepcion.",
+      "source_text_sha256": "cf299089570ff7b3fe69970122a7d23897aec8661a8c41486e98c7dacb5c57fd",
+      "clip_path": "audio/scenes/sc_01.wav",
+      "clip_sha256": "63f3fc8a35a363774e493c2e7d62afddab45f0182512dc941e2cf78130f603a1",
+      "clip_samples": 118600,
+      "pause_samples": 6000,
+      "start_sample": 0,
+      "end_sample": 124600,
+      "start_s": 0.0,
+      "clip_end_s": 4.941667,
+      "end_s": 5.191667,
+      "actual_duration_s": 5.191667,
+      "alignment_method": "provider_alignment",
+      "alignment_status": "ok",
+      "provider_normalized_text": null,
+      "request_id": "mock-8ff83e852b8003b6",
+      "characters_sent": 75
+    },
+    {
+      "scene_id": "sc_02",
+      "order": 2,
+      "source_text": "Los dientes de una cremallera encajan por parejas, aunque no lo parezca ahora.",
+      "source_text_sha256": "e008a613103bdfead233945bb7ea3f790d7cd5505abab5cde8034af9dbcd389b",
+      "clip_path": "audio/scenes/sc_02.wav",
+      "clip_sha256": "f72b59be0fa3c9c8dd2dd1c30139ec55686d3d789cb8d3442081891ba78118d4",
+      "clip_samples": 122948,
+      "pause_samples": 6000,
+      "start_sample": 124600,
+      "end_sample": 253548,
+      "start_s": 5.191667,
+      "clip_end_s": 10.3145,
+      "end_s": 10.5645,
+      "actual_duration_s": 5.372833,
+      "alignment_method": "provider_alignment",
+      "alignment_status": "ok",
+      "provider_normalized_text": null,
+      "request_id": "mock-5bedd333fb09c96f",
+      "characters_sent": 78
+    },
+    {
+      "scene_id": "sc_03",
+      "order": 3,
+      "source_text": "Los ensayos fueron corrigiendo cada detalle, el desgaste avisa antes de fallar.",
+      "source_text_sha256": "d240963f8606df275ebd046774c832c2eade4c664587a8e31b3cf274bac19774",
+      "clip_path": "audio/scenes/sc_03.wav",
+      "clip_sha256": "b15c25000a1b492f0ca7a28dca5effc661d3a67d2b3196e8915279ce5b0fe3bc",
+      "clip_samples": 111372,
+      "pause_samples": 6000,
+      "start_sample": 253548,
+      "end_sample": 370920,
+      "start_s": 10.5645,
+      "clip_end_s": 15.205,
+      "end_s": 15.455,
+      "actual_duration_s": 4.8905,
+      "alignment_method": "provider_alignment",
+      "alignment_status": "ok",
+      "provider_normalized_text": null,
+      "request_id": "mock-68b8938b1318f0b2",
+      "characters_sent": 79
+    },
+    {
+      "scene_id": "sc_04",
+      "order": 4,
+      "source_text": "Y esa es la respuesta completa, queda claro en cuanto lo miras.",
+      "source_text_sha256": "a9d676df1f142221f844e340aaf6edea77eabe2447356b3b80a9f4c9d76f54ec",
+      "clip_path": "audio/scenes/sc_04.wav",
+      "clip_sha256": "32585f2855fa7c5fced398dfaaf5d7a3333b54645924b237031869f40611eefa",
+      "clip_samples": 112599,
+      "pause_samples": 6000,
+      "start_sample": 370920,
+      "end_sample": 489519,
+      "start_s": 15.455,
+      "clip_end_s": 20.146625,
+      "end_s": 20.396625,
+      "actual_duration_s": 4.941625,
+      "alignment_method": "provider_alignment",
+      "alignment_status": "ok",
+      "provider_normalized_text": null,
+      "request_id": "mock-d4b43ca5ccffb691",
+      "characters_sent": 63
+    },
+    {
+      "scene_id": "sc_05",
+      "order": 5,
+      "source_text": "Ahora ya sabes por que los dientes de una cremallera encajan, todavia.",
+      "source_text_sha256": "b248966d3c2845687d33532e4831aa1049a5927be1754eb3ead04db43bb64b19",
+      "clip_path": "audio/scenes/sc_05.wav",
+      "clip_sha256": "c826c445412f6b41c1930966b18264edb7eb13aba9cd734ec98b4624e7ee7407",
+      "clip_samples": 112153,
+      "pause_samples": 9600,
+      "start_sample": 489519,
+      "end_sample": 611272,
+      "start_s": 20.396625,
+      "clip_end_s": 25.069667,
+      "end_s": 25.469667,
+      "actual_duration_s": 5.073042,
+      "alignment_method": "provider_alignment",
+      "alignment_status": "ok",
+      "provider_normalized_text": null,
+      "request_id": "mock-fde9dfe78087702d",
+      "characters_sent": 70
+    }
+  ],
+  "words": [
+    {
+      "scene_id": "sc_01",
+      "word_index": 0,
+      "text": "Mira",
+      "char_start": 0,
+      "char_end": 4,
+      "start_s": 0.0,
+      "end_s": 0.29814,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_01",
+      "word_index": 1,
+      "text": "otra",
+      "char_start": 5,
+      "char_end": 9,
+      "start_s": 0.33168,
+      "end_s": 0.62982,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_01",
+      "word_index": 2,
+      "text": "vez",
+      "char_start": 10,
+      "char_end": 13,
+      "start_s": 0.663361,
+      "end_s": 0.886966,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_01",
+      "word_index": 3,
+      "text": "este",
+      "char_start": 14,
+      "char_end": 18,
+      "start_s": 0.920507,
+      "end_s": 1.218646,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_01",
+      "word_index": 4,
+      "text": "objeto.",
+      "char_start": 19,
+      "char_end": 26,
+      "start_s": 1.252187,
+      "end_s": 1.721757,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_01",
+      "word_index": 5,
+      "text": "Lo",
+      "char_start": 27,
+      "char_end": 29,
+      "start_s": 1.755298,
+      "end_s": 1.904368,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_01",
+      "word_index": 6,
+      "text": "tienes",
+      "char_start": 30,
+      "char_end": 36,
+      "start_s": 1.937908,
+      "end_s": 2.385118,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_01",
+      "word_index": 7,
+      "text": "delante",
+      "char_start": 37,
+      "char_end": 44,
+      "start_s": 2.418659,
+      "end_s": 2.940403,
+      "emphasis": true
+    },
+    {
+      "scene_id": "sc_01",
+      "word_index": 8,
+      "text": "todos",
+      "char_start": 45,
+      "char_end": 50,
+      "start_s": 2.973944,
+      "end_s": 3.346619,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_01",
+      "word_index": 9,
+      "text": "los",
+      "char_start": 51,
+      "char_end": 54,
+      "start_s": 3.38016,
+      "end_s": 3.603764,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_01",
+      "word_index": 10,
+      "text": "dias,",
+      "char_start": 55,
+      "char_end": 60,
+      "start_s": 3.637305,
+      "end_s": 3.957805,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_01",
+      "word_index": 11,
+      "text": "sin",
+      "char_start": 61,
+      "char_end": 64,
+      "start_s": 3.991346,
+      "end_s": 4.214951,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_01",
+      "word_index": 12,
+      "text": "excepcion.",
+      "char_start": 65,
+      "char_end": 75,
+      "start_s": 4.248492,
+      "end_s": 4.941667,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_02",
+      "word_index": 0,
+      "text": "Los",
+      "char_start": 0,
+      "char_end": 3,
+      "start_s": 5.191667,
+      "end_s": 5.411217,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_02",
+      "word_index": 1,
+      "text": "dientes",
+      "char_start": 4,
+      "char_end": 11,
+      "start_s": 5.444149,
+      "end_s": 5.956433,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_02",
+      "word_index": 2,
+      "text": "de",
+      "char_start": 12,
+      "char_end": 14,
+      "start_s": 5.989365,
+      "end_s": 6.135732,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_02",
+      "word_index": 3,
+      "text": "una",
+      "char_start": 15,
+      "char_end": 18,
+      "start_s": 6.168665,
+      "end_s": 6.388215,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_02",
+      "word_index": 4,
+      "text": "cremallera",
+      "char_start": 19,
+      "char_end": 29,
+      "start_s": 6.421147,
+      "end_s": 7.15298,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_02",
+      "word_index": 5,
+      "text": "encajan",
+      "char_start": 30,
+      "char_end": 37,
+      "start_s": 7.185913,
+      "end_s": 7.698196,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_02",
+      "word_index": 6,
+      "text": "por",
+      "char_start": 38,
+      "char_end": 41,
+      "start_s": 7.731129,
+      "end_s": 7.950679,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_02",
+      "word_index": 7,
+      "text": "parejas,",
+      "char_start": 42,
+      "char_end": 50,
+      "start_s": 7.983611,
+      "end_s": 8.517849,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_02",
+      "word_index": 8,
+      "text": "aunque",
+      "char_start": 51,
+      "char_end": 57,
+      "start_s": 8.550782,
+      "end_s": 8.989882,
+      "emphasis": true
+    },
+    {
+      "scene_id": "sc_02",
+      "word_index": 9,
+      "text": "no",
+      "char_start": 58,
+      "char_end": 60,
+      "start_s": 9.022814,
+      "end_s": 9.169181,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_02",
+      "word_index": 10,
+      "text": "lo",
+      "char_start": 61,
+      "char_end": 63,
+      "start_s": 9.202114,
+      "end_s": 9.34848,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_02",
+      "word_index": 11,
+      "text": "parezca",
+      "char_start": 64,
+      "char_end": 71,
+      "start_s": 9.381413,
+      "end_s": 9.893696,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_02",
+      "word_index": 12,
+      "text": "ahora.",
+      "char_start": 72,
+      "char_end": 78,
+      "start_s": 9.926629,
+      "end_s": 10.3145,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_03",
+      "word_index": 0,
+      "text": "Los",
+      "char_start": 0,
+      "char_end": 3,
+      "start_s": 10.5645,
+      "end_s": 10.75907,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_03",
+      "word_index": 1,
+      "text": "ensayos",
+      "char_start": 4,
+      "char_end": 11,
+      "start_s": 10.788256,
+      "end_s": 11.242253,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_03",
+      "word_index": 2,
+      "text": "fueron",
+      "char_start": 12,
+      "char_end": 18,
+      "start_s": 11.271439,
+      "end_s": 11.660579,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_03",
+      "word_index": 3,
+      "text": "corrigiendo",
+      "char_start": 19,
+      "char_end": 30,
+      "start_s": 11.689765,
+      "end_s": 12.403189,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_03",
+      "word_index": 4,
+      "text": "cada",
+      "char_start": 31,
+      "char_end": 35,
+      "start_s": 12.432374,
+      "end_s": 12.691801,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_03",
+      "word_index": 5,
+      "text": "detalle,",
+      "char_start": 36,
+      "char_end": 44,
+      "start_s": 12.720987,
+      "end_s": 13.194441,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_03",
+      "word_index": 6,
+      "text": "el",
+      "char_start": 45,
+      "char_end": 47,
+      "start_s": 13.223626,
+      "end_s": 13.35334,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_03",
+      "word_index": 7,
+      "text": "desgaste",
+      "char_start": 48,
+      "char_end": 56,
+      "start_s": 13.382526,
+      "end_s": 13.901379,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_03",
+      "word_index": 8,
+      "text": "avisa",
+      "char_start": 57,
+      "char_end": 62,
+      "start_s": 13.930565,
+      "end_s": 14.254849,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_03",
+      "word_index": 9,
+      "text": "antes",
+      "char_start": 63,
+      "char_end": 68,
+      "start_s": 14.284034,
+      "end_s": 14.608318,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_03",
+      "word_index": 10,
+      "text": "de",
+      "char_start": 69,
+      "char_end": 71,
+      "start_s": 14.637503,
+      "end_s": 14.767217,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_03",
+      "word_index": 11,
+      "text": "fallar.",
+      "char_start": 72,
+      "char_end": 79,
+      "start_s": 14.796403,
+      "end_s": 15.205,
+      "emphasis": true
+    },
+    {
+      "scene_id": "sc_04",
+      "word_index": 0,
+      "text": "Y",
+      "char_start": 0,
+      "char_end": 1,
+      "start_s": 15.455,
+      "end_s": 15.539458,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_04",
+      "word_index": 1,
+      "text": "esa",
+      "char_start": 2,
+      "char_end": 5,
+      "start_s": 15.577464,
+      "end_s": 15.830837,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_04",
+      "word_index": 2,
+      "text": "es",
+      "char_start": 6,
+      "char_end": 8,
+      "start_s": 15.868843,
+      "end_s": 16.037758,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_04",
+      "word_index": 3,
+      "text": "la",
+      "char_start": 9,
+      "char_end": 11,
+      "start_s": 16.075764,
+      "end_s": 16.244679,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_04",
+      "word_index": 4,
+      "text": "respuesta",
+      "char_start": 12,
+      "char_end": 21,
+      "start_s": 16.282685,
+      "end_s": 17.042805,
+      "emphasis": true
+    },
+    {
+      "scene_id": "sc_04",
+      "word_index": 5,
+      "text": "completa,",
+      "char_start": 22,
+      "char_end": 31,
+      "start_s": 17.080811,
+      "end_s": 17.78181,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_04",
+      "word_index": 6,
+      "text": "queda",
+      "char_start": 32,
+      "char_end": 37,
+      "start_s": 17.819815,
+      "end_s": 18.242104,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_04",
+      "word_index": 7,
+      "text": "claro",
+      "char_start": 38,
+      "char_end": 43,
+      "start_s": 18.28011,
+      "end_s": 18.702398,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_04",
+      "word_index": 8,
+      "text": "en",
+      "char_start": 44,
+      "char_end": 46,
+      "start_s": 18.740404,
+      "end_s": 18.90932,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_04",
+      "word_index": 9,
+      "text": "cuanto",
+      "char_start": 47,
+      "char_end": 53,
+      "start_s": 18.947326,
+      "end_s": 19.454072,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_04",
+      "word_index": 10,
+      "text": "lo",
+      "char_start": 54,
+      "char_end": 56,
+      "start_s": 19.492078,
+      "end_s": 19.660993,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_04",
+      "word_index": 11,
+      "text": "miras.",
+      "char_start": 57,
+      "char_end": 63,
+      "start_s": 19.698999,
+      "end_s": 20.146625,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_05",
+      "word_index": 0,
+      "text": "Ahora",
+      "char_start": 0,
+      "char_end": 5,
+      "start_s": 20.396625,
+      "end_s": 20.770169,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_05",
+      "word_index": 1,
+      "text": "ya",
+      "char_start": 6,
+      "char_end": 8,
+      "start_s": 20.803789,
+      "end_s": 20.953206,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_05",
+      "word_index": 2,
+      "text": "sabes",
+      "char_start": 9,
+      "char_end": 14,
+      "start_s": 20.986825,
+      "end_s": 21.36037,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_05",
+      "word_index": 3,
+      "text": "por",
+      "char_start": 15,
+      "char_end": 18,
+      "start_s": 21.393989,
+      "end_s": 21.618116,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_05",
+      "word_index": 4,
+      "text": "que",
+      "char_start": 19,
+      "char_end": 22,
+      "start_s": 21.651735,
+      "end_s": 21.875861,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_05",
+      "word_index": 5,
+      "text": "los",
+      "char_start": 23,
+      "char_end": 26,
+      "start_s": 21.90948,
+      "end_s": 22.133607,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_05",
+      "word_index": 6,
+      "text": "dientes",
+      "char_start": 27,
+      "char_end": 34,
+      "start_s": 22.167226,
+      "end_s": 22.690188,
+      "emphasis": true
+    },
+    {
+      "scene_id": "sc_05",
+      "word_index": 7,
+      "text": "de",
+      "char_start": 35,
+      "char_end": 37,
+      "start_s": 22.723807,
+      "end_s": 22.873225,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_05",
+      "word_index": 8,
+      "text": "una",
+      "char_start": 38,
+      "char_end": 41,
+      "start_s": 22.906844,
+      "end_s": 23.130971,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_05",
+      "word_index": 9,
+      "text": "cremallera",
+      "char_start": 42,
+      "char_end": 52,
+      "start_s": 23.16459,
+      "end_s": 23.911679,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_05",
+      "word_index": 10,
+      "text": "encajan,",
+      "char_start": 53,
+      "char_end": 61,
+      "start_s": 23.945298,
+      "end_s": 24.490673,
+      "emphasis": false
+    },
+    {
+      "scene_id": "sc_05",
+      "word_index": 11,
+      "text": "todavia.",
+      "char_start": 62,
+      "char_end": 70,
+      "start_s": 24.524292,
+      "end_s": 25.069667,
+      "emphasis": false
+    }
+  ],
+  "sound": {
+    "cues": [],
+    "assets": []
+  },
+  "usage": {
+    "requests_total": 5,
+    "requests_this_run": 5,
+    "characters_sent_total": 365,
+    "characters_sent_this_run": 365,
+    "request_ids": [
+      "mock-8ff83e852b8003b6",
+      "mock-5bedd333fb09c96f",
+      "mock-68b8938b1318f0b2",
+      "mock-d4b43ca5ccffb691",
+      "mock-fde9dfe78087702d"
+    ],
+    "latency_ms_total": 206,
+    "estimated_cost_usd": null,
+    "billing_observed": false
+  }
+}

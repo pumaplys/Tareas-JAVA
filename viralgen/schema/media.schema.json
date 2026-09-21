@@ -1,0 +1,1377 @@
+{
+  "$defs": {
+    "AssetKind": {
+      "enum": [
+        "image",
+        "video",
+        "contact_sheet"
+      ],
+      "title": "AssetKind",
+      "type": "string"
+    },
+    "AssetRole": {
+      "enum": [
+        "scene_image",
+        "video_seed",
+        "scene_clip",
+        "character_reference",
+        "inspection"
+      ],
+      "title": "AssetRole",
+      "type": "string"
+    },
+    "AssetTransformation": {
+      "additionalProperties": false,
+      "description": "Transformacion YA aplicada a un derivado. El modulo 4 no la repite.",
+      "properties": {
+        "policy": {
+          "$ref": "#/$defs/GeometryPolicy"
+        },
+        "source_width": {
+          "minimum": 1,
+          "title": "Source Width",
+          "type": "integer"
+        },
+        "source_height": {
+          "minimum": 1,
+          "title": "Source Height",
+          "type": "integer"
+        },
+        "target_width": {
+          "minimum": 1,
+          "title": "Target Width",
+          "type": "integer"
+        },
+        "target_height": {
+          "minimum": 1,
+          "title": "Target Height",
+          "type": "integer"
+        },
+        "scaled_width": {
+          "minimum": 1,
+          "title": "Scaled Width",
+          "type": "integer"
+        },
+        "scaled_height": {
+          "minimum": 1,
+          "title": "Scaled Height",
+          "type": "integer"
+        },
+        "offset_x": {
+          "title": "Offset X",
+          "type": "integer"
+        },
+        "offset_y": {
+          "title": "Offset Y",
+          "type": "integer"
+        },
+        "pad_color": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Pad Color",
+          "type": "string"
+        },
+        "crop_left": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Crop Left"
+        },
+        "crop_top": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Crop Top"
+        },
+        "crop_right": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Crop Right"
+        },
+        "crop_bottom": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Crop Bottom"
+        }
+      },
+      "required": [
+        "policy",
+        "source_width",
+        "source_height",
+        "target_width",
+        "target_height",
+        "scaled_width",
+        "scaled_height",
+        "offset_x",
+        "offset_y",
+        "pad_color"
+      ],
+      "title": "AssetTransformation",
+      "type": "object"
+    },
+    "ClipTrim": {
+      "additionalProperties": false,
+      "description": "Tramo del clip que el montaje debe reproducir. El sobrante se recorta.",
+      "properties": {
+        "play_from_s": {
+          "minimum": 0,
+          "title": "Play From S",
+          "type": "number"
+        },
+        "play_to_s": {
+          "exclusiveMinimum": 0,
+          "title": "Play To S",
+          "type": "number"
+        },
+        "source": {
+          "const": "module_3_plan",
+          "default": "module_3_plan",
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "play_from_s",
+        "play_to_s"
+      ],
+      "title": "ClipTrim",
+      "type": "object"
+    },
+    "GeometryPolicy": {
+      "enum": [
+        "contain",
+        "crop"
+      ],
+      "title": "GeometryPolicy",
+      "type": "string"
+    },
+    "IssueSeverity": {
+      "enum": [
+        "info",
+        "warning",
+        "error"
+      ],
+      "title": "IssueSeverity",
+      "type": "string"
+    },
+    "MeasurementSource": {
+      "description": "De donde sale un dato numerico.",
+      "enum": [
+        "local_measurement",
+        "provider_reported",
+        "montage_decision"
+      ],
+      "title": "MeasurementSource",
+      "type": "string"
+    },
+    "MediaAsset": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/AssetKind"
+        },
+        "role": {
+          "$ref": "#/$defs/AssetRole"
+        },
+        "path": {
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "size_bytes": {
+          "minimum": 1,
+          "title": "Size Bytes",
+          "type": "integer"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "mime": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Mime",
+          "type": "string"
+        },
+        "width": {
+          "minimum": 1,
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "minimum": 1,
+          "title": "Height",
+          "type": "integer"
+        },
+        "dimensions_source": {
+          "$ref": "#/$defs/MeasurementSource",
+          "default": "local_measurement"
+        },
+        "intrinsic_duration_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "null en imagenes: una imagen no tiene duracion propia.",
+          "title": "Intrinsic Duration S"
+        },
+        "fps": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "null en imagenes.",
+          "title": "Fps"
+        },
+        "provider": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Provider",
+          "type": "string"
+        },
+        "model": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Model",
+          "type": "string"
+        },
+        "simulation": {
+          "title": "Simulation",
+          "type": "boolean"
+        },
+        "effective_prompt": {
+          "anyOf": [
+            {
+              "maxLength": 8000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Effective Prompt"
+        },
+        "prompt_version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Prompt Version",
+          "type": "string"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": "Parameters",
+          "type": "object"
+        },
+        "reference_asset_ids": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Reference Asset Ids",
+          "type": "array"
+        },
+        "derived_from": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Derived From"
+        },
+        "transformation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AssetTransformation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "video": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VideoDetails"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "cache_hit": {
+          "default": false,
+          "title": "Cache Hit",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "asset_id",
+        "kind",
+        "role",
+        "path",
+        "size_bytes",
+        "sha256",
+        "mime",
+        "width",
+        "height",
+        "provider",
+        "model",
+        "simulation",
+        "prompt_version"
+      ],
+      "title": "MediaAsset",
+      "type": "object"
+    },
+    "MediaControl": {
+      "additionalProperties": false,
+      "properties": {
+        "media_status": {
+          "$ref": "#/$defs/MediaStatus"
+        },
+        "issues": {
+          "items": {
+            "$ref": "#/$defs/MediaIssue"
+          },
+          "maxItems": 200,
+          "title": "Issues",
+          "type": "array"
+        },
+        "visual_review": {
+          "$ref": "#/$defs/VisualReview",
+          "default": "not_performed"
+        },
+        "admissible_for_assembly": {
+          "description": "Resultado calculado. Un consumidor NO debe fiarse de este booleano: debe repetir la comprobacion sobre los archivos reales.",
+          "title": "Admissible For Assembly",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "media_status",
+        "admissible_for_assembly"
+      ],
+      "title": "MediaControl",
+      "type": "object"
+    },
+    "MediaInspection": {
+      "additionalProperties": false,
+      "properties": {
+        "contact_sheet_path": {
+          "anyOf": [
+            {
+              "maxLength": 400,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Contact Sheet Path"
+        },
+        "note": {
+          "default": "Recurso auxiliar para inspeccion humana. No forma parte del montaje y no acredita calidad visual.",
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "title": "MediaInspection",
+      "type": "object"
+    },
+    "MediaIssue": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/IssueSeverity"
+        },
+        "blocking": {
+          "title": "Blocking",
+          "type": "boolean"
+        },
+        "scene_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scene Id"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "severity",
+        "blocking"
+      ],
+      "title": "MediaIssue",
+      "type": "object"
+    },
+    "MediaProviders": {
+      "additionalProperties": false,
+      "description": "Configuracion efectiva, sin secretos.",
+      "properties": {
+        "image_provider": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Image Provider",
+          "type": "string"
+        },
+        "image_model": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Image Model",
+          "type": "string"
+        },
+        "video_provider": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Video Provider"
+        },
+        "video_model": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Video Model"
+        },
+        "video_api_version": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Video Api Version"
+        },
+        "geometry_policy": {
+          "$ref": "#/$defs/GeometryPolicy"
+        },
+        "processing_version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Processing Version",
+          "type": "string"
+        },
+        "settings_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Settings Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "image_provider",
+        "image_model",
+        "geometry_policy",
+        "processing_version",
+        "settings_hash"
+      ],
+      "title": "MediaProviders",
+      "type": "object"
+    },
+    "MediaSceneEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "scene_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Scene Id",
+          "type": "string"
+        },
+        "order": {
+          "maximum": 40,
+          "minimum": 1,
+          "title": "Order",
+          "type": "integer"
+        },
+        "requested_type": {
+          "enum": [
+            "image",
+            "video"
+          ],
+          "title": "Requested Type",
+          "type": "string"
+        },
+        "resolved_type": {
+          "enum": [
+            "image",
+            "video"
+          ],
+          "title": "Resolved Type",
+          "type": "string"
+        },
+        "primary_asset_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Primary Asset Id",
+          "type": "string"
+        },
+        "start_sample": {
+          "minimum": 0,
+          "title": "Start Sample",
+          "type": "integer"
+        },
+        "end_sample": {
+          "minimum": 1,
+          "title": "End Sample",
+          "type": "integer"
+        },
+        "start_s": {
+          "minimum": 0,
+          "title": "Start S",
+          "type": "number"
+        },
+        "end_s": {
+          "exclusiveMinimum": 0,
+          "title": "End S",
+          "type": "number"
+        },
+        "duration_s": {
+          "exclusiveMinimum": 0,
+          "title": "Duration S",
+          "type": "number"
+        },
+        "duration_source": {
+          "const": "voice_manifest",
+          "default": "voice_manifest",
+          "title": "Duration Source",
+          "type": "string"
+        },
+        "character_ids": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Character Ids",
+          "type": "array"
+        },
+        "presentation": {
+          "$ref": "#/$defs/PresentationPlan"
+        },
+        "clip_trim": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ClipTrim"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "scene_id",
+        "order",
+        "requested_type",
+        "resolved_type",
+        "primary_asset_id",
+        "start_sample",
+        "end_sample",
+        "start_s",
+        "end_s",
+        "duration_s",
+        "presentation"
+      ],
+      "title": "MediaSceneEntry",
+      "type": "object"
+    },
+    "MediaSource": {
+      "additionalProperties": false,
+      "description": "Vinculo con guion y voz. Los hashes comprueban correspondencia.",
+      "properties": {
+        "script_schema_version": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Script Schema Version",
+          "type": "string"
+        },
+        "script_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Script Sha256",
+          "type": "string"
+        },
+        "script_simulation": {
+          "title": "Script Simulation",
+          "type": "boolean"
+        },
+        "voice_schema_version": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Voice Schema Version",
+          "type": "string"
+        },
+        "voice_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Voice Sha256",
+          "type": "string"
+        },
+        "voice_simulation": {
+          "title": "Voice Simulation",
+          "type": "boolean"
+        },
+        "profile_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "channel": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Channel",
+          "type": "string"
+        }
+      },
+      "required": [
+        "script_schema_version",
+        "script_sha256",
+        "script_simulation",
+        "voice_schema_version",
+        "voice_sha256",
+        "voice_simulation",
+        "profile_id",
+        "channel"
+      ],
+      "title": "MediaSource",
+      "type": "object"
+    },
+    "MediaStatus": {
+      "enum": [
+        "ready",
+        "needs_review"
+      ],
+      "title": "MediaStatus",
+      "type": "string"
+    },
+    "MediaTimeline": {
+      "additionalProperties": false,
+      "description": "Reloj copiado del maestro de voz, mas el objetivo de entrega.",
+      "properties": {
+        "sample_rate_hz": {
+          "maximum": 48000,
+          "minimum": 8000,
+          "title": "Sample Rate Hz",
+          "type": "integer"
+        },
+        "total_samples": {
+          "minimum": 1,
+          "title": "Total Samples",
+          "type": "integer"
+        },
+        "total_duration_s": {
+          "exclusiveMinimum": 0,
+          "title": "Total Duration S",
+          "type": "number"
+        },
+        "source": {
+          "const": "voice_manifest",
+          "default": "voice_manifest",
+          "title": "Source",
+          "type": "string"
+        },
+        "target_width": {
+          "maximum": 4320,
+          "minimum": 240,
+          "title": "Target Width",
+          "type": "integer"
+        },
+        "target_height": {
+          "maximum": 7680,
+          "minimum": 240,
+          "title": "Target Height",
+          "type": "integer"
+        },
+        "target_fps": {
+          "maximum": 120,
+          "minimum": 1,
+          "title": "Target Fps",
+          "type": "integer"
+        },
+        "target_source": {
+          "const": "montage_decision",
+          "default": "montage_decision",
+          "title": "Target Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sample_rate_hz",
+        "total_samples",
+        "total_duration_s",
+        "target_width",
+        "target_height",
+        "target_fps"
+      ],
+      "title": "MediaTimeline",
+      "type": "object"
+    },
+    "MediaUsage": {
+      "additionalProperties": false,
+      "description": "Uso contado LOCALMENTE, salvo lo marcado como informado por el proveedor.",
+      "properties": {
+        "generation_attempts_total": {
+          "minimum": 0,
+          "title": "Generation Attempts Total",
+          "type": "integer"
+        },
+        "generation_attempts_this_run": {
+          "minimum": 0,
+          "title": "Generation Attempts This Run",
+          "type": "integer"
+        },
+        "video_seconds_reserved_total": {
+          "minimum": 0,
+          "title": "Video Seconds Reserved Total",
+          "type": "number"
+        },
+        "video_seconds_reserved_this_run": {
+          "minimum": 0,
+          "title": "Video Seconds Reserved This Run",
+          "type": "number"
+        },
+        "status_requests_total": {
+          "minimum": 0,
+          "title": "Status Requests Total",
+          "type": "integer"
+        },
+        "status_requests_this_run": {
+          "minimum": 0,
+          "title": "Status Requests This Run",
+          "type": "integer"
+        },
+        "download_attempts_total": {
+          "minimum": 0,
+          "title": "Download Attempts Total",
+          "type": "integer"
+        },
+        "download_attempts_this_run": {
+          "minimum": 0,
+          "title": "Download Attempts This Run",
+          "type": "integer"
+        },
+        "cache_hits": {
+          "minimum": 0,
+          "title": "Cache Hits",
+          "type": "integer"
+        },
+        "provider_reported": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Provider Reported",
+          "type": "object"
+        },
+        "estimated_cost_usd": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "null sin tarifa configurada o con consumo desconocido.",
+          "title": "Estimated Cost Usd"
+        }
+      },
+      "required": [
+        "generation_attempts_total",
+        "generation_attempts_this_run",
+        "video_seconds_reserved_total",
+        "video_seconds_reserved_this_run",
+        "status_requests_total",
+        "status_requests_this_run",
+        "download_attempts_total",
+        "download_attempts_this_run",
+        "cache_hits"
+      ],
+      "title": "MediaUsage",
+      "type": "object"
+    },
+    "PresentationPlan": {
+      "additionalProperties": false,
+      "description": "Instruccion PENDIENTE para el modulo 4, no aplicada al asset.",
+      "properties": {
+        "policy": {
+          "$ref": "#/$defs/GeometryPolicy"
+        },
+        "target_width": {
+          "minimum": 1,
+          "title": "Target Width",
+          "type": "integer"
+        },
+        "target_height": {
+          "minimum": 1,
+          "title": "Target Height",
+          "type": "integer"
+        },
+        "pad_color": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Pad Color",
+          "type": "string"
+        },
+        "applied": {
+          "const": false,
+          "default": false,
+          "title": "Applied",
+          "type": "boolean"
+        },
+        "decided_by": {
+          "const": "module_3_plan",
+          "default": "module_3_plan",
+          "title": "Decided By",
+          "type": "string"
+        }
+      },
+      "required": [
+        "policy",
+        "target_width",
+        "target_height",
+        "pad_color"
+      ],
+      "title": "PresentationPlan",
+      "type": "object"
+    },
+    "ReferenceEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "character_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Character Id",
+          "type": "string"
+        },
+        "path": {
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "width": {
+          "minimum": 1,
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "minimum": 1,
+          "title": "Height",
+          "type": "integer"
+        },
+        "mime": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Mime",
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/ReferenceProvenance"
+        }
+      },
+      "required": [
+        "character_id",
+        "path",
+        "sha256",
+        "width",
+        "height",
+        "mime",
+        "provenance"
+      ],
+      "title": "ReferenceEntry",
+      "type": "object"
+    },
+    "ReferenceProvenance": {
+      "additionalProperties": false,
+      "description": "De donde sale una referencia. No se inventa ninguna verificacion.",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/ReferenceProvenanceKind"
+        },
+        "rights_declaration": {
+          "description": "Declaracion de derechos APORTADA por quien importa el archivo. El modulo no la verifica ni la puede verificar.",
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Rights Declaration",
+          "type": "string"
+        },
+        "provider": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provider"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        },
+        "parameters_hash": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parameters Hash"
+        },
+        "simulation": {
+          "default": false,
+          "title": "Simulation",
+          "type": "boolean"
+        },
+        "imported_from": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Imported From"
+        }
+      },
+      "required": [
+        "kind",
+        "rights_declaration"
+      ],
+      "title": "ReferenceProvenance",
+      "type": "object"
+    },
+    "ReferenceProvenanceKind": {
+      "enum": [
+        "imported",
+        "generated"
+      ],
+      "title": "ReferenceProvenanceKind",
+      "type": "string"
+    },
+    "ReferenceSet": {
+      "additionalProperties": false,
+      "description": "Conjunto fijado por serie y version.\n\nLas referencias mejoran el control, pero NO garantizan identidad perfecta.\nEste modulo no certifica continuidad semantica con hashes ni con busquedas\nde palabras.",
+      "properties": {
+        "set_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Set Id",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Version",
+          "type": "string"
+        },
+        "series_bible_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Series Bible Id",
+          "type": "string"
+        },
+        "bible_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Bible Sha256",
+          "type": "string"
+        },
+        "entries": {
+          "items": {
+            "$ref": "#/$defs/ReferenceEntry"
+          },
+          "maxItems": 20,
+          "title": "Entries",
+          "type": "array"
+        }
+      },
+      "required": [
+        "set_id",
+        "version",
+        "series_bible_id",
+        "bible_sha256"
+      ],
+      "title": "ReferenceSet",
+      "type": "object"
+    },
+    "VideoDetails": {
+      "additionalProperties": false,
+      "description": "Datos propios de un clip. Separa lo pedido de lo medido.",
+      "properties": {
+        "task_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Identificador REAL de la tarea remota, si existio.",
+          "title": "Task Id"
+        },
+        "init_image_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Init Image Sha256",
+          "type": "string"
+        },
+        "requested_duration_s": {
+          "exclusiveMinimum": 0,
+          "maximum": 600,
+          "title": "Requested Duration S",
+          "type": "number"
+        },
+        "requested_duration_source": {
+          "const": "montage_decision",
+          "default": "montage_decision",
+          "title": "Requested Duration Source",
+          "type": "string"
+        },
+        "measured_duration_s": {
+          "exclusiveMinimum": 0,
+          "maximum": 600,
+          "title": "Measured Duration S",
+          "type": "number"
+        },
+        "measured_duration_source": {
+          "$ref": "#/$defs/MeasurementSource",
+          "default": "local_measurement"
+        },
+        "fps_rational": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Fps Rational",
+          "type": "string"
+        },
+        "fps": {
+          "exclusiveMinimum": 0,
+          "maximum": 1000,
+          "title": "Fps",
+          "type": "number"
+        },
+        "fps_source": {
+          "$ref": "#/$defs/MeasurementSource",
+          "default": "local_measurement"
+        },
+        "codec": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Codec",
+          "type": "string"
+        },
+        "container": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Container",
+          "type": "string"
+        },
+        "has_audio": {
+          "title": "Has Audio",
+          "type": "boolean"
+        },
+        "use_source_audio": {
+          "const": false,
+          "default": false,
+          "title": "Use Source Audio",
+          "type": "boolean"
+        },
+        "ratio": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Ratio",
+          "type": "string"
+        }
+      },
+      "required": [
+        "init_image_sha256",
+        "requested_duration_s",
+        "measured_duration_s",
+        "fps_rational",
+        "fps",
+        "codec",
+        "container",
+        "has_audio",
+        "ratio"
+      ],
+      "title": "VideoDetails",
+      "type": "object"
+    },
+    "VisualReview": {
+      "description": "Revision artistica humana. `ready` es preparacion TECNICA, no aprobacion.",
+      "enum": [
+        "not_performed",
+        "approved",
+        "rejected"
+      ],
+      "title": "VisualReview",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Manifiesto lateral de medios visuales del modulo 3. schema_version=1.0.",
+  "properties": {
+    "document_type": {
+      "const": "media_manifest",
+      "default": "media_manifest",
+      "title": "Document Type",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "media_run_id": {
+      "pattern": "^[0-9a-f\\-]{36}$",
+      "title": "Media Run Id",
+      "type": "string"
+    },
+    "job_id": {
+      "pattern": "^[0-9a-f\\-]{36}$",
+      "title": "Job Id",
+      "type": "string"
+    },
+    "voice_run_id": {
+      "pattern": "^[0-9a-f\\-]{36}$",
+      "title": "Voice Run Id",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "simulation": {
+      "title": "Simulation",
+      "type": "boolean"
+    },
+    "source": {
+      "$ref": "#/$defs/MediaSource"
+    },
+    "providers": {
+      "$ref": "#/$defs/MediaProviders"
+    },
+    "control": {
+      "$ref": "#/$defs/MediaControl"
+    },
+    "timeline": {
+      "$ref": "#/$defs/MediaTimeline"
+    },
+    "references": {
+      "$ref": "#/$defs/ReferenceSet"
+    },
+    "assets": {
+      "items": {
+        "$ref": "#/$defs/MediaAsset"
+      },
+      "maxItems": 200,
+      "minItems": 1,
+      "title": "Assets",
+      "type": "array"
+    },
+    "scenes": {
+      "items": {
+        "$ref": "#/$defs/MediaSceneEntry"
+      },
+      "maxItems": 40,
+      "minItems": 1,
+      "title": "Scenes",
+      "type": "array"
+    },
+    "usage": {
+      "$ref": "#/$defs/MediaUsage"
+    },
+    "inspection": {
+      "$ref": "#/$defs/MediaInspection"
+    }
+  },
+  "required": [
+    "media_run_id",
+    "job_id",
+    "voice_run_id",
+    "created_at",
+    "simulation",
+    "source",
+    "providers",
+    "control",
+    "timeline",
+    "references",
+    "assets",
+    "scenes",
+    "usage",
+    "inspection"
+  ],
+  "title": "viralgen media manifest",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

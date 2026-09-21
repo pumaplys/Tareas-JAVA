@@ -1,0 +1,421 @@
+{
+  "document_type": "media_manifest",
+  "schema_version": "1.0",
+  "media_run_id": "b2cdf28f-8019-4681-8928-80848de24c7a",
+  "job_id": "016495c3-41d9-4123-a8e7-6b3e4ceb6cfb",
+  "voice_run_id": "a9455db6-6d4b-4fa5-a0e2-c43b16bb47ad",
+  "created_at": "2026-09-21T19:34:02Z",
+  "simulation": true,
+  "source": {
+    "script_schema_version": "1.0",
+    "script_sha256": "aeeecbb76d1922a34e180b82582b8047d53f7f416f0e12d8209fe0e00f711c60",
+    "script_simulation": true,
+    "voice_schema_version": "1.0",
+    "voice_sha256": "a7bbf3bb5797faf5d845031dcc557ed84868f9b576a13df2f6e1fa77b2ad948a",
+    "voice_simulation": true,
+    "profile_id": "curiosidades_corto",
+    "channel": "curiosidades"
+  },
+  "providers": {
+    "image_provider": "mock",
+    "image_model": "mock-image-1",
+    "video_provider": null,
+    "video_model": null,
+    "video_api_version": null,
+    "geometry_policy": "contain",
+    "processing_version": "v1",
+    "settings_hash": "95a37bf2dd04d6190bcd1fb89dd197a5c7bf4d8c3fbff8edba2759fd94504e63"
+  },
+  "control": {
+    "media_status": "ready",
+    "issues": [],
+    "visual_review": "not_performed",
+    "admissible_for_assembly": false
+  },
+  "timeline": {
+    "sample_rate_hz": 24000,
+    "total_samples": 611272,
+    "total_duration_s": 25.469667,
+    "source": "voice_manifest",
+    "target_width": 1080,
+    "target_height": 1920,
+    "target_fps": 30,
+    "target_source": "montage_decision"
+  },
+  "references": {
+    "set_id": "curiosidades_mesa-v1-81024d8bd097",
+    "version": "v1-81024d8bd097",
+    "series_bible_id": "curiosidades_mesa",
+    "bible_sha256": "81024d8bd097df22ce689ad2f66d9ef8a290720a657bd0a61e09f7f429d60471",
+    "entries": [
+      {
+        "character_id": "mano_narradora",
+        "path": "references/mano_narradora.jpg",
+        "sha256": "0cdb5b72b9d7129088306274bcd80f0047b200fc5f445b4094547a96ab3537d0",
+        "width": 720,
+        "height": 1280,
+        "mime": "image/jpeg",
+        "provenance": {
+          "kind": "generated",
+          "rights_declaration": "Referencia generada por este proyecto a partir de la biblia visual.",
+          "provider": "mock",
+          "model": "mock-image-1",
+          "parameters_hash": "fdd74f0055bc3bd91f5eb8349f1d1192cfa40a87c88fc36d0a3c177c0f6d745e",
+          "simulation": true,
+          "imported_from": null
+        }
+      }
+    ]
+  },
+  "assets": [
+    {
+      "asset_id": "ref_mano_narradora",
+      "kind": "image",
+      "role": "character_reference",
+      "path": "references/mano_narradora.jpg",
+      "size_bytes": 41097,
+      "sha256": "0cdb5b72b9d7129088306274bcd80f0047b200fc5f445b4094547a96ab3537d0",
+      "mime": "image/jpeg",
+      "width": 720,
+      "height": 1280,
+      "dimensions_source": "local_measurement",
+      "intrinsic_duration_s": null,
+      "fps": null,
+      "provider": "mock",
+      "model": "mock-image-1",
+      "simulation": true,
+      "effective_prompt": null,
+      "prompt_version": "v1",
+      "parameters": {
+        "set_id": "curiosidades_mesa-v1-81024d8bd097",
+        "version": "v1-81024d8bd097"
+      },
+      "reference_asset_ids": [],
+      "derived_from": null,
+      "transformation": null,
+      "video": null,
+      "cache_hit": false
+    },
+    {
+      "asset_id": "img_sc_01",
+      "kind": "image",
+      "role": "scene_image",
+      "path": "images/sc_01.jpeg",
+      "size_bytes": 36709,
+      "sha256": "49a1a8ddee1329d31b39c58c23e27056e9f8da8b0478c2b60af23ad008131e75",
+      "mime": "image/jpeg",
+      "width": 720,
+      "height": 1280,
+      "dimensions_source": "local_measurement",
+      "intrinsic_duration_s": null,
+      "fps": null,
+      "provider": "mock",
+      "model": "mock-image-1",
+      "simulation": true,
+      "effective_prompt": "Single everyday object centered on a seamless neutral backdrop, Mano narradora entering frame to point at the detail, hook moment, close-up three quarter angle, soft key light with long shadow, no text in the image. Character continuity (series bible): Mano narradora — A pair of adult hands in a neutral skin tone, short clean nails, entering frame to point at, turn or hold the hero object; the face is never shown. Wardrobe: Light grey shirt cuffs rolled up twice, no watch and no rings. The hero object or contrast must be unmistakable and centered; the image explains the point being made, it does not decorate it.. Series style: Clean editorial 3D-illustration look, matte materials, single hero object centered on a seamless studio backdrop, soft key light with a long gentle shadow, shallow depth of field, calm modern palette, no text anywhere in the image. Palette: #101418, #F2F0EB, #2E6F9E, #D9622B, #8C8F94. Avoid: no text, no letters, no numbers, no captions, no watermark, no logo, no brand, no UI overlay, no charts with labels, no human faces in close-up, no gore. No text, no letters, no numbers, no captions, no subtitles, no signs, no charts, no logos, no watermarks anywhere in the image.. Vertical composition. Keep the top and bottom margins visually calm: on-screen captions are added later in editing, not drawn here..",
+      "prompt_version": "v1",
+      "parameters": {
+        "size": "720x1280",
+        "quality": "medium",
+        "output_format": "jpeg",
+        "operation": "image_edit"
+      },
+      "reference_asset_ids": [
+        "ref_mano_narradora"
+      ],
+      "derived_from": null,
+      "transformation": null,
+      "video": null,
+      "cache_hit": false
+    },
+    {
+      "asset_id": "img_sc_02",
+      "kind": "image",
+      "role": "scene_image",
+      "path": "images/sc_02.jpeg",
+      "size_bytes": 35535,
+      "sha256": "32a6b548e22d767e475175856f91d3c30a57143325d14ae4ea756d323ec81a9d",
+      "mime": "image/jpeg",
+      "width": 720,
+      "height": 1280,
+      "dimensions_source": "local_measurement",
+      "intrinsic_duration_s": null,
+      "fps": null,
+      "provider": "mock",
+      "model": "mock-image-1",
+      "simulation": true,
+      "effective_prompt": "Single everyday object centered on a seamless neutral backdrop, hero object entering frame to point at the detail, context moment, close-up three quarter angle, soft key light with long shadow, no text in the image. The hero object or contrast must be unmistakable and centered; the image explains the point being made, it does not decorate it.. Series style: Clean editorial 3D-illustration look, matte materials, single hero object centered on a seamless studio backdrop, soft key light with a long gentle shadow, shallow depth of field, calm modern palette, no text anywhere in the image. Palette: #101418, #F2F0EB, #2E6F9E, #D9622B, #8C8F94. Avoid: no text, no letters, no numbers, no captions, no watermark, no logo, no brand, no UI overlay, no charts with labels, no human faces in close-up, no gore. No text, no letters, no numbers, no captions, no subtitles, no signs, no charts, no logos, no watermarks anywhere in the image.. Vertical composition. Keep the top and bottom margins visually calm: on-screen captions are added later in editing, not drawn here..",
+      "prompt_version": "v1",
+      "parameters": {
+        "size": "720x1280",
+        "quality": "medium",
+        "output_format": "jpeg",
+        "operation": "image_generate"
+      },
+      "reference_asset_ids": [],
+      "derived_from": null,
+      "transformation": null,
+      "video": null,
+      "cache_hit": false
+    },
+    {
+      "asset_id": "img_sc_03",
+      "kind": "image",
+      "role": "scene_image",
+      "path": "images/sc_03.jpeg",
+      "size_bytes": 36692,
+      "sha256": "bc5c159c9653401684a807b4b352df20b0ccb2c7119fed579bfc3536a53f9f3d",
+      "mime": "image/jpeg",
+      "width": 720,
+      "height": 1280,
+      "dimensions_source": "local_measurement",
+      "intrinsic_duration_s": null,
+      "fps": null,
+      "provider": "mock",
+      "model": "mock-image-1",
+      "simulation": true,
+      "effective_prompt": "Single everyday object centered on a seamless neutral backdrop, Mano narradora entering frame to point at the detail, development moment, close-up three quarter angle, soft key light with long shadow, no text in the image. Character continuity (series bible): Mano narradora — A pair of adult hands in a neutral skin tone, short clean nails, entering frame to point at, turn or hold the hero object; the face is never shown. Wardrobe: Light grey shirt cuffs rolled up twice, no watch and no rings. The hero object or contrast must be unmistakable and centered; the image explains the point being made, it does not decorate it.. Series style: Clean editorial 3D-illustration look, matte materials, single hero object centered on a seamless studio backdrop, soft key light with a long gentle shadow, shallow depth of field, calm modern palette, no text anywhere in the image. Palette: #101418, #F2F0EB, #2E6F9E, #D9622B, #8C8F94. Avoid: no text, no letters, no numbers, no captions, no watermark, no logo, no brand, no UI overlay, no charts with labels, no human faces in close-up, no gore. No text, no letters, no numbers, no captions, no subtitles, no signs, no charts, no logos, no watermarks anywhere in the image.. Vertical composition. Keep the top and bottom margins visually calm: on-screen captions are added later in editing, not drawn here..",
+      "prompt_version": "v1",
+      "parameters": {
+        "size": "720x1280",
+        "quality": "medium",
+        "output_format": "jpeg",
+        "operation": "image_edit"
+      },
+      "reference_asset_ids": [
+        "ref_mano_narradora"
+      ],
+      "derived_from": null,
+      "transformation": null,
+      "video": null,
+      "cache_hit": false
+    },
+    {
+      "asset_id": "img_sc_04",
+      "kind": "image",
+      "role": "scene_image",
+      "path": "images/sc_04.jpeg",
+      "size_bytes": 38531,
+      "sha256": "db4428cf5a003bdba8f1eeb8b8570f29a5a07ee0adee2ddab3c4df0cf9850fc4",
+      "mime": "image/jpeg",
+      "width": 720,
+      "height": 1280,
+      "dimensions_source": "local_measurement",
+      "intrinsic_duration_s": null,
+      "fps": null,
+      "provider": "mock",
+      "model": "mock-image-1",
+      "simulation": true,
+      "effective_prompt": "Single everyday object centered on a seamless neutral backdrop, hero object entering frame to point at the detail, resolution moment, close-up three quarter angle, soft key light with long shadow, no text in the image. The hero object or contrast must be unmistakable and centered; the image explains the point being made, it does not decorate it.. Series style: Clean editorial 3D-illustration look, matte materials, single hero object centered on a seamless studio backdrop, soft key light with a long gentle shadow, shallow depth of field, calm modern palette, no text anywhere in the image. Palette: #101418, #F2F0EB, #2E6F9E, #D9622B, #8C8F94. Avoid: no text, no letters, no numbers, no captions, no watermark, no logo, no brand, no UI overlay, no charts with labels, no human faces in close-up, no gore. No text, no letters, no numbers, no captions, no subtitles, no signs, no charts, no logos, no watermarks anywhere in the image.. Vertical composition. Keep the top and bottom margins visually calm: on-screen captions are added later in editing, not drawn here..",
+      "prompt_version": "v1",
+      "parameters": {
+        "size": "720x1280",
+        "quality": "medium",
+        "output_format": "jpeg",
+        "operation": "image_generate"
+      },
+      "reference_asset_ids": [],
+      "derived_from": null,
+      "transformation": null,
+      "video": null,
+      "cache_hit": false
+    },
+    {
+      "asset_id": "img_sc_05",
+      "kind": "image",
+      "role": "scene_image",
+      "path": "images/sc_05.jpeg",
+      "size_bytes": 39164,
+      "sha256": "98a03303559d2a21cfb34944b4a9b41e44320a76893edf9cb7b979187aaa598f",
+      "mime": "image/jpeg",
+      "width": 720,
+      "height": 1280,
+      "dimensions_source": "local_measurement",
+      "intrinsic_duration_s": null,
+      "fps": null,
+      "provider": "mock",
+      "model": "mock-image-1",
+      "simulation": true,
+      "effective_prompt": "Single everyday object centered on a seamless neutral backdrop, Mano narradora entering frame to point at the detail, close moment, close-up three quarter angle, soft key light with long shadow, no text in the image. Character continuity (series bible): Mano narradora — A pair of adult hands in a neutral skin tone, short clean nails, entering frame to point at, turn or hold the hero object; the face is never shown. Wardrobe: Light grey shirt cuffs rolled up twice, no watch and no rings. The hero object or contrast must be unmistakable and centered; the image explains the point being made, it does not decorate it.. Series style: Clean editorial 3D-illustration look, matte materials, single hero object centered on a seamless studio backdrop, soft key light with a long gentle shadow, shallow depth of field, calm modern palette, no text anywhere in the image. Palette: #101418, #F2F0EB, #2E6F9E, #D9622B, #8C8F94. Avoid: no text, no letters, no numbers, no captions, no watermark, no logo, no brand, no UI overlay, no charts with labels, no human faces in close-up, no gore. No text, no letters, no numbers, no captions, no subtitles, no signs, no charts, no logos, no watermarks anywhere in the image.. Vertical composition. Keep the top and bottom margins visually calm: on-screen captions are added later in editing, not drawn here..",
+      "prompt_version": "v1",
+      "parameters": {
+        "size": "720x1280",
+        "quality": "medium",
+        "output_format": "jpeg",
+        "operation": "image_edit"
+      },
+      "reference_asset_ids": [
+        "ref_mano_narradora"
+      ],
+      "derived_from": null,
+      "transformation": null,
+      "video": null,
+      "cache_hit": false
+    },
+    {
+      "asset_id": "contact_sheet",
+      "kind": "contact_sheet",
+      "role": "inspection",
+      "path": "contact_sheet.jpg",
+      "size_bytes": 38617,
+      "sha256": "4f4832d0a9289f3d82cf02842db955c499b91bcb7529774fbb6d3a7a4f21ed5f",
+      "mime": "image/jpeg",
+      "width": 720,
+      "height": 718,
+      "dimensions_source": "local_measurement",
+      "intrinsic_duration_s": null,
+      "fps": null,
+      "provider": "local",
+      "model": "pillow",
+      "simulation": true,
+      "effective_prompt": null,
+      "prompt_version": "v1",
+      "parameters": {},
+      "reference_asset_ids": [],
+      "derived_from": null,
+      "transformation": null,
+      "video": null,
+      "cache_hit": false
+    }
+  ],
+  "scenes": [
+    {
+      "scene_id": "sc_01",
+      "order": 1,
+      "requested_type": "image",
+      "resolved_type": "image",
+      "primary_asset_id": "img_sc_01",
+      "start_sample": 0,
+      "end_sample": 124600,
+      "start_s": 0.0,
+      "end_s": 5.191667,
+      "duration_s": 5.191667,
+      "duration_source": "voice_manifest",
+      "character_ids": [
+        "mano_narradora"
+      ],
+      "presentation": {
+        "policy": "contain",
+        "target_width": 1080,
+        "target_height": 1920,
+        "pad_color": "#101418",
+        "applied": false,
+        "decided_by": "module_3_plan"
+      },
+      "clip_trim": null
+    },
+    {
+      "scene_id": "sc_02",
+      "order": 2,
+      "requested_type": "image",
+      "resolved_type": "image",
+      "primary_asset_id": "img_sc_02",
+      "start_sample": 124600,
+      "end_sample": 253548,
+      "start_s": 5.191667,
+      "end_s": 10.5645,
+      "duration_s": 5.372833,
+      "duration_source": "voice_manifest",
+      "character_ids": [],
+      "presentation": {
+        "policy": "contain",
+        "target_width": 1080,
+        "target_height": 1920,
+        "pad_color": "#101418",
+        "applied": false,
+        "decided_by": "module_3_plan"
+      },
+      "clip_trim": null
+    },
+    {
+      "scene_id": "sc_03",
+      "order": 3,
+      "requested_type": "image",
+      "resolved_type": "image",
+      "primary_asset_id": "img_sc_03",
+      "start_sample": 253548,
+      "end_sample": 370920,
+      "start_s": 10.5645,
+      "end_s": 15.455,
+      "duration_s": 4.8905,
+      "duration_source": "voice_manifest",
+      "character_ids": [
+        "mano_narradora"
+      ],
+      "presentation": {
+        "policy": "contain",
+        "target_width": 1080,
+        "target_height": 1920,
+        "pad_color": "#101418",
+        "applied": false,
+        "decided_by": "module_3_plan"
+      },
+      "clip_trim": null
+    },
+    {
+      "scene_id": "sc_04",
+      "order": 4,
+      "requested_type": "image",
+      "resolved_type": "image",
+      "primary_asset_id": "img_sc_04",
+      "start_sample": 370920,
+      "end_sample": 489519,
+      "start_s": 15.455,
+      "end_s": 20.396625,
+      "duration_s": 4.941625,
+      "duration_source": "voice_manifest",
+      "character_ids": [],
+      "presentation": {
+        "policy": "contain",
+        "target_width": 1080,
+        "target_height": 1920,
+        "pad_color": "#101418",
+        "applied": false,
+        "decided_by": "module_3_plan"
+      },
+      "clip_trim": null
+    },
+    {
+      "scene_id": "sc_05",
+      "order": 5,
+      "requested_type": "image",
+      "resolved_type": "image",
+      "primary_asset_id": "img_sc_05",
+      "start_sample": 489519,
+      "end_sample": 611272,
+      "start_s": 20.396625,
+      "end_s": 25.469667,
+      "duration_s": 5.073042,
+      "duration_source": "voice_manifest",
+      "character_ids": [
+        "mano_narradora"
+      ],
+      "presentation": {
+        "policy": "contain",
+        "target_width": 1080,
+        "target_height": 1920,
+        "pad_color": "#101418",
+        "applied": false,
+        "decided_by": "module_3_plan"
+      },
+      "clip_trim": null
+    }
+  ],
+  "usage": {
+    "generation_attempts_total": 6,
+    "generation_attempts_this_run": 6,
+    "video_seconds_reserved_total": 0.0,
+    "video_seconds_reserved_this_run": 0.0,
+    "status_requests_total": 0,
+    "status_requests_this_run": 0,
+    "download_attempts_total": 0,
+    "download_attempts_this_run": 0,
+    "cache_hits": 0,
+    "provider_reported": {},
+    "estimated_cost_usd": null
+  },
+  "inspection": {
+    "contact_sheet_path": "contact_sheet.jpg",
+    "note": "Recurso auxiliar para inspeccion humana. No forma parte del montaje y no acredita calidad visual."
+  }
+}

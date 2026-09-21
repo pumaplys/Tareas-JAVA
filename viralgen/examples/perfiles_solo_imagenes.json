@@ -1,0 +1,130 @@
+{
+  "schema_version": "1.0",
+  "profiles": [
+    {
+      "profile_id": "infantil_cuentos",
+      "channel": "infantil",
+      "audience": "Ninos de 5 a 8 anos, normalmente acompanados de un adulto.",
+      "target_platforms": [
+        "youtube_shorts"
+      ],
+      "default_duration_s": 50,
+      "min_duration_s": 40,
+      "max_duration_s": 60,
+      "target_wpm": 125,
+      "min_scenes": 6,
+      "max_scenes": 9,
+      "video_scene_budget": 0,
+      "width": 1080,
+      "height": 1920,
+      "fps": 30,
+      "aspect_ratio": "9:16",
+      "language": "es",
+      "visual_prompt_language": "en",
+      "caption_style": "calm_readable",
+      "requires_evidence": false,
+      "made_for_kids": true,
+      "series_bible_id": "bosque_lumina",
+      "niches": [
+        "Emociones y convivencia: compartir, esperar el turno, pedir perdon, nombrar lo que se siente.",
+        "Pequenas aventuras de logica: pistas, orden, comparaciones y conteo sencillo.",
+        "Descubrimientos de la naturaleza: lluvia, semillas, insectos, estaciones, ciclo del agua."
+      ],
+      "editorial_guidance": "Personajes originales y recurrentes, un problema comprensible, una accion concreta que lo resuelve y un aprendizaje explicito. La historia debe tener desenlace: nada queda abierto. Curiosidad amable, voz clara y ritmo legible.",
+      "avoid": [
+        "Sustos intensos, amenazas o peligro fisico explicito.",
+        "Conductas peligrosas imitables (fuego, alturas, productos del hogar, irse con desconocidos).",
+        "Personajes, nombres o estilos de franquicias comerciales existentes.",
+        "Llamadas a comentar, suscribirse, seguir o comprar.",
+        "Textos, logos o marcas de agua dentro de la imagen.",
+        "Final abierto o moraleja ambigua."
+      ],
+      "voice_direction_hint": "Voz calida y pausada de cuentacuentos, con sonrisa audible; respira entre escenas y baja el ritmo en el aprendizaje final.",
+      "music_mood_hint": "Instrumental suave y luminoso, sin percusion fuerte; debe ser musica de uso comercial permitido."
+    },
+    {
+      "profile_id": "curiosidades_corto",
+      "channel": "curiosidades",
+      "audience": "Publico general adulto y adolescente en Reels y TikTok.",
+      "target_platforms": [
+        "instagram_reels",
+        "tiktok"
+      ],
+      "default_duration_s": 35,
+      "min_duration_s": 25,
+      "max_duration_s": 45,
+      "target_wpm": 155,
+      "min_scenes": 5,
+      "max_scenes": 8,
+      "video_scene_budget": 0,
+      "width": 1080,
+      "height": 1920,
+      "fps": 30,
+      "aspect_ratio": "9:16",
+      "language": "es",
+      "visual_prompt_language": "en",
+      "caption_style": "dynamic_emphasis",
+      "requires_evidence": true,
+      "made_for_kids": null,
+      "series_bible_id": "curiosidades_mesa",
+      "niches": [
+        "Fenomenos naturales observables: mareas, rayos, auroras, nieve, arena.",
+        "Objetos cotidianos y su diseno: cierres, envases, herramientas, tejidos.",
+        "Historias de inventos y de como se resolvio un problema concreto."
+      ],
+      "editorial_guidance": "Pregunta o contraste inicial, explicacion progresiva, respuesta que cumple la promesa y cierre que conecta con el comienzo. Cada afirmacion factual procede del catalogo aportado; el guion puede explicar y parafrasear, nunca anadir cifras, causas o detalles no respaldados.",
+      "avoid": [
+        "Cifras, fechas, porcentajes o citas que no esten en el catalogo de hechos.",
+        "Exagerar la fuente o el hallazgo para fabricar sorpresa.",
+        "Ganchos vacios del tipo 'no creeras lo que paso' sin promesa concreta.",
+        "Consejos medicos, financieros o legales.",
+        "Textos, logos o marcas de agua dentro de la imagen.",
+        "Alargar el video repitiendo material ya dicho."
+      ],
+      "voice_direction_hint": "Voz curiosa y cercana, ritmo agil pero articulado; enfasis breve en la palabra clave de cada escena.",
+      "music_mood_hint": "Base instrumental discreta y ritmica, sin voces; debe ser musica de uso comercial permitido."
+    },
+    {
+      "profile_id": "curiosidades_largo",
+      "channel": "curiosidades",
+      "audience": "Publico general adulto y adolescente en Reels y TikTok.",
+      "target_platforms": [
+        "instagram_reels",
+        "tiktok"
+      ],
+      "default_duration_s": 70,
+      "min_duration_s": 65,
+      "max_duration_s": 90,
+      "target_wpm": 155,
+      "min_scenes": 9,
+      "max_scenes": 12,
+      "video_scene_budget": 0,
+      "width": 1080,
+      "height": 1920,
+      "fps": 30,
+      "aspect_ratio": "9:16",
+      "language": "es",
+      "visual_prompt_language": "en",
+      "caption_style": "dynamic_emphasis",
+      "requires_evidence": true,
+      "made_for_kids": null,
+      "series_bible_id": "curiosidades_mesa",
+      "niches": [
+        "Fenomenos naturales observables explicados paso a paso.",
+        "Objetos cotidianos: del problema original al diseno actual.",
+        "Historias de inventos con varias etapas y un giro final comprobado."
+      ],
+      "editorial_guidance": "Mismo contrato editorial que el perfil corto, con mas espacio para desarrollar la explicacion en dos o tres pasos antes de la respuesta. La mayor duracion permite planificar contenido de mas de un minuto; no certifica elegibilidad para ningun programa de monetizacion.",
+      "avoid": [
+        "Cifras, fechas, porcentajes o citas que no esten en el catalogo de hechos.",
+        "Exagerar la fuente o el hallazgo para fabricar sorpresa.",
+        "Ganchos vacios sin promesa concreta.",
+        "Consejos medicos, financieros o legales.",
+        "Textos, logos o marcas de agua dentro de la imagen.",
+        "Rellenar con repeticiones para alcanzar la duracion minima."
+      ],
+      "voice_direction_hint": "Voz curiosa y cercana; mantiene energia en el desarrollo y marca una pausa clara antes de la respuesta.",
+      "music_mood_hint": "Base instrumental discreta con progresion lenta, sin voces; debe ser musica de uso comercial permitido."
+    }
+  ]
+}

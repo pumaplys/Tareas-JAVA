@@ -1,0 +1,322 @@
+{
+  "schema_version": "1.0",
+  "job_id": "016495c3-41d9-4123-a8e7-6b3e4ceb6cfb",
+  "created_at": "2026-09-21T19:34:01Z",
+  "channel": "curiosidades",
+  "profile_id": "curiosidades_corto",
+  "language": "es",
+  "target_platforms": [
+    "instagram_reels",
+    "tiktok"
+  ],
+  "simulation": true,
+  "control": {
+    "production_status": "ready_for_production",
+    "warnings": [],
+    "prompt_version": "v1",
+    "config_hash": "9d48ff54f0c73790588d565fd8c55a9b27282115964049e60a1d4edb6245f81a",
+    "source_pack_hash": "70a5a8ca1fb32781e7e2bf3feadbcba7810c8c7e4322c251ccc0697dab3dac8b"
+  },
+  "idea": {
+    "title": "Los dientes de una cremallera encajan por parejas: el detalle que nadie mira",
+    "premise": "Partiendo de que los dientes de una cremallera encajan por parejas, el video explica el detalle que nadie mira paso a paso y cierra respondiendo la pregunta inicial.",
+    "topic": "por que la cremallera no se suelta",
+    "selected_idea_id": "idea_1",
+    "editorial_score": 92.0,
+    "score_components": {
+      "hook": 5.0,
+      "clarity": 4.0,
+      "payoff": 4.0,
+      "visual_potential": 5.0,
+      "novelty": 5.0
+    },
+    "score_rationale": "gancho 5.0 (Valoracion simulada de gancho: 5/5 segun el banco de frases del mock.); claridad 4.0; cumplimiento 4.0; potencial visual 5.0; novedad 5.00 (similitud lexica maxima 0.00 frente al historial del canal).",
+    "hook_variants": [
+      {
+        "hook_id": "hook_a",
+        "text": "Mira otra vez este objeto"
+      },
+      {
+        "hook_id": "hook_b",
+        "text": "Aqui hay un detalle escondido"
+      },
+      {
+        "hook_id": "hook_c",
+        "text": "Esto explica algo que usas"
+      }
+    ],
+    "selected_hook_id": "hook_a",
+    "educational_goal": null,
+    "experiment_tag": "v1-mock-mock-deterministic-v1-curiosidades_corto"
+  },
+  "video": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "aspect_ratio": "9:16",
+    "target_duration_s": 25.0,
+    "estimated_duration_s": 25.4,
+    "actual_duration_s": null
+  },
+  "narration": {
+    "full_text": "Mira otra vez este objeto. Lo tienes delante todos los dias, sin excepcion. Los dientes de una cremallera encajan por parejas, aunque no lo parezca ahora. Los ensayos fueron corrigiendo cada detalle, el desgaste avisa antes de fallar. Y esa es la respuesta completa, queda claro en cuanto lo miras. Ahora ya sabes por que los dientes de una cremallera encajan, todavia.",
+    "word_count": 62,
+    "target_wpm": 155,
+    "voice_direction": "Voz curiosa y cercana, ritmo agil pero articulado; enfasis breve en la palabra clave de cada escena.",
+    "pronunciation_notes": [
+      "Mano narradora: se lee tal cual se escribe.",
+      "Marcar una pausa breve antes de la respuesta final."
+    ]
+  },
+  "visual_bible": {
+    "style_prompt": "Clean editorial 3D-illustration look, matte materials, single hero object centered on a seamless studio backdrop, soft key light with a long gentle shadow, shallow depth of field, calm modern palette, no text anywhere in the image",
+    "color_palette": [
+      "#101418",
+      "#F2F0EB",
+      "#2E6F9E",
+      "#D9622B",
+      "#8C8F94"
+    ],
+    "negative_prompt": "no text, no letters, no numbers, no captions, no watermark, no logo, no brand, no UI overlay, no charts with labels, no human faces in close-up, no gore",
+    "characters": [
+      {
+        "character_id": "mano_narradora",
+        "name": "Mano narradora",
+        "description": "A pair of adult hands in a neutral skin tone, short clean nails, entering frame to point at, turn or hold the hero object; the face is never shown.",
+        "wardrobe": "Light grey shirt cuffs rolled up twice, no watch and no rings."
+      }
+    ]
+  },
+  "scenes": [
+    {
+      "scene_id": "sc_01",
+      "order": 1,
+      "beat": "hook",
+      "narration_text": "Mira otra vez este objeto. Lo tienes delante todos los dias, sin excepcion.",
+      "pause_after_s": 0.25,
+      "word_count": 13,
+      "estimated_start_s": 0.0,
+      "estimated_end_s": 5.282,
+      "estimated_duration_s": 5.282,
+      "character_ids": [
+        "mano_narradora"
+      ],
+      "visual": {
+        "asset_type": "image",
+        "image_prompt": "Single everyday object centered on a seamless neutral backdrop, Mano narradora entering frame to point at the detail, hook moment, close-up three quarter angle, soft key light with long shadow, no text in the image. Character continuity (series bible): Mano narradora — A pair of adult hands in a neutral skin tone, short clean nails, entering frame to point at, turn or hold the hero object; the face is never shown. Wardrobe: Light grey shirt cuffs rolled up twice, no watch and no rings.",
+        "motion_prompt": "slow push-in of about five percent, steady and calm",
+        "continuity_notes": "Primera escena: fija paleta, luz y encuadre de referencia para el resto."
+      },
+      "captions": {
+        "emphasis_words": [
+          "delante"
+        ],
+        "overlay_text": null
+      },
+      "audio": {
+        "sfx_description": "Clic seco del objeto",
+        "sfx_cue": "scene_start",
+        "music_mood": "Base instrumental discreta y ritmica, sin voces; debe ser musica de uso comercial permitido."
+      },
+      "claim_refs": []
+    },
+    {
+      "scene_id": "sc_02",
+      "order": 2,
+      "beat": "context",
+      "narration_text": "Los dientes de una cremallera encajan por parejas, aunque no lo parezca ahora.",
+      "pause_after_s": 0.25,
+      "word_count": 13,
+      "estimated_start_s": 5.282,
+      "estimated_end_s": 10.565,
+      "estimated_duration_s": 5.282,
+      "character_ids": [],
+      "visual": {
+        "asset_type": "image",
+        "image_prompt": "Single everyday object centered on a seamless neutral backdrop, hero object entering frame to point at the detail, context moment, close-up three quarter angle, soft key light with long shadow, no text in the image.",
+        "motion_prompt": "slight lateral drift to the right, constant speed",
+        "continuity_notes": "Mantiene el objeto protagonista, la paleta y la direccion de la luz de la escena anterior."
+      },
+      "captions": {
+        "emphasis_words": [
+          "aunque"
+        ],
+        "overlay_text": null
+      },
+      "audio": {
+        "sfx_description": null,
+        "sfx_cue": "scene_start",
+        "music_mood": "Base instrumental discreta y ritmica, sin voces; debe ser musica de uso comercial permitido."
+      },
+      "claim_refs": [
+        "cl_1"
+      ]
+    },
+    {
+      "scene_id": "sc_03",
+      "order": 3,
+      "beat": "development",
+      "narration_text": "Los ensayos fueron corrigiendo cada detalle, el desgaste avisa antes de fallar.",
+      "pause_after_s": 0.25,
+      "word_count": 12,
+      "estimated_start_s": 10.565,
+      "estimated_end_s": 15.46,
+      "estimated_duration_s": 4.895,
+      "character_ids": [
+        "mano_narradora"
+      ],
+      "visual": {
+        "asset_type": "image",
+        "image_prompt": "Single everyday object centered on a seamless neutral backdrop, Mano narradora entering frame to point at the detail, development moment, close-up three quarter angle, soft key light with long shadow, no text in the image. Character continuity (series bible): Mano narradora — A pair of adult hands in a neutral skin tone, short clean nails, entering frame to point at, turn or hold the hero object; the face is never shown. Wardrobe: Light grey shirt cuffs rolled up twice, no watch and no rings.",
+        "motion_prompt": "gentle parallax with a small tilt down",
+        "continuity_notes": "Mantiene el objeto protagonista, la paleta y la direccion de la luz de la escena anterior."
+      },
+      "captions": {
+        "emphasis_words": [
+          "fallar"
+        ],
+        "overlay_text": null
+      },
+      "audio": {
+        "sfx_description": null,
+        "sfx_cue": "scene_end",
+        "music_mood": "Base instrumental discreta y ritmica, sin voces; debe ser musica de uso comercial permitido."
+      },
+      "claim_refs": []
+    },
+    {
+      "scene_id": "sc_04",
+      "order": 4,
+      "beat": "resolution",
+      "narration_text": "Y esa es la respuesta completa, queda claro en cuanto lo miras.",
+      "pause_after_s": 0.25,
+      "word_count": 12,
+      "estimated_start_s": 15.46,
+      "estimated_end_s": 20.355,
+      "estimated_duration_s": 4.895,
+      "character_ids": [],
+      "visual": {
+        "asset_type": "image",
+        "image_prompt": "Single everyday object centered on a seamless neutral backdrop, hero object entering frame to point at the detail, resolution moment, close-up three quarter angle, soft key light with long shadow, no text in the image.",
+        "motion_prompt": "slow pull-back that reveals the whole scene",
+        "continuity_notes": "Mantiene el objeto protagonista, la paleta y la direccion de la luz de la escena anterior."
+      },
+      "captions": {
+        "emphasis_words": [
+          "respuesta"
+        ],
+        "overlay_text": null
+      },
+      "audio": {
+        "sfx_description": "Golpe suave de confirmacion",
+        "sfx_cue": "scene_end",
+        "music_mood": "Base instrumental discreta y ritmica, sin voces; debe ser musica de uso comercial permitido."
+      },
+      "claim_refs": []
+    },
+    {
+      "scene_id": "sc_05",
+      "order": 5,
+      "beat": "close",
+      "narration_text": "Ahora ya sabes por que los dientes de una cremallera encajan, todavia.",
+      "pause_after_s": 0.4,
+      "word_count": 12,
+      "estimated_start_s": 20.355,
+      "estimated_end_s": 25.4,
+      "estimated_duration_s": 5.045,
+      "character_ids": [
+        "mano_narradora"
+      ],
+      "visual": {
+        "asset_type": "image",
+        "image_prompt": "Single everyday object centered on a seamless neutral backdrop, Mano narradora entering frame to point at the detail, close moment, close-up three quarter angle, soft key light with long shadow, no text in the image. Character continuity (series bible): Mano narradora — A pair of adult hands in a neutral skin tone, short clean nails, entering frame to point at, turn or hold the hero object; the face is never shown. Wardrobe: Light grey shirt cuffs rolled up twice, no watch and no rings.",
+        "motion_prompt": "hold almost still with a very slow breathing zoom",
+        "continuity_notes": "Ultima escena: repite el encuadre de la primera con la luz un punto mas calida."
+      },
+      "captions": {
+        "emphasis_words": [
+          "dientes"
+        ],
+        "overlay_text": null
+      },
+      "audio": {
+        "sfx_description": null,
+        "sfx_cue": "scene_end",
+        "music_mood": "Base instrumental discreta y ritmica, sin voces; debe ser musica de uso comercial permitido."
+      },
+      "claim_refs": []
+    }
+  ],
+  "loop": {
+    "enabled": true,
+    "opening_scene_id": "sc_01",
+    "closing_scene_id": "sc_05",
+    "connection_explanation": "El cierre retoma el objeto de la primera escena y lo mira de nuevo con la respuesta ya dada, sin repetir material."
+  },
+  "evidence": {
+    "claims": [
+      {
+        "claim_id": "cl_1",
+        "claim_text": "Segun la fuente revisada, los dientes de una cremallera encajan por parejas alternas, de modo que cada uno sujeta al siguiente y reparte la tension a lo largo de toda la tira.",
+        "scene_ids": [
+          "sc_02"
+        ],
+        "fact_ids": [
+          "demo_cremallera_dientes"
+        ]
+      }
+    ],
+    "facts": [
+      {
+        "fact_id": "demo_cremallera_dientes",
+        "claim_text": "Los dientes de una cremallera encajan por parejas alternas, de modo que cada uno sujeta al siguiente y reparte la tension a lo largo de toda la tira.",
+        "source_url": "https://example.org/demo/cremallera",
+        "source_title": "Ficha de demostracion: mecanismo de la cremallera",
+        "evidence_excerpt": "Entrada ficticia de demostracion. El cierre funciona porque la corredera obliga a los dientes a entrelazarse en un orden fijo.",
+        "checked_at": "2026-01-15T09:00:00Z",
+        "review_status": "approved",
+        "demo_only": true
+      }
+    ],
+    "verification_level": "source_pack_only"
+  },
+  "publishing": [
+    {
+      "platform": "instagram_reels",
+      "title": "Los dientes de una cremallera encajan por parejas: el detalle que nadie mira",
+      "caption": "Partiendo de que los dientes de una cremallera encajan por parejas, el video explica el detalle que nadie mira paso a paso y cierra respondiendo la pregunta inicial. Fuentes revisadas en el catalogo del proyecto.",
+      "hashtags": [
+        "curiosidades",
+        "sabiasque",
+        "datoscuriosos",
+        "objetoscotidianos"
+      ],
+      "made_for_kids": null,
+      "ai_disclosure_review_required": true
+    },
+    {
+      "platform": "tiktok",
+      "title": "Los dientes de una cremallera encajan por parejas: el detalle que nadie mira",
+      "caption": "Partiendo de que los dientes de una cremallera encajan por parejas, el video explica el detalle que nadie mira paso a paso y cierra respondiendo la pregunta inicial. Fuentes revisadas en el catalogo del proyecto.",
+      "hashtags": [
+        "curiosidades",
+        "sabiasque",
+        "datoscuriosos",
+        "objetoscotidianos"
+      ],
+      "made_for_kids": null,
+      "ai_disclosure_review_required": true
+    }
+  ],
+  "provenance": {
+    "provider": "mock",
+    "model": "mock-deterministic-v1",
+    "request_ids": [
+      "mock-ideas-067e5571b9c6",
+      "mock-script-714e5e9a4d7e"
+    ],
+    "input_tokens": 2096,
+    "output_tokens": 3027,
+    "estimated_cost_usd": null
+  }
+}

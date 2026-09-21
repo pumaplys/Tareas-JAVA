@@ -76,7 +76,61 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("profiles", help="Lista los perfiles editoriales disponibles.")
 
     _add_voice_parser(subparsers)
+    _add_media_parser(subparsers)
     return parser
+
+
+def _add_media_parser(subparsers: argparse._SubParsersAction) -> None:
+    """Comandos del modulo 3 bajo `viralgen media ...`."""
+    media = subparsers.add_parser(
+        "media", help="Modulo 3: generacion de medios visuales."
+    )
+    media_sub = media.add_subparsers(dest="media_command", required=True)
+
+    def entradas(parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
+            "--script", type=Path, required=True, help="Ruta del script.json del modulo 1."
+        )
+        parser.add_argument(
+            "--voice", type=Path, required=True, help="Ruta del voice.json del modulo 2."
+        )
+
+    plan = media_sub.add_parser(
+        "plan", help="Preflight sin red ni generacion: valida y enumera lo que haria."
+    )
+    entradas(plan)
+    plan.add_argument("--mock", action="store_true", help="Preflight del recorrido simulado.")
+
+    generate = media_sub.add_parser(
+        "generate", help="Genera imagenes y clips y exporta media.json."
+    )
+    entradas(generate)
+    generate.add_argument(
+        "--media-key", default=None, help="Clave de idempotencia de la ejecucion."
+    )
+    generate.add_argument(
+        "--mock",
+        action="store_true",
+        help="Proveedores simulados: sin claves ni red. simulation=true.",
+    )
+    generate.add_argument("--seed", type=int, default=None, help="Semilla del simulado.")
+
+    validate = media_sub.add_parser(
+        "validate",
+        help="Valida contrato y admision del trio guion+voz+medios. Solo lectura.",
+    )
+    entradas(validate)
+    validate.add_argument(
+        "--manifest", type=Path, required=True, help="Ruta del media.json."
+    )
+    validate.add_argument(
+        "--allow-simulation",
+        action="store_true",
+        help="Elige el modo preview y su codigo de salida. No cambia los checks.",
+    )
+
+    schema = media_sub.add_parser("schema", help="Exporta el JSON Schema de media.json.")
+    schema.add_argument("--output", type=Path, required=True, help="Ruta del esquema.")
 
 
 def _add_voice_parser(subparsers: argparse._SubParsersAction) -> None:
@@ -324,6 +378,83 @@ def _run_voice(args: argparse.Namespace, settings: Settings) -> int:
     raise ConfigError(f"Subcomando de voz desconocido: {args.voice_command}")
 
 
+def _run_media(args: argparse.Namespace, settings: Settings) -> int:
+    from .media import MEDIA_SCHEMA_VERSION
+    from .media.admission import check_media_admission
+    from .media.pipeline import MediaJobRequest, MediaPipeline
+    from .media.schemas import MediaManifest
+
+    if args.media_command == "schema":
+        schema = MediaManifest.model_json_schema()
+        schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
+        schema["title"] = "viralgen media manifest"
+        schema["description"] = (
+            "Manifiesto lateral de medios visuales del modulo 3. "
+            f"schema_version={MEDIA_SCHEMA_VERSION}."
+        )
+        atomic_write_json(args.output, schema)
+        _emit(
+            {
+                "schema_path": str(args.output),
+                "document_type": "media_manifest",
+                "schema_version": MEDIA_SCHEMA_VERSION,
+                "exit_code": int(ExitCode.OK),
+            }
+        )
+        return int(ExitCode.OK)
+
+    if args.media_command == "validate":
+        # Solo lectura: no toca ningun byte ni el historial.
+        informe = check_media_admission(
+            script_path=args.script,
+            voice_path=args.voice,
+            manifest_path=args.manifest,
+            settings=settings,
+        )
+        modo = "preview" if args.allow_simulation else "production"
+        veredicto = (
+            informe.admissible_for_preview
+            if args.allow_simulation
+            else informe.admissible_for_assembly
+        )
+        if not informe.contract_valid:
+            codigo = ExitCode.VALIDATION
+        else:
+            codigo = ExitCode.OK if veredicto else ExitCode.NEEDS_REVIEW
+        _emit(
+            {
+                "script": str(args.script),
+                "voice": str(args.voice),
+                "manifest": str(args.manifest),
+                "mode": modo,
+                **informe.to_dict(),
+                "exit_code": int(codigo),
+                "note": (
+                    "El codigo de salida en modo preview NO autoriza produccion: los "
+                    "consumidores reales deben leer admissible_for_assembly."
+                ),
+            }
+        )
+        return int(codigo)
+
+    peticion = MediaJobRequest(
+        script_path=args.script,
+        voice_path=args.voice,
+        media_key=getattr(args, "media_key", None),
+        simulation=bool(args.mock),
+        seed=getattr(args, "seed", None),
+    )
+
+    if args.media_command == "plan":
+        resultado = MediaPipeline(settings, peticion).preflight()
+        _emit(resultado)
+        return int(resultado["exit_code"])
+
+    resultado = MediaPipeline(settings, peticion).run()
+    _emit(resultado.summary())
+    return int(resultado.exit_code)
+
+
 def _run_profiles(settings: Settings) -> int:
     profiles = load_profiles(settings.profiles_path)
     _emit(
@@ -393,6 +524,8 @@ def main(argv: list[str] | None = None) -> int:
             return _run_profiles(settings)
         if args.command == "voice":
             return _run_voice(args, settings)
+        if args.command == "media":
+            return _run_media(args, settings)
         parser.error(f"Comando desconocido: {args.command}")
         return int(ExitCode.USAGE)
     except ViralgenError as exc:

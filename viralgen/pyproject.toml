@@ -16,6 +16,9 @@ dependencies = [
     # Cliente HTTP del adaptador de voz (modulo 2). Es el que ya resuelve
     # `openai` en este lockfile; se declara directo porque lo usamos nosotros.
     "httpx2>=2.13,<3",
+    # Decodificacion, verificacion y geometria de imagenes (modulo 3). El
+    # modulo NO confia en la extension ni en el proveedor: abre cada archivo.
+    "Pillow>=12.3,<13",
 ]
 
 [project.optional-dependencies]

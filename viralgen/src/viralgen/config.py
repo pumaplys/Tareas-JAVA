@@ -113,6 +113,61 @@ class Settings(BaseSettings):
     #: coste estimado es null.
     price_voice_per_1k_chars_usd: float | None = Field(default=None, ge=0.0)
 
+    # --- Modulo 3: medios visuales ---------------------------------------
+    # Independientes de OPENAI_MODEL (guion) y de las credenciales de voz.
+    openai_image_model: str | None = Field(default=None, alias="OPENAI_IMAGE_MODEL")
+    runwayml_api_secret: SecretStr | None = Field(default=None, alias="RUNWAYML_API_SECRET")
+    runway_model: str | None = Field(default=None, alias="RUNWAY_MODEL")
+    runway_base_url: str = Field(
+        default="https://api.dev.runwayml.com", alias="RUNWAY_BASE_URL"
+    )
+    #: Cabecera X-Runway-Version. Viaja tambien en la procedencia del manifiesto.
+    runway_api_version: str = Field(default="2024-11-06", alias="RUNWAY_API_VERSION")
+
+    #: Presupuestos del trabajo. Decisiones DEL PROYECTO, no limites del proveedor.
+    media_max_generation_attempts: int = Field(default=24, ge=1, le=500)
+    media_max_video_scenes: int = Field(default=2, ge=0, le=20)
+    #: Segundos de video reservados sumando la duracion de cada intento de creacion.
+    media_max_video_seconds: int = Field(default=20, ge=0, le=600)
+    media_max_safe_retries: int = Field(default=2, ge=0, le=10)
+    media_max_status_requests: int = Field(default=120, ge=1, le=10_000)
+    media_max_download_attempts: int = Field(default=3, ge=1, le=20)
+    #: Espera local por invocacion; despues se devuelve waiting_remote.
+    media_poll_wait_s: int = Field(default=60, ge=1, le=3600)
+    #: Intervalo minimo entre consultas de estado, en segundos.
+    media_poll_interval_s: float = Field(default=5.0, ge=5.0, le=120.0)
+    media_image_timeout_s: int = Field(default=180, ge=1, le=1800)
+    media_http_timeout_s: int = Field(default=60, ge=1, le=600)
+    media_status_timeout_s: int = Field(default=20, ge=1, le=600)
+    #: Limite de la respuesta de imagen ANTES de decodificar base64, en MiB.
+    media_max_image_response_mib: int = Field(default=32, ge=1, le=512)
+    media_max_video_file_mib: int = Field(default=100, ge=1, le=2048)
+    #: Tamano total del trabajo, incluidos temporales y derivados, en MiB.
+    media_max_job_mib: int = Field(default=500, ge=1, le=20_480)
+    #: Limite global de la cache de assets, en MiB.
+    media_cache_max_mib: int = Field(default=1024, ge=1, le=102_400)
+
+    #: Limite propio para la data URI YA CODIFICADA que se envia a Runway.
+    media_data_uri_max_bytes: int = Field(default=4_000_000, ge=100_000)
+    #: Tope de pixeles descomprimidos al abrir una imagen (proteccion local).
+    media_max_image_pixels: int = Field(default=40_000_000, ge=1_000_000)
+    media_max_prompt_chars: int = Field(default=4_000, ge=100, le=32_000)
+
+    media_image_quality: str = "medium"
+    media_image_format: str = "jpeg"
+    #: Politica de adaptacion geometrica: contain (relleno) o crop (recorte).
+    media_geometry_policy: str = "contain"
+    #: Version del conjunto de referencias; por defecto se deriva de la biblia.
+    media_reference_set_version: str | None = None
+    #: Referencias importadas: archivo JSON con procedencia declarada.
+    media_reference_pack_path: Path | None = None
+
+    ffprobe_path: str = "ffprobe"
+
+    #: Tarifas explicitas. Sin ellas, el coste estimado es null.
+    price_image_per_unit_usd: float | None = Field(default=None, ge=0.0)
+    price_video_per_second_usd: float | None = Field(default=None, ge=0.0)
+
     @field_validator("log_level")
     @classmethod
     def _upper_level(cls, value: str) -> str:
@@ -127,6 +182,8 @@ class Settings(BaseSettings):
         "openai_base_url",
         "elevenlabs_model_id",
         "elevenlabs_voice_id",
+        "openai_image_model",
+        "runway_model",
         mode="before",
     )
     @classmethod
@@ -189,6 +246,66 @@ class Settings(BaseSettings):
             )
         assert self.elevenlabs_api_key is not None and self.elevenlabs_model_id is not None
         return self.elevenlabs_api_key.get_secret_value(), self.elevenlabs_model_id
+
+    def require_image_settings(self) -> str:
+        """Modelo de imagenes en modo real. No hay valor por defecto.
+
+        Es independiente de OPENAI_MODEL (que usa el modulo 1 para el guion):
+        un modelo de texto no sirve para imagenes y no se sustituye en silencio.
+        """
+        if not self.openai_image_model:
+            raise ConfigError(
+                "Falta OPENAI_IMAGE_MODEL. Es independiente de OPENAI_MODEL: hay que "
+                "declarar explicitamente el modelo de imagenes. Usa --mock para un "
+                "recorrido de pruebas sin proveedor.",
+                details={"missing": ["OPENAI_IMAGE_MODEL"]},
+            )
+        if self.openai_api_key is None or not self.openai_api_key.get_secret_value().strip():
+            raise ConfigError(
+                "Falta OPENAI_API_KEY para generar imagenes.",
+                details={"missing": ["OPENAI_API_KEY"]},
+            )
+        return self.openai_image_model
+
+    def require_video_settings(self) -> tuple[str, str]:
+        """(secreto, modelo) de Runway. Solo hace falta si el guion pide clips."""
+        missing: list[str] = []
+        if (
+            self.runwayml_api_secret is None
+            or not self.runwayml_api_secret.get_secret_value().strip()
+        ):
+            missing.append("RUNWAYML_API_SECRET")
+        if not self.runway_model:
+            missing.append("RUNWAY_MODEL")
+        if missing:
+            raise ConfigError(
+                "Faltan variables para generar clips: "
+                + ", ".join(missing)
+                + ". Un trabajo solo de imagenes no necesita Runway.",
+                details={"missing": missing},
+            )
+        assert self.runwayml_api_secret is not None and self.runway_model is not None
+        return self.runwayml_api_secret.get_secret_value(), self.runway_model
+
+    def media_hashable_view(self) -> dict[str, Any]:
+        """Ajustes de medios que influyen en el resultado. Sin secretos.
+
+        Los limites administrativos (presupuestos, tamanos) quedan FUERA a
+        proposito: cambiarlos no debe invalidar la identidad de un asset.
+        """
+        return {
+            "media_image_quality": self.media_image_quality,
+            "media_image_format": self.media_image_format,
+            "media_geometry_policy": self.media_geometry_policy,
+            "media_reference_set_version": self.media_reference_set_version,
+            "runway_api_version": self.runway_api_version,
+        }
+
+    def media_pricing(self) -> dict[str, float | None]:
+        return {
+            "image_per_unit_usd": self.price_image_per_unit_usd,
+            "video_per_second_usd": self.price_video_per_second_usd,
+        }
 
     def voice_pricing(self) -> float | None:
         """Tarifa explicita por 1000 caracteres, o None."""

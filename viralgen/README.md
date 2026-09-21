@@ -1,4 +1,4 @@
-# viralgen — Módulos 1 y 2: guion, voz y tiempos medidos
+# viralgen — Módulos 1, 2 y 3: guion, voz y medios visuales
 
 **Módulo 1** produce un documento JSON validado (`script.json`) que describe el
 plan completo de un vídeo vertical 9:16 —idea, guion, escenas, prompts de imagen
@@ -11,6 +11,13 @@ manifiesto lateral `voice.json` con los **tiempos medidos** (duración real por
 escena y alineación por palabra). El guion **no se modifica ni un byte**: ver
 §15 y [`docs/contrato_modulo_2_voz.md`](docs/contrato_modulo_2_voz.md).
 
+**Módulo 3** toma ese guion y esa voz y produce los **medios visuales**: una
+imagen por escena, un clip por cada escena `asset_type: video`, un conjunto
+versionado de referencias de personaje y un manifiesto lateral `media.json`.
+Ni el guion ni `voice.json` se modifican: ver §16 y
+[`docs/contrato_modulo_3_visuales.md`](docs/contrato_modulo_3_visuales.md).
+**No monta ni publica**: eso es del módulo 4.
+
 ## Qué hace y qué no hace
 
 Hace:
@@ -21,9 +28,12 @@ Hace:
 - Valida integridad y criterios editoriales.
 - Persiste todo en SQLite y exporta un `script.json` atómico.
 
-**No** hace: no genera audio ni imágenes, no ejecuta FFmpeg, no monta vídeo, no
-publica nada, no descarga analíticas y no consulta buscadores. Tampoco instala
-ni despliega nada en una VPS.
+**No** hace (el módulo 1): no genera audio ni imágenes, no ejecuta FFmpeg, no
+monta vídeo, no publica nada, no descarga analíticas y no consulta buscadores.
+Tampoco instala ni despliega nada en una VPS.
+
+Lo que **ningún** módulo de esta entrega hace: montar, mezclar audio, poner
+subtítulos en pantalla, publicar en plataformas, ni desplegar en una VPS.
 
 `production_status=ready_for_production` significa **solo** que el plan puede
 pasar a producir medios. No autoriza publicaciones, no certifica originalidad y
@@ -47,13 +57,27 @@ viralgen --version
 
 El paquete ocupa unos pocos MB; las dependencias instaladas rondan los 60 MB, de
 sobra dentro de los 10 GB de la VPS. Los datos generados (SQLite + JSON + logs)
-son texto: un trabajo completo ocupa del orden de 30‑60 KB.
+son texto: un trabajo completo ocupa del orden de 30‑60 KB. Los **medios** no:
+ver §16 para los presupuestos de disco del módulo 3.
+
+FFmpeg/`ffprobe` son opcionales y solo hacen falta para **voz real** (decodificar
+el MP3 del proveedor) y para **clips de vídeo** (medirlos). Un recorrido de
+imágenes en modo simulado no los necesita:
+
+```bash
+sudo apt install -y ffmpeg      # aporta ffmpeg y ffprobe
+```
 
 ### Versiones fijadas y cómo se verificaron
 
 `pyproject.toml` fija rangos compatibles (`pydantic>=2.13,<3`,
-`pydantic-settings>=2.15,<3`, `openai>=3.16,<4`, `pytest>=9.1,<10`) y
-`requirements.lock.txt` recoge el conjunto exacto resuelto.
+`pydantic-settings>=2.15,<3`, `openai>=3.16,<4`, `httpx2>=2.13,<3`,
+`Pillow>=12.3,<13`, `pytest>=9.1,<10`) y `requirements.lock.txt` recoge el
+conjunto exacto resuelto.
+
+`Pillow` la añade el **módulo 3**: se usa para abrir cada imagen, verificarla y
+medirla, y para calcular la geometría de encuadre y la hoja de contacto. El
+módulo no se fía de la extensión del archivo ni de lo que declare el proveedor.
 
 Verificación realizada (no son versiones inventadas): se creó un entorno virtual
 limpio de Python 3.12, se instalaron las dependencias sin fijar versión, se
@@ -566,6 +590,7 @@ Estado del **documento**: `ready_for_production` o `needs_review`.
 | 8 | idempotencia | Misma `--job-key` con parámetros distintos. |
 | 9 | concurrencia | Ya hay otra ejecución en curso. |
 | 10 | revisión | Documento exportado y válido, pero con avisos: revisión humana. |
+| 11 | espera remota | Módulo 3: hay una tarea de vídeo viva en el proveedor y la espera local se agotó. **Ni éxito ni fallo**: vuelve a invocar el mismo `--media-key` para seguir consultando ese mismo `task_id`. |
 
 ---
 
@@ -578,8 +603,10 @@ viralgen/
 ├── .env.example  .gitignore
 ├── schema/script.schema.json   # contrato del modulo 1
 ├── schema/voice.schema.json    # contrato del manifiesto de voz
-├── docs/contrato_modulo_2_voz.md  # contrato modulo 1 -> modulo 2 (voz)
-├── examples/                   # salidas simuladas completas (guion y voz)
+├── schema/media.schema.json    # contrato del manifiesto de medios
+├── docs/contrato_modulo_2_voz.md       # contrato modulo 1 -> modulo 2 (voz)
+├── docs/contrato_modulo_3_visuales.md  # contrato modulo 3 -> modulo 4 (montaje)
+├── examples/                   # salidas simuladas completas (guion, voz, medios)
 ├── src/viralgen/
 │   ├── config.py               # ajustes centralizados
 │   ├── errors.py               # jerarquía de errores y códigos de salida
@@ -593,16 +620,29 @@ viralgen/
 │   ├── storage.py diskutil.py  # SQLite, bloqueo, escritura atómica
 │   ├── pipeline.py cli.py
 │   ├── data/                   # profiles.json, series_bible.json, facts_demo.json
-│   └── voice/                  # MODULO 2
-│       ├── audio.py timing.py      # PCM, pausas, medicion en muestras
-│       ├── alignment.py            # caracteres -> palabras, validacion
-│       ├── schemas.py              # contrato de voice.json
-│       ├── providers/              # base, elevenlabs, mock
-│       ├── profiles.py sound.py    # voces por perfil, catalogo de sonido
-│       ├── storage.py              # migracion idempotente de tablas de voz
-│       ├── admission.py            # puerta de entrada del modulo 4
-│       ├── pipeline.py
-│       └── data/voice_profiles.json
+│   ├── voice/                  # MODULO 2
+│   │   ├── audio.py timing.py  # PCM, pausas, medicion en muestras
+│   │   ├── alignment.py        # caracteres -> palabras, validacion
+│   │   ├── schemas.py          # contrato de voice.json
+│   │   ├── providers/          # base, elevenlabs, mock
+│   │   ├── profiles.py sound.py # voces por perfil, catalogo de sonido
+│   │   ├── storage.py          # migracion idempotente de tablas de voz
+│   │   ├── admission.py        # puerta de entrada del modulo 4 (voz)
+│   │   ├── pipeline.py
+│   │   └── data/voice_profiles.json
+│   └── media/                  # MODULO 3
+│       ├── capabilities.py     # tamanos, calidades y duraciones ADMITIDAS
+│       ├── imaging.py          # Pillow: decodificar, medir, geometria, hoja
+│       ├── videoprobe.py       # ffprobe: medir el STREAM de video
+│       ├── timeline.py         # reloj tomado de voice.json
+│       ├── prompts.py          # prompt efectivo versionado (v1)
+│       ├── references.py       # conjunto de referencias versionado
+│       ├── schemas.py          # contrato de media.json
+│       ├── providers/          # base, openai_images, runway, mock
+│       ├── planner.py          # preflight `media plan` e identidad de cache
+│       ├── storage.py          # tablas de medios, cache y tareas remotas
+│       ├── admission.py        # puerta de entrada del modulo 4 (medios)
+│       └── pipeline.py
 └── tests/
 ```
 
@@ -615,10 +655,23 @@ source .venv/bin/activate
 pytest -q
 ```
 
-Resultado de la ejecución en este entorno: **257 pruebas correctas y 1 saltada**
-(Python 3.12, sin red y sin claves). La saltada es la decodificación MP3, que
-necesita FFmpeg y aquí no está instalado; el salto se informa explícitamente y
-**no equivale a haberla pasado**.
+Resultado de la ejecución en este entorno: **361 pruebas correctas y 5
+saltadas** (Python 3.12, sin red y sin claves). Las cinco saltadas necesitan
+FFmpeg/`ffprobe`, que aquí no están instalados: la decodificación MP3 del
+módulo 2 y las cuatro de medición de vídeo del módulo 3
+(`tests/test_media_video.py`). El salto se informa explícitamente con
+`pytest -rs` y **no equivale a haberlas pasado**.
+
+Las pruebas se dividen en tres categorías que este README no mezcla:
+
+| Categoría | Qué ejercita | Estado |
+| --- | --- | --- |
+| **Local** | Lógica, esquemas, aritmética, validadores, proveedor simulado, Pillow. | Ejecutadas. |
+| **Transporte simulado** | El cliente HTTP real (SDK de `openai`, `httpx2` con `MockTransport`) contra un transporte de prueba: se captura la solicitud y se comprueban ruta, cabeceras y cuerpo. **No hay red.** | Ejecutadas. |
+| **Integración externa** | Las APIs reales de OpenAI, ElevenLabs y Runway. | **Pendiente**: sin credenciales ni red en este entorno. Ver §13 (texto y voz) y §16.1 (imagen y vídeo). |
+
+Una prueba de transporte simulado **no es** integración externa y este proyecto
+no la presenta como tal.
 
 Qué se cubre, además de las unidades sueltas:
 
@@ -655,6 +708,39 @@ Qué se cubre, además de las unidades sueltas:
 - Que `experiment_tag` y la biblia visual los aporta la aplicación (no están
   siquiera en el esquema de respuesta del proveedor) y que `actual_duration_s`
   sigue siendo `null`.
+
+Del **módulo 3** (`tests/test_media_*.py`), además:
+
+- **Capacidades**: un tamaño, una calidad, un formato o un número de referencias
+  que el modelo no admite se rechazan **antes** de enviar nada; una duración que
+  ninguna opción cubre da `duration_not_supported` en vez de un clip corto.
+- **Imagen**: decodificación y verificación reales con Pillow, geometría
+  `contain`/`crop` sin deformar, compresión que respeta un límite de bytes, hoja
+  de contacto y placeholders deterministas por semilla.
+- **Payload de los adaptadores reales sobre transporte simulado**: ruta, método
+  y cuerpo de `/v1/images/generations`; el multipart de `/v1/images/edits` con
+  un campo `image[]` por referencia; el cuerpo de `/v1/image_to_video` con su
+  data URI; las cabeceras `Authorization` y `X-Runway-Version`; el sondeo de
+  `GET /v1/tasks/{id}`. **Sin red.**
+- **Preflight**: `media plan` no llama a nadie, detecta credenciales y
+  herramientas que faltan y anticipa los aciertos de caché.
+- **Un clip nunca se sustituye por una imagen**: ante error, falta de
+  credenciales o presupuesto agotado el trabajo queda parcial y **no** se
+  publica `media.json`.
+- **Presupuesto por trabajo**: reanudar no reinicia el contador; `outcome_unknown`
+  bloquea la repetición automática.
+- **Tareas remotas**: recorrido completo hasta `waiting_remote` con **código
+  11** y sin manifiesto; el `task_id` del resumen es el real; y una segunda
+  invocación que **retoma esa misma tarea** con un solo POST en total.
+- **Caché por identidad**: mismo contenido, mismo asset; cambiar un límite
+  administrativo no lo invalida; un archivo ya validado se adopta tras una caída.
+- **Admisión del trío**: cobertura completa, hashes, rutas fuera del paquete
+  (incluidos enlaces simbólicos), archivos que no decodifican, reloj que no
+  coincide con la voz y los tres veredictos separados.
+- **Medición de vídeo con `ffprobe`** (`tests/test_media_video.py`): se mide el
+  **stream de vídeo**, no la pista de audio ni el contenedor, y se comprueba la
+  integridad decodificando. **Estas cuatro se saltan aquí** por falta de
+  `ffprobe`; el salto se informa y no equivale a pasarlas.
 
 ### Ejemplos de salida
 
@@ -818,6 +904,27 @@ la validación.
     revisión humana.
 15. **No se promete facturación exactamente una vez** en voz: un timeout puede
     haber consumido crédito, así que la reserva se cuenta igual.
+16. **La ruta real de imagen y vídeo nunca se ha ejecutado** contra OpenAI
+    Images ni Runway. Está cubierta con transporte HTTP simulado (rutas,
+    cabeceras, multipart, cuerpos, errores, sondeo de tareas), que verifica
+    **lo que sale de esta máquina** y nada más. Ver §16.1.
+17. **Las cuatro pruebas de medición de vídeo se saltan aquí**: `ffprobe` no
+    está instalado. Se saltan explícitamente y eso **no equivale a pasarlas**.
+18. **Las imágenes simuladas no son imágenes generadas.** Son placeholders
+    dibujados con Pillow, rotulados `SIMULACION - NO ES UNA IMAGEN REAL`. Sirven
+    para ejercitar el recorrido, los hashes y la aritmética; no dicen nada sobre
+    la calidad de ningún modelo.
+19. **Nada mide la calidad visual ni la continuidad.** Se persiguen con
+    referencias versionadas y prompts, pero no se verifican. `visual_review`
+    empieza en `not_performed` y solo lo cambia una persona.
+20. **Las duraciones de vídeo del proveedor son discretas.** Se pide la más
+    corta que cubre la escena y sobran fotogramas por diseño; el recorte es del
+    módulo 4. Si ninguna duración admitida cubre la escena, el trabajo lo dice
+    en vez de entregar un clip corto.
+21. **No se promete facturación exactamente una vez** en medios. Una tarea de
+    vídeo puede consumir crédito aunque la respuesta se pierda: el presupuesto
+    se reserva **antes** de enviar y un `outcome_unknown` **bloquea** la
+    repetición automática en lugar de arriesgar un cobro doble.
 
 ---
 
@@ -1135,3 +1242,303 @@ viralgen voice generate --script <ruta/script.json> --voice-key v-001 --mock --s
 # Repetir EXACTAMENTE el mismo comando devuelve "reused": true y "requests_new": 0.
 viralgen voice generate --script <ruta/script.json> --voice-key v-001 --mock --seed 5
 ```
+
+---
+
+## 16. Módulo 3: medios visuales
+
+Toma un `script.json` **admitido** y su `voice.json` **admitido** y produce los
+medios: una imagen por escena, un clip por cada escena `asset_type: video`, un
+conjunto versionado de referencias de personaje, una hoja de contacto y el
+manifiesto `media.json`. Contrato completo para quien monte:
+[`docs/contrato_modulo_3_visuales.md`](docs/contrato_modulo_3_visuales.md).
+
+**No monta, no mezcla audio, no pone subtítulos y no publica.** Termina en
+archivos locales más un manifiesto.
+
+### Decisión de contrato
+
+Igual que en el módulo 2: ni `script.json` ni `voice.json` se tocan. Los medios
+viven en un manifiesto lateral `media.json` (`document_type="media_manifest"`,
+`schema_version="1.0"`), vinculado por `job_id`, `voice_run_id` y el **SHA-256
+de los bytes exactos** de los dos archivos de entrada.
+
+`voice.json` es la **única fuente de tiempos medidos**. El módulo 3 no mide
+audio y no calcula duraciones propias: copia el reloj (`sample_rate_hz`,
+`total_samples`) y los límites por escena en **muestras**, y deriva los segundos
+al exportar.
+
+### Uso
+
+```bash
+# Preflight: qué se va a pedir, a quién y cuánto cuesta. NO llama a nadie.
+viralgen media plan --script <script.json> --voice <voice.json> --mock
+
+# Simulación: sin claves, sin red y sin FFmpeg (solo imágenes).
+viralgen media generate --script <script.json> --voice <voice.json> \
+  --media-key demo-001 --mock --seed 2026
+
+# Real (requiere OPENAI_API_KEY + OPENAI_IMAGE_MODEL; Runway solo si hay clips).
+viralgen media generate --script <script.json> --voice <voice.json> \
+  --media-key real-001
+
+# Auditoría del trío guion + voz + medios. No genera nada ni llama a nadie.
+viralgen media validate --script <script.json> --voice <voice.json> \
+  --manifest <media.json>
+
+# Contrato exportable.
+viralgen media schema --output schema/media.schema.json
+```
+
+`media plan` es el preflight y contesta antes de gastar: modelo de imagen y de
+vídeo, tamaño por escena, duración solicitada por clip, caracteres de cada
+prompt, qué hay ya en caché (`image_cache_hit`, `video_cache_hit`), qué
+credenciales faltan (`missing_credentials`), qué herramientas faltan
+(`missing_tools`), disco libre, presupuestos e incidencias. `can_run` dice si
+merece la pena invocar `generate`.
+
+### Proveedores implementados
+
+Tres adaptadores, ni uno más:
+
+| Proveedor | Para qué | Endpoints usados |
+| --- | --- | --- |
+| **OpenAI Images** | Imágenes de escena y referencias. | `POST /v1/images/generations` (JSON, sin referencias) y `POST /v1/images/edits` (multipart, un campo `image[]` por referencia). |
+| **Runway** | Clips a partir de una imagen inicial. | `POST /v1/image_to_video` (crea la tarea) y `GET /v1/tasks/{id}` (consulta esa tarea). Cabeceras `Authorization: Bearer …` y `X-Runway-Version`. |
+| **Simulado** | Recorrido completo sin red, sin claves y sin coste. | — |
+
+Modelos: los identificadores **los aporta la configuración**, no el código.
+`OPENAI_IMAGE_MODEL` es independiente de `OPENAI_MODEL` (el del guion): un
+modelo de texto no sirve para imágenes y el proyecto **no lo sustituye en
+silencio**. Los puntos de partida compatibles con las referencias consultadas
+son `gpt-image-1` y `gen4_turbo`; se declaran en `.env.example` **sin valor por
+defecto** para que nadie los cambie sin darse cuenta.
+
+`src/viralgen/media/capabilities.py` recoge lo que cada modelo admite (tamaños,
+calidades, formatos, número de referencias, duraciones y relaciones de aspecto)
+y **rechaza una petición imposible antes de enviarla**: no se gasta una llamada
+para que el servidor diga que no.
+
+### Un clip nunca se sustituye por una imagen
+
+Si una escena pide `asset_type: video` y el clip no se puede producir —error,
+falta de credenciales, presupuesto agotado, duración no admitida— el trabajo
+queda **parcial** y **no se publica `media.json`**. Nunca se entrega una imagen
+en su lugar, porque el manifiesto aparentaría cubrir una escena que no está
+cubierta. El resumen lo dice con `partial: true`, `manifest_path: null`,
+`pending_scenes` y `available_paths`; el trabajo sigue en SQLite y se retoma con
+el mismo `--media-key`.
+
+Tampoco se resuelve al revés: **no se reescribe un guion ya vinculado a un
+`voice.json` para convertir sus escenas `video` en `image`**. Eso rompería el
+hash y falsearía lo que se pidió.
+
+### Tareas asíncronas y facturación
+
+Los clips son tareas remotas. El adaptador crea la tarea, guarda su `task_id`
+**real** y consulta el estado con un intervalo mínimo. Si la espera local se
+agota, el comando termina con `media_status: waiting_remote` y **código 11**:
+ni éxito ni fallo. Volver a invocar el mismo `--media-key` **retoma esa misma
+tarea**; no se crea otra y **no se inventa ningún `task_id`**.
+
+Ante un resultado desconocido (`outcome_unknown`: un timeout después de enviar,
+una conexión cortada) la repetición automática queda **bloqueada**: puede haber
+consumido crédito. El presupuesto se reserva y se persiste **antes** de enviar,
+y se cuenta **por trabajo, no por proceso**: reiniciar no reinicia el contador.
+**No se promete facturación exactamente una vez.**
+
+### Qué se mide y qué se declara
+
+Todo número del manifiesto dice de dónde sale, con un campo `*_source`:
+
+| Valor | Significado |
+| --- | --- |
+| `local_measurement` | Medido aquí abriendo el archivo: Pillow para imágenes, `ffprobe` para clips. |
+| `provider_reported` | Declarado por el proveedor. Informativo, no comprobado. |
+| `montage_decision` | Decisión del proyecto, no un hecho del archivo. |
+
+Las imágenes se **decodifican y verifican**: el tipo sale del contenido, no de
+la extensión ni de lo que diga el proveedor. Los clips se miden con `ffprobe`
+sobre el **stream de vídeo** —nunca sobre la pista de audio ni el campo de
+duración del contenedor— y se comprueba su integridad decodificándolos. Una
+imagen **nunca** se renombra a `.mp4` y no se inventa ningún resultado de
+`ffprobe`: si `ffprobe` no está, las pruebas que lo necesitan **se saltan** y se
+informa del salto.
+
+### Geometría: contener o recortar, nunca deformar
+
+El material principal se entrega **como lo devolvió el proveedor**, medido, más
+un **plan** de presentación por escena (`policy`, `target_*`, `pad_color`,
+`applied: false`). El reencuadre es del módulo 4, que tiene el contexto del
+montaje. Las políticas son `contain` (relleno lateral) y `crop` (recorte):
+**no existe la opción de estirar**. La única geometría ya aplicada está en
+`assets[].transformation` de los derivados, por ejemplo la semilla que se envía
+a Runway, y ahí sí está hecha y no debe repetirse.
+
+### Referencias de personaje versionadas
+
+El conjunto de referencias es **persistente y versionado**, y se **fija al
+empezar** el trabajo: todas las escenas reciben las mismas, para que la
+continuidad no dependa del orden de generación. Su versión se deriva del hash de
+la biblia de serie: si cambia la descripción de un personaje, **nace una versión
+nueva** en vez de reutilizar una referencia que ya no corresponde.
+
+Cada entrada lleva procedencia declarada: `generated` (creada aquí) o `imported`
+(aportada como archivo local, con `rights_declaration`). El proyecto **no
+descarga imágenes de terceros**.
+
+Esto persigue la continuidad; **no la verifica**. Nada en el manifiesto mide si
+el personaje es reconocible entre escenas.
+
+### Identidad, caché e idempotencia
+
+`--media-key` es la clave de idempotencia del **trabajo**: repetir el mismo
+comando devuelve `reused: true` sin gastar llamadas. La **caché de assets** es
+distinta: un asset se identifica por su contenido —prompt efectivo, referencias
+por hash, operación, proveedor, modelo, parámetros y modo—, no por la ejecución
+que lo pidió. Los límites administrativos (presupuestos, tamaños) quedan fuera
+de esa identidad a propósito: cambiarlos no debe invalidar un asset.
+
+Los archivos entran en el paquete por **enlace duro** desde la caché, de forma
+que borrar el índice de la caché no deja el paquete sin medios. Y como la ruta
+del archivo en caché se deriva de su identidad, una caída entre escribir el
+archivo y anotar el punto de control **adopta el archivo ya validado** en vez de
+regenerarlo.
+
+### Admisión para el módulo 4: tres veredictos separados
+
+Igual que en voz, y por la misma razón:
+
+| Campo | Qué autoriza |
+| --- | --- |
+| `contract_valid` | Nada. Los tres archivos se leen, cumplen su esquema, sus vínculos cuadran y cada archivo referenciado **decodifica**. |
+| `admissible_for_preview` | Revisión y CI de recorridos de **prueba**. Ignora **únicamente** `origin_checks` (`guion_real`, `voz_real`, `medios_reales`). |
+| `admissible_for_assembly` | **Montar.** Es el que debe leer el módulo 4. |
+
+`--allow-simulation` elige solo el modo y su código de salida: **nunca cambia
+`checks`** ni convierte `admissible_for_assembly` en `true`. El validador
+revalida desde los bytes reales y **no se fía** del booleano guardado en el
+manifiesto. Comprueba además que ninguna ruta se salga del paquete, incluidos
+los escapes por enlace simbólico.
+
+`media_status: ready` es preparación **técnica**. La revisión artística es otra
+cosa y vive en `visual_review`, que empieza en `not_performed`: **nadie ha
+mirado las imágenes**. La hoja de contacto existe para esa mirada humana y **no
+forma parte del montaje**.
+
+### Ejemplo simulado incluido
+
+`examples/visuales_simulados/` contiene un recorrido completo producido por el
+**proveedor simulado** (`--mock --seed 2026`): `script.json`, `voz/voice.json`
+con su audio y `medios/media.json` con las cinco imágenes de escena, la
+referencia de personaje y la hoja de contacto (~2,7 MB en total, de los cuales
+2,4 MB son el WAV de la narración). Se valida solo:
+
+```bash
+viralgen media validate \
+  --script examples/visuales_simulados/script.json \
+  --voice examples/visuales_simulados/voz/voice.json \
+  --manifest examples/visuales_simulados/medios/media.json \
+  --allow-simulation
+```
+
+Resultado real: `contract_valid: true`, `admissible_for_preview: true`,
+`admissible_for_assembly: false`, `preview_reasons: []` y `reasons` con los tres
+motivos de origen. Duración medida: 611 272 muestras / 24 000 Hz = 25,469667 s,
+que coincide con la suma de las cinco escenas. **Eso verifica la aritmética, los
+hashes y la cobertura, no la calidad de ninguna imagen.**
+
+**Por qué un paquete nuevo y no el ejemplo que ya había**:
+`examples/ejemplo_cuento_infantil.json` tiene escenas `asset_type: video`, y un
+clip **no se sustituye por una imagen** (ver arriba). Generarlo aquí exigiría
+`ffprobe`, que no está instalado, así que el trabajo habría quedado parcial y
+sin manifiesto —que es el comportamiento correcto, pero no sirve de ejemplo de
+`media.json`—. Se generó por eso un guion corto de 25 s **solo de imágenes**,
+con el catálogo de perfiles `examples/perfiles_solo_imagenes.json`
+(`video_scene_budget: 0`, una decisión de configuración legítima, tomada
+**antes** de generar el guion y no un guion existente reescrito).
+
+Las imágenes son **placeholders dibujados con Pillow**, rotulados
+`SIMULACION - NO ES UNA IMAGEN REAL`. No son salidas de ningún modelo
+generativo.
+
+### Reproducir ese ejemplo
+
+```bash
+export VIRALGEN_DATA_DIR=/tmp/viralgen-ejemplo
+export VIRALGEN_PROFILES_PATH="$PWD/examples/perfiles_solo_imagenes.json"
+
+viralgen generate --profile curiosidades_corto \
+  --topic "por que la cremallera no se suelta" --duration 25 \
+  --source-pack src/viralgen/data/facts_demo.json \
+  --job-key ejemplo-visual --mock --seed 2026
+# El resumen imprime script_path; con él:
+viralgen voice generate --script <script.json> \
+  --voice-key ejemplo-visual-voz --mock --seed 2026
+# El resumen imprime manifest_path; con él:
+viralgen media generate --script <script.json> --voice <voice.json> \
+  --media-key ejemplo-visual-001 --mock --seed 2026
+```
+
+### 16.1 Prueba con los proveedores reales de imagen y vídeo (pendiente)
+
+**No se ha ejecutado.** No hay credenciales de OpenAI Images ni de Runway en
+este entorno, `ffprobe` no está instalado y la red está cerrada. Los adaptadores
+están implementados y cubiertos con **transporte HTTP simulado** —que verifica
+ruta, cabeceras, multipart, cuerpo y sondeo de tareas, es decir **lo que sale de
+esta máquina**—, y eso **no demuestra** que los servidores acepten nada.
+
+Recorrido preparado, para ejecutarlo tal cual cuando haya credenciales, red y
+FFmpeg:
+
+```bash
+sudo apt install -y ffmpeg      # aporta ffprobe, necesario para medir clips
+
+# Las claves se introducen fuera del historial del shell.
+read -rs -p "OPENAI_API_KEY: "    OPENAI_API_KEY    && export OPENAI_API_KEY
+read -rs -p "RUNWAYML_API_SECRET: " RUNWAYML_API_SECRET && export RUNWAYML_API_SECRET
+
+# Identificadores EXACTOS de la cuenta real. No hay valores por defecto.
+export OPENAI_IMAGE_MODEL=<modelo de imagenes de tu cuenta>
+export RUNWAY_MODEL=<modelo de video de tu cuenta>
+export RUNWAY_API_VERSION=2024-11-06
+
+# Límites explícitos (son los valores por defecto; se fijan para dejar constancia).
+export VIRALGEN_MEDIA_MAX_GENERATION_ATTEMPTS=24
+export VIRALGEN_MEDIA_MAX_VIDEO_SCENES=2
+export VIRALGEN_MEDIA_MAX_VIDEO_SECONDS=20
+export VIRALGEN_MEDIA_MAX_STATUS_REQUESTS=120
+export VIRALGEN_DATA_DIR="$PWD/.viralgen"
+
+# 0) Preflight: qué se va a pedir y cuánto. NO llama a nadie.
+viralgen media plan \
+  --script .viralgen/jobs/<job_id>/script.json \
+  --voice  .viralgen/jobs/<job_id>/voice/<voice_run_id>/voice.json
+
+# 1) Medios sobre un guion y una voz REALES ya admitidos (§13).
+viralgen media generate \
+  --script .viralgen/jobs/<job_id>/script.json \
+  --voice  .viralgen/jobs/<job_id>/voice/<voice_run_id>/voice.json \
+  --media-key real-medios-001
+
+# 2) Si sale "waiting_remote" (código 11): repetir el MISMO comando. Retoma la
+#    misma tarea remota por su task_id; no crea otra.
+
+# 3) Auditoría del trío. Aquí es donde debe salir admissible_for_assembly: true.
+viralgen media validate \
+  --script   .viralgen/jobs/<job_id>/script.json \
+  --voice    .viralgen/jobs/<job_id>/voice/<voice_run_id>/voice.json \
+  --manifest .viralgen/jobs/<job_id>/media/<media_run_id>/media.json
+
+# 4) Idempotencia: mismo comando -> "reused": true y 0 intentos nuevos.
+viralgen media generate \
+  --script .viralgen/jobs/<job_id>/script.json \
+  --voice  .viralgen/jobs/<job_id>/voice/<voice_run_id>/voice.json \
+  --media-key real-medios-001
+```
+
+Qué habrá que entregar de esa ejecución: el `media.json` completo, las imágenes
+y los clips, los modelos usados, los `task_id` reales que devuelva Runway, los
+intentos nuevos y totales, los segundos de vídeo reservados, las duraciones
+medidas con `ffprobe` frente a las solicitadas y el resultado de la validación.
+**Hasta entonces, nada de este recorrido se presenta como ejecutado.**

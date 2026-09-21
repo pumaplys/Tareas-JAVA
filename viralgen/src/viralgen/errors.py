@@ -45,6 +45,10 @@ class ExitCode(IntEnum):
     NEEDS_REVIEW = 10
     """Documento exportado y valido, pero con avisos: requiere revision humana."""
 
+    WAITING_REMOTE = 11
+    """Hay una tarea remota en curso. Ni exito ni fallo definitivo: vuelve a
+    invocar el mismo comando para seguir consultando ese mismo task_id."""
+
 
 class ViralgenError(Exception):
     """Base de todos los errores controlados del modulo."""

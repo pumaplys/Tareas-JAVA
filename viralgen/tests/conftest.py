@@ -142,3 +142,85 @@ def run_voice(voice_settings):
         return VoicePipeline(voice_settings, peticion, **kwargs).run()
 
     return _run
+
+
+# ---------------------------------------------------------------------------
+# Modulo 3: medios visuales
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def image_only_profiles(tmp_path: Path) -> Path:
+    """Perfiles con `video_scene_budget: 0`.
+
+    Es configuracion LEGITIMA del modulo 1: NO se modifica ningun guion ya
+    vinculado a un voice.json para convertir sus escenas de video en imagen.
+    """
+    from viralgen.profiles import load_profiles
+
+    datos = load_profiles().model_dump(mode="json")
+    for perfil in datos["profiles"]:
+        perfil["video_scene_budget"] = 0
+    destino = tmp_path / "perfiles_solo_imagenes.json"
+    destino.write_text(json.dumps(datos, ensure_ascii=False, indent=2), encoding="utf-8")
+    return destino
+
+
+@pytest.fixture
+def media_settings(tmp_path: Path, image_only_profiles: Path) -> Settings:
+    return Settings(
+        _env_file=None,
+        data_dir=tmp_path / "data",
+        min_free_disk_mb=0,
+        log_level="ERROR",
+        profiles_path=image_only_profiles,
+    )
+
+
+@pytest.fixture
+def media_inputs(media_settings) -> tuple[Path, Path]:
+    """Genera guion y voz simulados coherentes y devuelve sus rutas."""
+    from viralgen.pipeline import JobRequest, Pipeline
+    from viralgen.voice.pipeline import VoiceJobRequest, VoicePipeline
+
+    guion = Pipeline(
+        media_settings,
+        JobRequest(
+            command="generate",
+            profile_id="infantil_cuentos",
+            topic="aprender a compartir",
+            simulation=True,
+            seed=5,
+            job_key="medios-base",
+        ),
+    ).run()
+    assert guion.script_path is not None
+    voz = VoicePipeline(
+        media_settings,
+        VoiceJobRequest(
+            script_path=Path(guion.script_path),
+            voice_key="medios-voz",
+            simulation=True,
+            seed=5,
+        ),
+    ).run()
+    assert voz.manifest_path is not None
+    return Path(guion.script_path), Path(voz.manifest_path)
+
+
+@pytest.fixture
+def run_media(media_settings):
+    """Ejecuta el pipeline de medios simulado."""
+    from viralgen.media.pipeline import MediaJobRequest, MediaPipeline
+
+    def _run(script: Path, voice: Path, **kwargs):
+        peticion = MediaJobRequest(
+            script_path=script,
+            voice_path=voice,
+            media_key=kwargs.pop("media_key", "visual-001"),
+            simulation=kwargs.pop("simulation", True),
+            seed=kwargs.pop("seed", 5),
+        )
+        return MediaPipeline(media_settings, peticion, **kwargs).run()
+
+    return _run

@@ -1,4 +1,4 @@
-# Conjunto exacto resuelto en un venv limpio de Python 3.12 (Ubuntu, 2026-09-20).
+# Conjunto exacto resuelto en un venv limpio de Python 3.12 (Ubuntu, 2026-09-21).
 # Se obtuvo con:
 #   python3.12 -m venv .venv && . .venv/bin/activate
 #   pip install -e ".[dev]" && pip freeze
@@ -11,6 +11,7 @@ pydantic==2.13.5
 pydantic-settings==2.15.0
 pytest==9.1.1
 httpx2==2.13.0
+Pillow==12.3.0
 #
 # Transitivas (las arrastran las anteriores)
 annotated-types==0.8.0
