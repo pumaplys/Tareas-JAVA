@@ -6,14 +6,19 @@ import pytest
 from pydantic import ValidationError
 
 from viralgen.schemas.document import ScriptDocument
-from viralgen.schemas.provider import PROVIDER_MODELS, find_unsupported_keywords
+from viralgen.schemas.provider import PROVIDER_MODELS, find_omitted_keywords
 
 
 @pytest.mark.parametrize("modelo", PROVIDER_MODELS, ids=lambda m: m.__name__)
-def test_esquema_del_proveedor_usa_solo_el_subconjunto_admitido(modelo) -> None:
-    """Structured Outputs no admite minLength/maxLength/format/default."""
-    encontrados = find_unsupported_keywords(modelo.model_json_schema())
-    assert encontrados == [], f"palabras clave no admitidas: {encontrados}"
+def test_el_esquema_del_proveedor_es_conservador(modelo) -> None:
+    """Decision del proyecto: no se envian restricciones de cadena ni defaults.
+
+    Algunas (pattern, ciertos format) SI estan admitidas por la API; se omiten
+    a proposito y se validan en local. La prueba evita que se cuelen por
+    descuido al editar los modelos.
+    """
+    encontrados = find_omitted_keywords(modelo.model_json_schema())
+    assert encontrados == [], f"palabras clave omitidas por decision: {encontrados}"
 
 
 @pytest.mark.parametrize("modelo", PROVIDER_MODELS, ids=lambda m: m.__name__)

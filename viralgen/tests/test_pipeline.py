@@ -15,6 +15,7 @@ from viralgen.errors import (
     ExitCode,
     IdempotencyConflictError,
     ProfileError,
+    ProviderPermanentError,
     WorkerLockedError,
 )
 from viralgen.pipeline import JobRequest, Pipeline
@@ -396,3 +397,147 @@ def test_presupuesto_de_llamadas_por_trabajo(settings) -> None:
     assert resultado.exit_code == ExitCode.PROVIDER
     assert resultado.error_code == "call_budget_exceeded"
     assert resultado.calls["used"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Estados: un borrador nunca se convierte en listo al reutilizarlo
+# ---------------------------------------------------------------------------
+
+
+class ProveedorConAviso(MockProvider):
+    """Elige un gancho que no aparece al principio de la primera escena.
+
+    Produce un aviso (`gancho_no_integrado`), no un fallo estructural, tanto en
+    el guion original como en la reparacion.
+    """
+
+    def generate_structured(self, request, budget):
+        resultado = super().generate_structured(request, budget)
+        if request.stage in {"script", "repair"}:
+            resultado.parsed.selected_hook_id = resultado.parsed.hook_variants[1].hook_id
+        return resultado
+
+
+def _peticion_con_aviso(job_key: str) -> JobRequest:
+    return JobRequest(
+        command="generate",
+        profile_id="infantil_cuentos",
+        topic="aprender a compartir",
+        simulation=True,
+        seed=8,
+        job_key=job_key,
+    )
+
+
+def test_un_borrador_con_avisos_se_conserva_como_needs_review(settings) -> None:
+    resultado = Pipeline(settings, _peticion_con_aviso("aviso"), provider=ProveedorConAviso(8)).run()
+    assert resultado.exit_code == ExitCode.NEEDS_REVIEW
+    assert resultado.status == "needs_review"
+    assert resultado.production_status == "needs_review"
+    assert any("gancho_no_integrado" in aviso for aviso in resultado.warnings)
+    # Existe y se exporta, pero NO habilita la produccion de medios.
+    assert Path(resultado.script_path).is_file()
+    assert resultado.admissible_for_media is False
+
+
+def test_reutilizar_un_borrador_no_borra_los_avisos(settings) -> None:
+    primero = Pipeline(
+        settings, _peticion_con_aviso("aviso-reuso"), provider=ProveedorConAviso(8)
+    ).run()
+    assert primero.production_status == "needs_review"
+
+    segundo = Pipeline(
+        settings, _peticion_con_aviso("aviso-reuso"), provider=ProveedorConAviso(8)
+    ).run()
+    assert segundo.reused is True
+    assert segundo.calls["used"] == 0
+    assert segundo.exit_code == ExitCode.NEEDS_REVIEW
+    assert segundo.production_status == "needs_review"
+    assert segundo.warnings == primero.warnings
+    assert segundo.admissible_for_media is False
+
+    # El archivo reexportado conserva los avisos y el estado.
+    documento = ScriptDocument.model_validate(
+        json.loads(Path(segundo.script_path).read_text(encoding="utf-8"))
+    )
+    assert documento.control.production_status is ProductionStatus.NEEDS_REVIEW
+    assert documento.control.warnings == primero.warnings
+
+
+def test_un_resultado_listo_sigue_sin_ser_admisible_por_ser_simulado(run_pipeline) -> None:
+    resultado = run_pipeline(job_key="listo-simulado")
+    assert resultado.production_status == "ready_for_production"
+    assert resultado.admissible_for_media is False
+    assert any("simulation=true" in motivo for motivo in resultado.admission_reasons)
+
+
+# ---------------------------------------------------------------------------
+# El presupuesto de llamadas es por TRABAJO, no por proceso
+# ---------------------------------------------------------------------------
+
+
+class ProveedorQueFallaElGuion(MockProvider):
+    """Falla de forma permanente al escribir el guion."""
+
+    def generate_structured(self, request, budget):
+        if request.stage == "script":
+            budget.spend(request.stage)
+            raise ProviderPermanentError("fallo simulado al escribir el guion")
+        return super().generate_structured(request, budget)
+
+
+def test_el_presupuesto_no_se_reinicia_al_reanudar(settings) -> None:
+    settings.max_calls_per_job = 2
+    peticion = JobRequest(
+        command="generate",
+        profile_id="infantil_cuentos",
+        topic="compartir",
+        simulation=True,
+        seed=3,
+        job_key="reanudado",
+    )
+
+    primero = Pipeline(settings, peticion, provider=ProveedorQueFallaElGuion(3)).run()
+    assert primero.status == "failed"
+    assert primero.calls["used"] == 2  # ideas + intento de guion
+
+    # Segunda ejecucion: reanuda con los candidatos ya guardados y NO puede
+    # gastar mas, porque el tope es acumulado por trabajo.
+    segundo = Pipeline(settings, peticion, provider=MockProvider(seed=3)).run()
+    assert segundo.status == "failed"
+    assert segundo.error_code == "call_budget_exceeded"
+    assert segundo.calls["used"] == 2
+
+
+def test_la_aplicacion_aporta_biblia_y_experiment_tag(run_pipeline) -> None:
+    """Ni la biblia visual ni experiment_tag los genera el proveedor."""
+    from viralgen.profiles import get_series_bible
+    from viralgen.schemas.provider import ProviderScript
+
+    # El esquema de respuesta del proveedor no tiene esos campos.
+    assert "visual_bible" not in ProviderScript.model_fields
+    assert "experiment_tag" not in ProviderScript.model_fields
+
+    resultado = run_pipeline(job_key="aportes-app")
+    documento = ScriptDocument.model_validate(
+        json.loads(Path(resultado.script_path).read_text(encoding="utf-8"))
+    )
+
+    # La biblia del documento es exactamente la configurada para la serie.
+    biblia = get_series_bible(get_profile("infantil_cuentos").series_bible_id)
+    assert [c.character_id for c in documento.visual_bible.characters] == [
+        c.character_id for c in biblia.characters
+    ]
+    for esperado, obtenido in zip(biblia.characters, documento.visual_bible.characters, strict=True):
+        assert obtenido.description == esperado.description
+        assert obtenido.wardrobe == esperado.wardrobe
+    assert documento.visual_bible.style_prompt == biblia.style_prompt
+    assert documento.visual_bible.negative_prompt == biblia.negative_prompt
+
+    # experiment_tag trazable: version de prompts, proveedor, modelo y perfil.
+    etiqueta = documento.idea.experiment_tag
+    for fragmento in ("v1", "mock", "infantil_cuentos"):
+        assert fragmento.replace("_", "_") in etiqueta
+
+    # El modulo 1 nunca rellena la duracion real.
+    assert documento.video.actual_duration_s is None

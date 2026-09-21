@@ -408,7 +408,9 @@ class MockProvider(TextProvider):
                     character_ids=scene_characters,
                     visual=ProviderSceneVisual(
                         asset_type=_asset_type(index, n_scenes, int(profile["video_scene_budget"])),
-                        image_prompt=_image_prompt(channel, beat, characters, idea),
+                        image_prompt=_image_prompt(
+                            channel, beat, characters, scene_characters
+                        ),
                         motion_prompt=_motion_prompt(beat),
                         continuity_notes=_continuity(channel, index, n_scenes),
                     ),
@@ -710,8 +712,16 @@ def _asset_type(index: int, n_scenes: int, budget: int) -> str:
     return "video" if index in sorted(video_slots)[:budget] else "image"
 
 
-def _image_prompt(channel: str, beat: str, characters: list[dict], idea: dict) -> str:
-    names = ", ".join(str(character["name"]) for character in characters[:2]) or "hero object"
+def _image_prompt(channel: str, beat: str, characters: list[dict], scene_character_ids: list[str]) -> str:
+    """Prompt de escena. Nombra SOLO a los personajes presentes en la escena.
+
+    La ficha de continuidad (aspecto y ropa) la anexa despues la aplicacion
+    desde la biblia de serie, en `assembly.compose_image_prompt`.
+    """
+    presentes = [
+        character for character in characters if character["character_id"] in scene_character_ids
+    ]
+    names = ", ".join(str(character["name"]) for character in presentes) or "hero object"
     if channel == "infantil":
         prompt = (
             f"Storybook forest scene, {names} in a warm clearing, {beat} moment of the story, "

@@ -54,7 +54,7 @@ from .scoring import CandidateEvaluation, HistoryItem, evaluate_candidates, sele
 from .storage import ProcessLock, Storage, iso, utcnow
 from .textutil import sha256_json, sha256_text
 from .timing import words_budget
-from .validation import ValidationReport, validate_document
+from .validation import ValidationReport, check_admission, validate_document
 
 logger = get_logger("pipeline")
 
@@ -105,6 +105,8 @@ class JobOutcome:
     error_code: str | None = None
     error_message: str | None = None
     reused: bool = False
+    admissible_for_media: bool = False
+    admission_reasons: list[str] = field(default_factory=list)
     calls: dict[str, Any] = field(default_factory=dict)
     details: dict[str, Any] = field(default_factory=dict)
 
@@ -118,6 +120,8 @@ class JobOutcome:
             "script_path": self.script_path,
             "ideas_path": self.ideas_path,
             "warnings": self.warnings,
+            "admissible_for_media": self.admissible_for_media,
+            "admission_reasons": self.admission_reasons,
             "reused": self.reused,
             "calls": self.calls,
             "exit_code": int(self.exit_code),
@@ -179,6 +183,10 @@ class Pipeline:
             self.job_id = job["job_id"]
             if reused_outcome is not None:
                 return reused_outcome
+            # MAX_CALLS_PER_JOB es un tope POR TRABAJO, no por proceso: al
+            # reanudar se recupera lo ya gastado en intentos anteriores para
+            # que la suma nunca lo sobrepase.
+            self.budget.used = int(storage.stages(self.job_id).get("calls_used", 0))
 
             needs_research = self._needs_research_outcome(pack_selection)
             if needs_research is not None:
@@ -340,6 +348,7 @@ class Pipeline:
         document = ScriptDocument.model_validate(document_data)
         path = self._export_script(document)
         status = document.control.production_status
+        admission = self._admission(document, export_complete=True)
         return JobOutcome(
             job_id=job["job_id"],
             status=job["status"],
@@ -353,9 +362,23 @@ class Pipeline:
             production_status=status.value,
             script_path=str(path),
             warnings=list(document.control.warnings),
+            admissible_for_media=admission.admissible,
+            admission_reasons=admission.reasons,
             reused=True,
             calls=self.budget.snapshot(),
         )
+
+    def _admission(self, document: ScriptDocument, *, export_complete: bool):
+        """Criterio de admision para consumidores reales.
+
+        Se revalida el documento en local (sin llamar al proveedor) solo para
+        alimentar este criterio: NUNCA reescribe `production_status`. Un
+        borrador con avisos sigue siendo borrador aunque se reexporte.
+        """
+        report = validate_document(
+            document, profile=self.profile, allowed_facts=None, promise=""
+        )
+        return check_admission(document, export_complete=export_complete, report=report)
 
     def _needs_research_outcome(self, selection: FactSelection | None) -> JobOutcome | None:
         """Corta antes de cualquier llamada de pago si faltan fuentes aprobadas."""
@@ -514,6 +537,7 @@ class Pipeline:
         )
 
         path = self._export_script(document)
+        admission = check_admission(document, export_complete=True, report=report)
         return JobOutcome(
             job_id=self.job_id,
             status=job_status.value,
@@ -527,6 +551,8 @@ class Pipeline:
             production_status=production_status.value,
             script_path=str(path),
             warnings=list(document.control.warnings),
+            admissible_for_media=admission.admissible,
+            admission_reasons=admission.reasons,
             calls=self.budget.snapshot(),
             details={
                 "estimated_duration_s": document.video.estimated_duration_s,
@@ -778,6 +804,7 @@ class Pipeline:
         try:
             result = self.provider.generate_structured(request, self.budget)
         except ViralgenError as exc:
+            self.storage.mark_stage(self.job_id, "calls_used", self.budget.used)
             self.storage.log_usage(
                 job_id=self.job_id,
                 stage=stage,
@@ -793,6 +820,7 @@ class Pipeline:
             self.usage.unknown_usage_calls += 1
             raise
         self.usage.add(result.usage)
+        self.storage.mark_stage(self.job_id, "calls_used", self.budget.used)
         self.storage.log_usage(
             job_id=self.job_id,
             stage=stage,

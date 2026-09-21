@@ -790,8 +790,8 @@
           "$ref": "#/$defs/AssetType"
         },
         "image_prompt": {
-          "description": "Prompt autocontenido de imagen: personajes, accion, encuadre, iluminacion.",
-          "maxLength": 600,
+          "description": "Prompt AUTOCONTENIDO de imagen: accion, encuadre e iluminacion de la escena mas la ficha de continuidad (aspecto y ropa) de cada personaje referenciado en character_ids. La aplicacion garantiza esa parte copiandola de la biblia de serie, para que el modulo 3 no dependa de leer visual_bible por separado.",
+          "maxLength": 2000,
           "minLength": 1,
           "title": "Image Prompt",
           "type": "string"

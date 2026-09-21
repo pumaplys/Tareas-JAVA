@@ -23,7 +23,7 @@ from .logging_setup import configure_logging, get_logger
 from .pipeline import JobRequest, Pipeline
 from .profiles import get_profile, load_profiles
 from .schemas.document import ScriptDocument
-from .validation import validate_document
+from .validation import check_admission, validate_document
 
 PROGRAM = "viralgen"
 
@@ -164,6 +164,9 @@ def _run_validate(args: argparse.Namespace, settings: Settings) -> int:
 
     profile = get_profile(document.profile_id, settings.profiles_path)
     report = validate_document(document, profile=profile, allowed_facts=None, promise="")
+    # El archivo se leyo entero y valido contra el esquema, asi que la
+    # exportacion consta como completa para el criterio de admision.
+    admission = check_admission(document, export_complete=True, report=report)
     exit_code = ExitCode.OK
     if report.fatal:
         exit_code = ExitCode.VALIDATION
@@ -178,6 +181,7 @@ def _run_validate(args: argparse.Namespace, settings: Settings) -> int:
             "simulation": document.simulation,
             "declared_production_status": document.control.production_status.value,
             "issues": [issue.to_dict() for issue in report.issues],
+            **admission.to_dict(),
             "exit_code": int(exit_code),
         }
     )

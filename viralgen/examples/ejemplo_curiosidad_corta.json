@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
-  "job_id": "5c2388ef-3ab6-4f29-bf0d-ec9417903f6d",
-  "created_at": "2026-09-20T23:14:19Z",
+  "job_id": "11412b52-6c16-496b-9242-965de0b2ef5d",
+  "created_at": "2026-09-21T02:28:20Z",
   "channel": "curiosidades",
   "profile_id": "curiosidades_corto",
   "language": "es",
@@ -14,7 +14,7 @@
     "production_status": "ready_for_production",
     "warnings": [],
     "prompt_version": "v1",
-    "config_hash": "479e63f52fa461321014e80315051417858a2fbd131497faf7678e367ab7864c",
+    "config_hash": "d9f643051c41f080c30b39376ffa35c0777c4ba6439b2f79d5c32eaf9f1bcb33",
     "source_pack_hash": "70a5a8ca1fb32781e7e2bf3feadbcba7810c8c7e4322c251ccc0697dab3dac8b"
   },
   "idea": {
@@ -82,8 +82,8 @@
       {
         "character_id": "mano_narradora",
         "name": "Mano narradora",
-        "description": "Par de manos adultas de tono neutro, unas cortas y limpias, que entran en cuadro para senalar, girar o sostener el objeto protagonista; nunca se ve el rostro.",
-        "wardrobe": "Punos de camisa gris claro remangados dos vueltas, sin reloj ni anillos."
+        "description": "A pair of adult hands in a neutral skin tone, short clean nails, entering frame to point at, turn or hold the hero object; the face is never shown.",
+        "wardrobe": "Light grey shirt cuffs rolled up twice, no watch and no rings."
       }
     ]
   },
@@ -103,7 +103,7 @@
       ],
       "visual": {
         "asset_type": "video",
-        "image_prompt": "Single everyday object centered on a seamless neutral backdrop, Mano narradora entering frame to point at the detail, hook moment, close-up three quarter angle, soft key light with long shadow, no text in the image",
+        "image_prompt": "Single everyday object centered on a seamless neutral backdrop, Mano narradora entering frame to point at the detail, hook moment, close-up three quarter angle, soft key light with long shadow, no text in the image. Character continuity (series bible): Mano narradora — A pair of adult hands in a neutral skin tone, short clean nails, entering frame to point at, turn or hold the hero object; the face is never shown. Wardrobe: Light grey shirt cuffs rolled up twice, no watch and no rings.",
         "motion_prompt": "slow push-in of about five percent, steady and calm",
         "continuity_notes": "Primera escena: fija paleta, luz y encuadre de referencia para el resto."
       },
@@ -133,7 +133,7 @@
       "character_ids": [],
       "visual": {
         "asset_type": "image",
-        "image_prompt": "Single everyday object centered on a seamless neutral backdrop, Mano narradora entering frame to point at the detail, context moment, close-up three quarter angle, soft key light with long shadow, no text in the image",
+        "image_prompt": "Single everyday object centered on a seamless neutral backdrop, hero object entering frame to point at the detail, context moment, close-up three quarter angle, soft key light with long shadow, no text in the image.",
         "motion_prompt": "slight lateral drift to the right, constant speed",
         "continuity_notes": "Mantiene el objeto protagonista, la paleta y la direccion de la luz de la escena anterior."
       },
@@ -167,7 +167,7 @@
       ],
       "visual": {
         "asset_type": "image",
-        "image_prompt": "Single everyday object centered on a seamless neutral backdrop, Mano narradora entering frame to point at the detail, development moment, close-up three quarter angle, soft key light with long shadow, no text in the image",
+        "image_prompt": "Single everyday object centered on a seamless neutral backdrop, Mano narradora entering frame to point at the detail, development moment, close-up three quarter angle, soft key light with long shadow, no text in the image. Character continuity (series bible): Mano narradora — A pair of adult hands in a neutral skin tone, short clean nails, entering frame to point at, turn or hold the hero object; the face is never shown. Wardrobe: Light grey shirt cuffs rolled up twice, no watch and no rings.",
         "motion_prompt": "gentle parallax with a small tilt down",
         "continuity_notes": "Mantiene el objeto protagonista, la paleta y la direccion de la luz de la escena anterior."
       },
@@ -197,7 +197,7 @@
       "character_ids": [],
       "visual": {
         "asset_type": "video",
-        "image_prompt": "Single everyday object centered on a seamless neutral backdrop, Mano narradora entering frame to point at the detail, resolution moment, close-up three quarter angle, soft key light with long shadow, no text in the image",
+        "image_prompt": "Single everyday object centered on a seamless neutral backdrop, hero object entering frame to point at the detail, resolution moment, close-up three quarter angle, soft key light with long shadow, no text in the image.",
         "motion_prompt": "slow pull-back that reveals the whole scene",
         "continuity_notes": "Mantiene el objeto protagonista, la paleta y la direccion de la luz de la escena anterior."
       },
@@ -229,7 +229,7 @@
       ],
       "visual": {
         "asset_type": "image",
-        "image_prompt": "Single everyday object centered on a seamless neutral backdrop, Mano narradora entering frame to point at the detail, close moment, close-up three quarter angle, soft key light with long shadow, no text in the image",
+        "image_prompt": "Single everyday object centered on a seamless neutral backdrop, Mano narradora entering frame to point at the detail, close moment, close-up three quarter angle, soft key light with long shadow, no text in the image. Character continuity (series bible): Mano narradora — A pair of adult hands in a neutral skin tone, short clean nails, entering frame to point at, turn or hold the hero object; the face is never shown. Wardrobe: Light grey shirt cuffs rolled up twice, no watch and no rings.",
         "motion_prompt": "hold almost still with a very slow breathing zoom",
         "continuity_notes": "Ultima escena: repite el encuadre de la primera con la luz un punto mas calida."
       },
@@ -312,11 +312,11 @@
     "provider": "mock",
     "model": "mock-deterministic-v1",
     "request_ids": [
-      "mock-ideas-b2c93810e907",
-      "mock-script-51cf90c5f433"
+      "mock-ideas-5868a314aef8",
+      "mock-script-4faa729283a1"
     ],
-    "input_tokens": 2111,
-    "output_tokens": 3061,
+    "input_tokens": 2096,
+    "output_tokens": 3060,
     "estimated_cost_usd": null
   }
 }

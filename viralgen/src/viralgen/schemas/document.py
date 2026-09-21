@@ -90,6 +90,9 @@ Identifier = Annotated[
 ShortText = Annotated[str, StringConstraints(min_length=1, max_length=200, strip_whitespace=True)]
 MediumText = Annotated[str, StringConstraints(min_length=1, max_length=600, strip_whitespace=True)]
 LongText = Annotated[str, StringConstraints(min_length=1, max_length=4000, strip_whitespace=True)]
+PromptText = Annotated[str, StringConstraints(min_length=1, max_length=2000, strip_whitespace=True)]
+"""Prompt de imagen. Mas largo que MediumText porque la aplicacion le anexa la
+ficha de continuidad de los personajes que aparecen en la escena."""
 Word = Annotated[str, StringConstraints(min_length=1, max_length=48, strip_whitespace=True)]
 LanguageCode = Annotated[str, StringConstraints(pattern=r"^[a-z]{2}(-[A-Z]{2})?$")]
 HexHash = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
@@ -240,8 +243,13 @@ class VisualBible(StrictModel):
 
 class SceneVisual(StrictModel):
     asset_type: AssetType
-    image_prompt: MediumText = Field(
-        description="Prompt autocontenido de imagen: personajes, accion, encuadre, iluminacion."
+    image_prompt: PromptText = Field(
+        description=(
+            "Prompt AUTOCONTENIDO de imagen: accion, encuadre e iluminacion de la escena "
+            "mas la ficha de continuidad (aspecto y ropa) de cada personaje referenciado "
+            "en character_ids. La aplicacion garantiza esa parte copiandola de la biblia "
+            "de serie, para que el modulo 3 no dependa de leer visual_bible por separado."
+        )
     )
     motion_prompt: MediumText = Field(
         description="Movimiento solicitado, separado del prompt de imagen."

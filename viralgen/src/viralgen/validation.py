@@ -252,7 +252,28 @@ def _check_references(
     claim_ids = {claim.claim_id for claim in document.evidence.claims}
     fact_ids_in_doc = {fact.fact_id for fact in document.evidence.facts}
 
+    characters_by_id = {
+        character.character_id: character for character in document.visual_bible.characters
+    }
+
     for scene in document.scenes:
+        missing_sheets = [
+            character_id
+            for character_id in scene.character_ids
+            if character_id in characters_by_id
+            and not _prompt_describes(scene.visual.image_prompt, characters_by_id[character_id])
+        ]
+        if missing_sheets:
+            issues.append(
+                ValidationIssue(
+                    "prompt_sin_continuidad",
+                    "el prompt de imagen debe ser autocontenido: no describe el aspecto de "
+                    + ", ".join(missing_sheets)
+                    + " (el modulo 3 genera escena a escena y no lee visual_bible aparte)",
+                    "fatal",
+                    f"scenes[{scene.order}].visual.image_prompt",
+                )
+            )
         unknown_chars = sorted(set(scene.character_ids) - character_ids)
         if unknown_chars:
             issues.append(
@@ -347,6 +368,19 @@ def _check_references(
             )
         )
     return issues
+
+
+
+def _prompt_describes(image_prompt: str, character) -> bool:
+    """True si el prompt contiene el aspecto del personaje, no solo su nombre.
+
+    Comprobacion deterministica sobre texto normalizado: se exige que aparezca
+    un fragmento inicial reconocible de la descripcion de la biblia.
+    """
+    huella = normalize_for_compare(character.description)[:40]
+    if not huella:
+        return True
+    return huella in normalize_for_compare(image_prompt)
 
 
 # ---------------------------------------------------------------------------
@@ -705,3 +739,75 @@ def _check_editorial(
             )
         )
     return issues
+
+# ---------------------------------------------------------------------------
+# Criterio de admision para consumidores reales (modulos 2-5)
+# ---------------------------------------------------------------------------
+
+#: Versiones del contrato que un consumidor de esta generacion sabe leer.
+SUPPORTED_SCHEMA_VERSIONS: frozenset[str] = frozenset({"1.0"})
+
+
+@dataclass(frozen=True)
+class AdmissionReport:
+    """Resultado del criterio de admision.
+
+    Un documento con avisos puede conservarse como `needs_review`, pero NUNCA
+    queda habilitado para generar medios automaticamente. La admision exige las
+    cinco condiciones a la vez; basta que falle una para rechazarlo.
+    """
+
+    admissible: bool
+    checks: dict[str, bool]
+    reasons: list[str]
+
+    def to_dict(self) -> dict:
+        return {
+            "admissible_for_media": self.admissible,
+            "checks": dict(self.checks),
+            "reasons": list(self.reasons),
+        }
+
+
+def check_admission(
+    document: ScriptDocument,
+    *,
+    export_complete: bool,
+    report: "ValidationReport | None" = None,
+) -> AdmissionReport:
+    """Aplica el criterio de admision conjunto.
+
+    1. Documento valido: cumple el esquema (ya lo garantiza recibir un
+       `ScriptDocument`) y no tiene ningun problema `fatal` pendiente.
+    2. Version de esquema compatible con el consumidor.
+    3. Exportacion completa: el archivo se escribio entero y se pudo releer.
+    4. `production_status == ready_for_production`.
+    5. `simulation is False`.
+
+    Este modulo NO implementa el modulo 2: solo deja el criterio escrito y
+    ejecutable para que quien conecte voz lo consulte en un unico sitio.
+    """
+    documento_valido = report is None or not report.fatal
+    checks = {
+        "documento_valido": documento_valido,
+        "version_de_esquema_compatible": document.schema_version in SUPPORTED_SCHEMA_VERSIONS,
+        "exportacion_completa": bool(export_complete),
+        "ready_for_production": document.control.production_status
+        is ProductionStatus.READY_FOR_PRODUCTION,
+        "no_es_simulacion": document.simulation is False,
+    }
+    motivos = {
+        "documento_valido": "el documento tiene problemas de integridad sin resolver",
+        "version_de_esquema_compatible": (
+            f"schema_version={document.schema_version} no esta entre las admitidas "
+            f"({', '.join(sorted(SUPPORTED_SCHEMA_VERSIONS))})"
+        ),
+        "exportacion_completa": "la exportacion no consta como completa",
+        "ready_for_production": (
+            f"production_status={document.control.production_status.value}: un borrador con "
+            "avisos se conserva, pero no habilita la produccion automatica de medios"
+        ),
+        "no_es_simulacion": "simulation=true: una salida simulada nunca alimenta produccion",
+    }
+    reasons = [motivos[nombre] for nombre, ok in checks.items() if not ok]
+    return AdmissionReport(admissible=not reasons, checks=checks, reasons=reasons)

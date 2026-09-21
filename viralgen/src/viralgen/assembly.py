@@ -45,7 +45,7 @@ from .schemas.document import (
 )
 from .schemas.provider import ProviderScript
 from .scoring import CandidateEvaluation
-from .textutil import count_words
+from .textutil import count_words, normalize_for_compare
 from .timing import build_timeline
 
 _SLUG_RE = re.compile(r"[^a-z0-9_\-]+")
@@ -65,6 +65,45 @@ def slug_id(value: str, fallback: str) -> str:
     if not slug or not slug[0].isalnum():
         slug = f"{fallback}_{slug}".strip("_-") if slug else fallback
     return slug[:64]
+
+
+#: Etiqueta con la que se anexa la ficha de personaje al prompt de imagen.
+CONTINUITY_LABEL = "Character continuity (series bible):"
+
+
+def character_sheet(character: VisualCharacter) -> str:
+    """Ficha compacta de un personaje, tal y como se anexa al prompt."""
+    return f"{character.name} — {character.description} Wardrobe: {character.wardrobe}"
+
+
+def compose_image_prompt(
+    base_prompt: str,
+    character_ids: list[str],
+    characters_by_id: dict[str, VisualCharacter],
+) -> str:
+    """Hace autocontenido el prompt de imagen de una escena.
+
+    Insertar la biblia visual solo en el documento final NO garantiza que el
+    generador de imagenes la use: el modulo 3 trabaja escena a escena. Por eso
+    la aplicacion copia aqui, de forma determinista, el aspecto y la ropa de
+    cada personaje referenciado en `character_ids`.
+
+    Si el modelo ya incluyo la descripcion del personaje, no se duplica.
+    """
+    base = base_prompt.strip().rstrip(" .")
+    normalized_base = normalize_for_compare(base)
+    fichas: list[str] = []
+    for character_id in character_ids:
+        character = characters_by_id.get(character_id)
+        if character is None:
+            continue  # el validador lo marcara como referencia rota
+        huella = normalize_for_compare(character.description)[:40]
+        if huella and huella in normalized_base:
+            continue
+        fichas.append(character_sheet(character))
+    if not fichas:
+        return f"{base}."
+    return f"{base}. {CONTINUITY_LABEL} " + " | ".join(fichas)
 
 
 @dataclass
@@ -114,6 +153,21 @@ def build_document(script: ProviderScript, ctx: AssemblyContext) -> ScriptDocume
         for index, claim in enumerate(script.claims)
     }
 
+    # La biblia de serie configurada se copia tal cual: el modelo no reinventa
+    # al protagonista entre episodios.
+    bible_characters = [
+        VisualCharacter(
+            character_id=character.character_id,
+            name=character.name,
+            description=character.description,
+            wardrobe=character.wardrobe,
+        )
+        for character in ctx.bible.characters
+    ]
+    characters_by_id = {
+        character.character_id: character for character in bible_characters
+    }
+
     scenes: list[Scene] = []
     for index, (scene, timing) in enumerate(zip(ordered, timeline, strict=True)):
         scenes.append(
@@ -132,7 +186,11 @@ def build_document(script: ProviderScript, ctx: AssemblyContext) -> ScriptDocume
                 ],
                 visual=SceneVisual(
                     asset_type=scene.visual.asset_type,
-                    image_prompt=scene.visual.image_prompt.strip(),
+                    image_prompt=compose_image_prompt(
+                        scene.visual.image_prompt,
+                        [slug_id(identifier, "char") for identifier in scene.character_ids],
+                        characters_by_id,
+                    ),
                     motion_prompt=scene.visual.motion_prompt.strip(),
                     continuity_notes=scene.visual.continuity_notes.strip(),
                 ),
@@ -262,15 +320,7 @@ def build_document(script: ProviderScript, ctx: AssemblyContext) -> ScriptDocume
                 style_prompt=ctx.bible.style_prompt,
                 color_palette=list(ctx.bible.color_palette),
                 negative_prompt=ctx.bible.negative_prompt,
-                characters=[
-                    VisualCharacter(
-                        character_id=character.character_id,
-                        name=character.name,
-                        description=character.description,
-                        wardrobe=character.wardrobe,
-                    )
-                    for character in ctx.bible.characters
-                ],
+                characters=bible_characters,
             ),
             scenes=scenes,
             loop=Loop(

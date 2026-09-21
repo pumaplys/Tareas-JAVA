@@ -1,19 +1,28 @@
 """Modelos que el PROVEEDOR debe devolver (Structured Outputs).
 
-Su JSON Schema viaja a la API, por lo que solo se usan construcciones del
-subconjunto admitido por Structured Outputs:
+Su JSON Schema viaja a la API. Lo que si se usa:
 
 * objetos con ``additionalProperties: false`` y todas las propiedades en
-  ``required`` (el SDK aplica esa transformacion estricta),
+  ``required`` (esa transformacion estricta la aplica el SDK),
 * enums (``Literal``),
 * ``minItems`` / ``maxItems`` en listas,
 * ``minimum`` / ``maximum`` en numeros.
 
-Queda deliberadamente FUERA: ``minLength``/``maxLength`` en cadenas, ``format``,
-valores por defecto y cualquier validador que solo exista en Python. Esos
-limites se aplican despues, en local, al construir el documento final
-(``schemas.document``). Lo que el modelo no decide (duraciones, conteos de
-palabras, hashes, procedencia de las fuentes) tampoco aparece aqui.
+**Decision del proyecto: el esquema enviado es deliberadamente conservador.**
+Se dejan fuera las restricciones de cadena (``minLength``, ``maxLength``,
+``pattern``, ``format``) y los valores por defecto. Esto NO significa que la
+API las prohiba todas: la documentacion oficial admite ``pattern`` y un
+conjunto concreto de valores de ``format``, y describe restricciones
+adicionales para modelos *fine-tuned*. Se omiten aqui por dos razones:
+
+1. el conjunto exacto admitido depende del modelo y de la version de la API,
+   asi que un esquema minimo reduce el riesgo de rechazo por esquema;
+2. esos limites se aplican igualmente en local al construir el documento final
+   (``schemas.document``), que es donde importan para el contrato.
+
+Lo que el modelo no decide (duraciones, conteos de palabras, hashes,
+procedencia de las fuentes, biblia visual, ``experiment_tag``) tampoco aparece
+aqui.
 
 Referencia: https://developers.openai.com/api/docs/guides/structured-outputs
 """
@@ -156,30 +165,32 @@ class ProviderScript(ProviderModel):
 
 
 # ---------------------------------------------------------------------------
-# Comprobacion del subconjunto admitido
+# Comprobacion del esquema conservador
 # ---------------------------------------------------------------------------
 
-#: Palabras clave de JSON Schema que NO enviamos al proveedor.
-UNSUPPORTED_KEYWORDS: frozenset[str] = frozenset(
+#: Palabras clave de JSON Schema que este proyecto decide NO enviar.
+#: Algunas si estan admitidas por la API (vease el docstring del modulo): la
+#: lista fija una decision de diseno, no una prohibicion del proveedor.
+OMITTED_KEYWORDS: frozenset[str] = frozenset(
     {"minLength", "maxLength", "format", "default", "pattern", "contentEncoding"}
 )
 
 
-def find_unsupported_keywords(schema: Any, path: str = "$") -> list[str]:
-    """Devuelve las rutas del esquema que usan palabras clave no admitidas.
+def find_omitted_keywords(schema: Any, path: str = "$") -> list[str]:
+    """Devuelve las rutas del esquema que usan palabras clave omitidas.
 
-    Se usa en los tests para garantizar que los esquemas enviados al proveedor
-    siguen dentro del subconjunto documentado de Structured Outputs.
+    Se usa en los tests para que el esquema enviado al proveedor siga siendo el
+    conservador que documentamos, y que ampliarlo sea una decision deliberada.
     """
     found: list[str] = []
     if isinstance(schema, dict):
         for key, value in schema.items():
-            if key in UNSUPPORTED_KEYWORDS:
+            if key in OMITTED_KEYWORDS:
                 found.append(f"{path}.{key}")
-            found.extend(find_unsupported_keywords(value, f"{path}.{key}"))
+            found.extend(find_omitted_keywords(value, f"{path}.{key}"))
     elif isinstance(schema, list):
         for index, value in enumerate(schema):
-            found.extend(find_unsupported_keywords(value, f"{path}[{index}]"))
+            found.extend(find_omitted_keywords(value, f"{path}[{index}]"))
     return found
 
 
@@ -202,6 +213,6 @@ __all__ = [
     "ProviderSceneCaptions",
     "ProviderSceneVisual",
     "ProviderScript",
-    "UNSUPPORTED_KEYWORDS",
-    "find_unsupported_keywords",
+    "OMITTED_KEYWORDS",
+    "find_omitted_keywords",
 ]

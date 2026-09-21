@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
-  "job_id": "606377e8-4c10-4743-b52c-bed9b28d31bc",
-  "created_at": "2026-09-20T23:14:18Z",
+  "job_id": "c803e08e-e615-4212-a3d7-af17b6fc7a75",
+  "created_at": "2026-09-21T02:28:19Z",
   "channel": "infantil",
   "profile_id": "infantil_cuentos",
   "language": "es",
@@ -13,7 +13,7 @@
     "production_status": "ready_for_production",
     "warnings": [],
     "prompt_version": "v1",
-    "config_hash": "8f3a22e6c31ab210a58c124dee080234a0272908d4304868d22e0f848f2cbd75",
+    "config_hash": "a9b7079da7780c59bf1a043d428bb6dc4d9a3e38dfd8f62efefb0875030789d1",
     "source_pack_hash": null
   },
   "idea": {
@@ -81,20 +81,20 @@
       {
         "character_id": "lumi",
         "name": "Lumi",
-        "description": "Zorrita joven de pelaje naranja claro con punta de la cola color crema, orejas grandes y redondeadas, ojos ambar muy expresivos, estatura pequena y postura curiosa.",
-        "wardrobe": "Bufanda corta de punto verde musgo y una mochila de tela beige con un boton de madera."
+        "description": "Young fox with pale orange fur and a cream-tipped tail, large rounded ears, very expressive amber eyes, small build and a curious upright posture.",
+        "wardrobe": "Short moss-green knitted scarf and a beige cloth backpack with a wooden button."
       },
       {
         "character_id": "tobi",
         "name": "Tobi",
-        "description": "Erizo regordete de puas marron oscuro con puntas claras, hocico gris, cejas expresivas y andar lento y tranquilo.",
-        "wardrobe": "Chaleco de pana azul con dos bolsillos delanteros y una hoja seca prendida como broche."
+        "description": "Chubby hedgehog with dark brown quills tipped in cream, grey snout, expressive brows and a slow, calm walk.",
+        "wardrobe": "Blue corduroy vest with two front pockets and a dry leaf pinned as a brooch."
       },
       {
         "character_id": "nube",
         "name": "Nube",
-        "description": "Buho blanco y gris de plumaje mullido, cabeza redonda, ojos grandes color miel; hace de voz serena que ayuda a nombrar lo que se siente.",
-        "wardrobe": "Pequenas gafas redondas de montura dorada apoyadas en el pico."
+        "description": "White and grey owl with fluffy plumage, round head and large honey-coloured eyes; the calm voice that helps name what the others feel.",
+        "wardrobe": "Small round glasses with a golden frame resting on the beak."
       }
     ]
   },
@@ -114,7 +114,7 @@
       ],
       "visual": {
         "asset_type": "video",
-        "image_prompt": "Storybook forest scene, Lumi, Tobi in a warm clearing, hook moment of the story, medium shot at eye level, soft morning light from the left, gentle rounded shapes, no text in the image",
+        "image_prompt": "Storybook forest scene, Lumi in a warm clearing, hook moment of the story, medium shot at eye level, soft morning light from the left, gentle rounded shapes, no text in the image. Character continuity (series bible): Lumi — Young fox with pale orange fur and a cream-tipped tail, large rounded ears, very expressive amber eyes, small build and a curious upright posture. Wardrobe: Short moss-green knitted scarf and a beige cloth backpack with a wooden button.",
         "motion_prompt": "slow push-in of about five percent, steady and calm",
         "continuity_notes": "Primera escena: fija paleta, luz y encuadre de referencia para el resto."
       },
@@ -146,7 +146,7 @@
       ],
       "visual": {
         "asset_type": "image",
-        "image_prompt": "Storybook forest scene, Lumi, Tobi in a warm clearing, context moment of the story, medium shot at eye level, soft morning light from the left, gentle rounded shapes, no text in the image",
+        "image_prompt": "Storybook forest scene, Tobi in a warm clearing, context moment of the story, medium shot at eye level, soft morning light from the left, gentle rounded shapes, no text in the image. Character continuity (series bible): Tobi — Chubby hedgehog with dark brown quills tipped in cream, grey snout, expressive brows and a slow, calm walk. Wardrobe: Blue corduroy vest with two front pockets and a dry leaf pinned as a brooch.",
         "motion_prompt": "slight lateral drift to the right, constant speed",
         "continuity_notes": "Mantiene los personajes, la paleta y la direccion de la luz de la escena anterior."
       },
@@ -178,7 +178,7 @@
       ],
       "visual": {
         "asset_type": "image",
-        "image_prompt": "Storybook forest scene, Lumi, Tobi in a warm clearing, development moment of the story, medium shot at eye level, soft morning light from the left, gentle rounded shapes, no text in the image",
+        "image_prompt": "Storybook forest scene, Nube in a warm clearing, development moment of the story, medium shot at eye level, soft morning light from the left, gentle rounded shapes, no text in the image. Character continuity (series bible): Nube — White and grey owl with fluffy plumage, round head and large honey-coloured eyes; the calm voice that helps name what the others feel. Wardrobe: Small round glasses with a golden frame resting on the beak.",
         "motion_prompt": "gentle parallax with a small tilt down",
         "continuity_notes": "Mantiene los personajes, la paleta y la direccion de la luz de la escena anterior."
       },
@@ -210,7 +210,7 @@
       ],
       "visual": {
         "asset_type": "image",
-        "image_prompt": "Storybook forest scene, Lumi, Tobi in a warm clearing, development moment of the story, medium shot at eye level, soft morning light from the left, gentle rounded shapes, no text in the image",
+        "image_prompt": "Storybook forest scene, Lumi in a warm clearing, development moment of the story, medium shot at eye level, soft morning light from the left, gentle rounded shapes, no text in the image. Character continuity (series bible): Lumi — Young fox with pale orange fur and a cream-tipped tail, large rounded ears, very expressive amber eyes, small build and a curious upright posture. Wardrobe: Short moss-green knitted scarf and a beige cloth backpack with a wooden button.",
         "motion_prompt": "gentle parallax with a small tilt down",
         "continuity_notes": "Mantiene los personajes, la paleta y la direccion de la luz de la escena anterior."
       },
@@ -242,7 +242,7 @@
       ],
       "visual": {
         "asset_type": "image",
-        "image_prompt": "Storybook forest scene, Lumi, Tobi in a warm clearing, development moment of the story, medium shot at eye level, soft morning light from the left, gentle rounded shapes, no text in the image",
+        "image_prompt": "Storybook forest scene, Tobi in a warm clearing, development moment of the story, medium shot at eye level, soft morning light from the left, gentle rounded shapes, no text in the image. Character continuity (series bible): Tobi — Chubby hedgehog with dark brown quills tipped in cream, grey snout, expressive brows and a slow, calm walk. Wardrobe: Blue corduroy vest with two front pockets and a dry leaf pinned as a brooch.",
         "motion_prompt": "gentle parallax with a small tilt down",
         "continuity_notes": "Mantiene los personajes, la paleta y la direccion de la luz de la escena anterior."
       },
@@ -274,7 +274,7 @@
       ],
       "visual": {
         "asset_type": "video",
-        "image_prompt": "Storybook forest scene, Lumi, Tobi in a warm clearing, resolution moment of the story, medium shot at eye level, soft morning light from the left, gentle rounded shapes, no text in the image",
+        "image_prompt": "Storybook forest scene, Nube in a warm clearing, resolution moment of the story, medium shot at eye level, soft morning light from the left, gentle rounded shapes, no text in the image. Character continuity (series bible): Nube — White and grey owl with fluffy plumage, round head and large honey-coloured eyes; the calm voice that helps name what the others feel. Wardrobe: Small round glasses with a golden frame resting on the beak.",
         "motion_prompt": "slow pull-back that reveals the whole scene",
         "continuity_notes": "Mantiene los personajes, la paleta y la direccion de la luz de la escena anterior."
       },
@@ -307,7 +307,7 @@
       ],
       "visual": {
         "asset_type": "image",
-        "image_prompt": "Storybook forest scene, Lumi, Tobi in a warm clearing, close moment of the story, medium shot at eye level, soft morning light from the left, gentle rounded shapes, no text in the image",
+        "image_prompt": "Storybook forest scene, Lumi, Tobi in a warm clearing, close moment of the story, medium shot at eye level, soft morning light from the left, gentle rounded shapes, no text in the image. Character continuity (series bible): Lumi — Young fox with pale orange fur and a cream-tipped tail, large rounded ears, very expressive amber eyes, small build and a curious upright posture. Wardrobe: Short moss-green knitted scarf and a beige cloth backpack with a wooden button. | Tobi — Chubby hedgehog with dark brown quills tipped in cream, grey snout, expressive brows and a slow, calm walk. Wardrobe: Blue corduroy vest with two front pockets and a dry leaf pinned as a brooch.",
         "motion_prompt": "hold almost still with a very slow breathing zoom",
         "continuity_notes": "Ultima escena: repite el encuadre de la primera con la luz un punto mas calida."
       },
@@ -355,11 +355,11 @@
     "provider": "mock",
     "model": "mock-deterministic-v1",
     "request_ids": [
-      "mock-ideas-c26d538bfb9e",
-      "mock-script-5a119f25e30e"
+      "mock-ideas-760cbaac196a",
+      "mock-script-15e757fce514"
     ],
-    "input_tokens": 1966,
-    "output_tokens": 3261,
+    "input_tokens": 1932,
+    "output_tokens": 3252,
     "estimated_cost_usd": null
   }
 }

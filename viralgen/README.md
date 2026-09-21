@@ -142,6 +142,38 @@ real**.
 
 ---
 
+### El esquema que se envía realmente al proveedor
+
+El proveedor real usa `client.responses.parse(text_format=<modelo Pydantic>)`.
+El SDK deriva de ese modelo un `json_schema` estricto: pone
+`additionalProperties: false` en cada objeto, mete **todas** las propiedades en
+`required` (los campos opcionales viajan como unión con `null`, no se omiten) y
+elimina los `default`.
+
+**El esquema que enviamos es deliberadamente conservador**: no lleva
+restricciones de cadena (`minLength`, `maxLength`, `pattern`, `format`) ni
+valores por defecto. Esto **no** quiere decir que la API las prohíba todas: la
+[documentación oficial](https://developers.openai.com/api/docs/guides/structured-outputs)
+admite `pattern` y un conjunto concreto de valores de `format`, y describe
+restricciones adicionales para modelos *fine-tuned*. Se omiten por decisión
+propia, por dos motivos:
+
+1. el conjunto admitido depende del modelo y de la versión de la API, y un
+   esquema mínimo reduce el riesgo de rechazo;
+2. esos límites se aplican igualmente **en local** al construir el documento
+   final (`schemas/document.py`), que es donde importan para el contrato.
+
+La decisión está fijada por pruebas (`tests/test_schemas.py` y
+`tests/test_openai_payload.py`), de modo que ampliar el esquema sea deliberado.
+
+`tests/test_openai_payload.py` instancia el **SDK real** con un transporte HTTP
+simulado (`httpx2.MockTransport`) y captura la solicitud: comprueba el endpoint,
+`text.format.type=json_schema`, `strict=true`, `required`,
+`additionalProperties`, el tratamiento de los campos *nullable*, la ausencia de
+`default` y que no se envía `temperature`. **Esa prueba no demuestra que el
+servidor acepte el esquema**: solo verifica lo que sale de esta máquina. La
+confirmación definitiva requiere una llamada real (ver §14).
+
 ## 4. Perfiles editoriales
 
 Se definen en `src/viralgen/data/profiles.json` y se pueden editar sin tocar
@@ -179,6 +211,24 @@ personajes de franquicias y sin llamadas a comentar o comprar.
 inserta esa biblia en el documento**: el modelo no puede reinventar al
 protagonista entre episodios. Los prompts por escena piden explícitamente
 ausencia de texto y marcas de agua; los rótulos se añaden en montaje (módulo 4).
+
+**Continuidad autocontenida en cada `image_prompt`.** Insertar la biblia solo
+en `visual_bible` no garantiza que el generador de imágenes la use: el módulo 3
+trabaja escena a escena. Por eso:
+
+1. la biblia relevante (estilo, paleta, `negative_prompt` y fichas de
+   personaje) viaja al proveedor en el bloque de datos de la etapa de guion
+   (`Pipeline._request_script`, claves `series_bible` y `characters`);
+2. al ensamblar, la aplicación **copia el aspecto y la ropa** de cada personaje
+   referenciado en `character_ids` al final del `image_prompt` de esa escena
+   (`assembly.compose_image_prompt`), sin duplicar lo que el modelo ya escribió;
+3. el validador `prompt_sin_continuidad` (fatal) comprueba que cada personaje
+   referenciado está efectivamente descrito en el prompt de su escena.
+
+Consecuencia práctica: `description` y `wardrobe` alimentan directamente los
+prompts, así que conviene redactarlos en el idioma de `visual_prompt_language`
+(en los datos empaquetados, inglés). El resto de la biblia y toda la narración
+siguen en español.
 
 ### Cambiar de perfil o de modelo
 
@@ -391,11 +441,38 @@ Notas para quien consuma el contrato:
 - Si el perfil largo queda por debajo de su mínimo tras generar audio, los
   módulos posteriores deben corregirlo o devolver el trabajo; la duración
   estimada no lo etiqueta como elegible para nada.
-- Los consumidores posteriores solo deben tomar exportaciones completas, con
-  `production_status=ready_for_production` y `simulation=false`.
-
 `needs_research` y `failed` son estados **del trabajo**, no del documento: no se
 fabrica un `script.json` incompleto para representarlos.
+
+### Criterio de admisión para consumidores reales
+
+Un documento con avisos **se conserva** como `needs_review` —es material
+recuperable, no basura— pero **nunca queda habilitado para generar medios de
+forma automática**. Para que un consumidor real (módulo 2 en adelante) pueda
+tomar un `script.json`, deben cumplirse **las cinco condiciones a la vez**:
+
+| # | Condición | Cómo se comprueba |
+| --- | --- | --- |
+| 1 | Documento válido | valida contra `ScriptDocument` y no queda ningún problema `fatal` |
+| 2 | Versión de esquema compatible | `schema_version` ∈ `SUPPORTED_SCHEMA_VERSIONS` (hoy: `1.0`) |
+| 3 | Exportación completa | el archivo se escribió entero (temporal + reemplazo atómico) y se relee sin error |
+| 4 | `production_status == ready_for_production` | — |
+| 5 | `simulation == false` | una salida simulada jamás alimenta producción |
+
+El criterio está **escrito una sola vez y es ejecutable**:
+`viralgen.validation.check_admission(...)`. Se expone en dos sitios:
+
+- el resumen JSON de `generate` lleva `admissible_for_media` y
+  `admission_reasons`;
+- `viralgen validate --input …` añade `admissible_for_media`, `checks` y
+  `reasons`.
+
+Esto **no** implementa el módulo 2: solo deja el criterio en un único lugar para
+que quien conecte voz lo consulte en vez de reinventarlo.
+
+Basta que falle una condición para rechazar el documento. En particular, **todo
+lo generado con `--mock` es inadmisible por definición** (condición 5), incluso
+cuando sale `ready_for_production`.
 
 ---
 
@@ -413,7 +490,17 @@ así que una exportación se puede rehacer **sin volver a llamar al proveedor**.
   catálogo.
 - **Reanudación**: las etapas completadas (`ideas_done`, `script_done`,
   `repair_done`, `exported`) quedan registradas; un trabajo interrumpido no
-  repite lo ya persistido.
+  repite lo ya persistido. También se persiste `calls_used`: **`MAX_CALLS_PER_JOB`
+  es un tope por trabajo, no por proceso**, así que al reanudar se recupera lo ya
+  gastado y la suma de todos los intentos nunca lo sobrepasa. Del mismo modo,
+  `repair_done` sobrevive a la reanudación: hay **una reparación por trabajo**,
+  no una por ejecución.
+- **Ni reutilizar ni reexportar promocionan nada**: al recuperar un trabajo
+  terminado se relee el documento de SQLite, se revalida en local y se
+  reexporta con **los mismos avisos y el mismo `production_status`**. Un
+  borrador sigue siendo borrador; pasar a `ready_for_production` exige una
+  generación nueva que supere la validación. Los fallos estructurales
+  permanecen como `failed` y no producen archivo.
 - **Recuperación de exportación**: si borras el `script.json`, repetir el
   comando con la misma `--job-key` lo reescribe desde SQLite sin gastar
   llamadas.
@@ -485,6 +572,7 @@ viralgen/
 ├── requirements.lock.txt       # conjunto exacto verificado
 ├── .env.example  .gitignore
 ├── schema/script.schema.json   # contrato exportado
+├── docs/contrato_modulo_2_voz.md  # campos que necesita el modulo de voz
 ├── examples/                   # dos salidas simuladas completas
 ├── src/viralgen/
 │   ├── config.py               # ajustes centralizados
@@ -511,7 +599,7 @@ source .venv/bin/activate
 pytest -q
 ```
 
-Resultado de la ejecución en este entorno: **141 pruebas, todas correctas**
+Resultado de la ejecución en este entorno: **160 pruebas, todas correctas**
 (Python 3.12, sin red y sin claves).
 
 Qué se cubre, además de las unidades sueltas:
@@ -533,12 +621,30 @@ Qué se cubre, además de las unidades sueltas:
 - Un recorrido completo simulado **por cada perfil**, que exporta el JSON y lo
   vuelve a validar.
 - Que el log no filtra secretos.
+- **Payload real del SDK** (`tests/test_openai_payload.py`): con el cliente de
+  `openai` y un transporte HTTP simulado, se captura la solicitud y se
+  comprueban `text.format.type=json_schema`, `strict`, `required`,
+  `additionalProperties`, los campos *nullable*, la ausencia de `default` y que
+  no se envía `temperature`.
+- **Continuidad de personajes**: cada `image_prompt` describe a los personajes
+  de su escena (y solo a esos); un prompt sin ficha se marca `fatal`.
+- **Criterio de admisión**: las cinco condiciones, incluida la negativa a
+  admitir una salida simulada o un borrador con avisos.
+- **Los estados no se promocionan solos**: un borrador `needs_review` reutilizado
+  conserva sus avisos, su estado y su inadmisibilidad, sin gastar llamadas.
+- **El presupuesto es por trabajo**: tras un fallo, reanudar no reinicia el
+  contador y la suma respeta `MAX_CALLS_PER_JOB`.
+- Que `experiment_tag` y la biblia visual los aporta la aplicación (no están
+  siquiera en el esquema de respuesta del proveedor) y que `actual_duration_s`
+  sigue siendo `null`.
 
 ### Ejemplos de salida
 
 `examples/ejemplo_cuento_infantil.json` y
-`examples/ejemplo_curiosidad_corta.json` los produjo este proyecto con
-`--mock --seed 2026`, cumplen el esquema y llevan `simulation: true`. La
+`examples/ejemplo_curiosidad_corta.json` proceden del **proveedor simulado**
+(`--mock --seed 2026`), cumplen el esquema y llevan `simulation: true`. Por esa
+misma razón `admissible_for_media` es `false` en los dos: son válidos y
+revalidables, pero **no** material de producción. La
 curiosidad usa el catálogo **ficticio** `facts_demo.json`: sus fuentes no están
 verificadas y no deben presentarse como tales.
 
@@ -553,7 +659,58 @@ viralgen generate --profile curiosidades_corto --topic "por que la cremallera no
 
 ---
 
-## 13. Limitaciones conocidas
+## 13. Prueba con el proveedor real (pendiente)
+
+**Estado: NO ejecutada.** Este entorno no tiene `OPENAI_API_KEY` ni
+`OPENAI_MODEL` configurados, así que no hay ninguna salida del proveedor real.
+Todo lo entregado como ejemplo procede del proveedor simulado y está marcado
+como tal. Una simulación **no** sustituye a esta prueba.
+
+Comando preparado, para ejecutar en un entorno que sí tenga credenciales. La
+clave se pasa por variable de entorno y **nunca** aparece en el comando, en los
+logs, en los commits ni en el informe:
+
+```bash
+# La clave se introduce fuera del historial del shell.
+read -rsp "OPENAI_API_KEY: " OPENAI_API_KEY && export OPENAI_API_KEY
+export OPENAI_MODEL="<identificador exacto del modelo con Structured Outputs>"
+
+# Límites explícitos (son los valores por defecto; se fijan para dejar constancia).
+export VIRALGEN_MAX_CALLS_PER_JOB=6
+export VIRALGEN_MAX_OUTPUT_TOKENS=6000
+export VIRALGEN_REQUEST_TIMEOUT_SECONDS=60
+export VIRALGEN_DATA_DIR="$PWD/.viralgen"
+
+# 1) Cuento infantil de ficción: no necesita catálogo de hechos.
+viralgen generate \
+  --profile infantil_cuentos \
+  --topic "aprender a compartir la merienda" \
+  --job-key real-infantil-001
+
+# 2) Revalidación del documento exportado.
+viralgen validate --input .viralgen/jobs/<job_id>/script.json
+
+# 3) Idempotencia: misma job-key y misma solicitud -> "reused": true y 0 llamadas.
+viralgen generate \
+  --profile infantil_cuentos \
+  --topic "aprender a compartir la merienda" \
+  --job-key real-infantil-001
+```
+
+Qué habrá que entregar tras ejecutarlo: el `script.json` completo, el modelo
+usado, los `provenance.request_ids`, el número de llamadas (`calls`) y el
+consumo observado (`input_tokens` / `output_tokens`), el resultado de la
+revalidación y la confirmación de que la segunda ejecución no gasta llamadas.
+
+**La prueba real de curiosidades queda aparte y también pendiente**: exige un
+catálogo de hechos revisados de verdad. El catálogo `facts_demo.json` es
+exclusivamente de prueba (`demo_only: true`, URLs en `example.org`) y el modo
+real lo rechaza por diseño. Cambiar ese campo a `false` para desbloquearlo
+sería falsear la procedencia, así que no se hace.
+
+---
+
+## 14. Limitaciones conocidas
 
 1. **La verificación es de restricción, no semántica.** El sistema obliga a que
    toda afirmación provenga del catálogo aportado, pero no comprueba que la
@@ -573,3 +730,12 @@ viralgen generate --profile curiosidades_corto --topic "por que la cremallera no
    servidor web: un proceso, un trabajo a la vez, por diseño.
 8. **No se ha instalado ni probado en la VPS**, porque no se facilitó acceso.
    Las instrucciones de Ubuntu están escritas para ejecutarse allí tal cual.
+9. **La ruta al proveedor real nunca se ha ejecutado contra la API.** Está
+   cubierta con un cliente falso (errores, reintentos, rechazos) y con una
+   prueba del payload real del SDK sobre transporte simulado, pero eso solo
+   verifica lo que sale de esta máquina: **no demuestra que el servidor acepte
+   el esquema**. Ver §13.
+10. **El contrato 1.0 no tiene sitio para las medidas del módulo 2** más allá de
+    `video.actual_duration_s`: faltan duraciones reales por escena y
+    alineaciones palabra‑a‑palabra. Hay dos vías propuestas en
+    `docs/contrato_modulo_2_voz.md`; decidirlas es el primer paso al conectar voz.
