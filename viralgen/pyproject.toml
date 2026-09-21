@@ -13,6 +13,9 @@ dependencies = [
     "pydantic>=2.13,<3",
     "pydantic-settings>=2.15,<3",
     "openai>=3.16,<4",
+    # Cliente HTTP del adaptador de voz (modulo 2). Es el que ya resuelve
+    # `openai` en este lockfile; se declara directo porque lo usamos nosotros.
+    "httpx2>=2.13,<3",
 ]
 
 [project.optional-dependencies]
@@ -27,7 +30,7 @@ viralgen = "viralgen.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-viralgen = ["data/*.json", "prompts/v1/*.md"]
+viralgen = ["data/*.json", "prompts/v1/*.md", "voice/data/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

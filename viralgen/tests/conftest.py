@@ -91,3 +91,54 @@ def documento_curiosidades(run_pipeline, demo_pack):
         job_key="prueba-cur",
     )
     return ScriptDocument.model_validate(read_json(Path(outcome.script_path)))
+
+
+# ---------------------------------------------------------------------------
+# Modulo 2: voz
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def voice_settings(tmp_path: Path) -> Settings:
+    """Ajustes con limites holgados y sin credenciales."""
+    return Settings(
+        _env_file=None,
+        data_dir=tmp_path / "data",
+        min_free_disk_mb=0,
+        log_level="ERROR",
+    )
+
+
+@pytest.fixture
+def script_path(voice_settings) -> Path:
+    """Genera un guion simulado con el modulo 1 y devuelve su ruta."""
+    from viralgen.pipeline import JobRequest, Pipeline
+
+    peticion = JobRequest(
+        command="generate",
+        profile_id="infantil_cuentos",
+        topic="aprender a compartir",
+        simulation=True,
+        seed=5,
+        job_key="voz-base",
+    )
+    resultado = Pipeline(voice_settings, peticion).run()
+    assert resultado.script_path is not None
+    return Path(resultado.script_path)
+
+
+@pytest.fixture
+def run_voice(voice_settings):
+    """Ejecuta el pipeline de voz simulado."""
+    from viralgen.voice.pipeline import VoiceJobRequest, VoicePipeline
+
+    def _run(script: Path, **kwargs):
+        peticion = VoiceJobRequest(
+            script_path=script,
+            voice_key=kwargs.pop("voice_key", "voz-001"),
+            simulation=kwargs.pop("simulation", True),
+            seed=kwargs.pop("seed", 5),
+        )
+        return VoicePipeline(voice_settings, peticion, **kwargs).run()
+
+    return _run

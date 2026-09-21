@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -55,6 +56,29 @@ def ensure_within(base: Path, candidate: Path) -> Path:
             details={"base": str(base_resolved), "path": str(target)},
         )
     return target
+
+
+def sha256_file(path: Path, block_size: int = 1024 * 1024) -> str:
+    """SHA-256 de un archivo, leido por bloques."""
+    resumen = hashlib.sha256()
+    with path.open("rb") as handle:
+        while True:
+            bloque = handle.read(block_size)
+            if not bloque:
+                break
+            resumen.update(bloque)
+    return resumen.hexdigest()
+
+
+def directory_size_mb(path: Path) -> float:
+    """Tamano total de un directorio en MiB (0 si no existe)."""
+    if not path.exists():
+        return 0.0
+    total = 0
+    for elemento in path.rglob("*"):
+        if elemento.is_file():
+            total += elemento.stat().st_size
+    return total / (1024 * 1024)
 
 
 def atomic_write_text(path: Path, text: str) -> None:

@@ -72,6 +72,47 @@ class Settings(BaseSettings):
     profiles_path: Path | None = None
     series_bible_path: Path | None = None
 
+    # --- Modulo 2: voz ----------------------------------------------------
+    # Estas credenciales son independientes de las de OpenAI: si el guion ya
+    # existe, generar voz NO exige OPENAI_API_KEY ni OPENAI_MODEL.
+    elevenlabs_api_key: SecretStr | None = Field(default=None, alias="ELEVENLABS_API_KEY")
+    elevenlabs_model_id: str | None = Field(default=None, alias="ELEVENLABS_MODEL_ID")
+    elevenlabs_voice_id: str | None = Field(default=None, alias="ELEVENLABS_VOICE_ID")
+    elevenlabs_base_url: str = Field(default="https://api.elevenlabs.io", alias="ELEVENLABS_BASE_URL")
+
+    #: Formato que se pide al proveedor. Se decodifica despues a WAV PCM.
+    voice_output_format: str = "mp3_44100_128"
+    #: Formato interno del proyecto. Decision fija, registrada en el manifiesto.
+    voice_sample_rate_hz: int = Field(default=24_000, ge=8_000, le=48_000)
+    voice_channels: int = Field(default=1, ge=1, le=2)
+    voice_sample_width_bytes: int = Field(default=2, ge=1, le=4)
+
+    voice_max_requests_per_job: int = Field(default=24, ge=1, le=500)
+    voice_max_transport_retries: int = Field(default=2, ge=0, le=10)
+    voice_request_timeout_seconds: int = Field(default=60, ge=1, le=600)
+    voice_max_request_chars: int = Field(default=2_500, ge=1, le=20_000)
+    #: Limite por respuesta HTTP, en bytes (10 MiB).
+    voice_max_response_bytes: int = Field(default=10 * 1024 * 1024, ge=1024)
+    #: Limite de almacenamiento por trabajo de voz, en MiB.
+    voice_max_job_storage_mb: int = Field(default=250, ge=1)
+
+    #: Tolerancia para redondeos temporales en la alineacion, en milisegundos.
+    voice_alignment_tolerance_ms: int = Field(default=20, ge=0, le=1000)
+    #: Alineacion forzada sobre el WAV ya sintetizado. Desactivada por defecto.
+    voice_allow_forced_alignment: bool = False
+
+    voice_profiles_path: Path | None = None
+    sound_assets_path: Path | None = None
+    voice_enable_sfx: bool = False
+    voice_enable_music: bool = False
+
+    ffmpeg_path: str = "ffmpeg"
+    ffmpeg_timeout_seconds: int = Field(default=120, ge=1, le=3600)
+
+    #: Tarifa de voz en USD por cada 1000 caracteres enviados. Sin ella, el
+    #: coste estimado es null.
+    price_voice_per_1k_chars_usd: float | None = Field(default=None, ge=0.0)
+
     @field_validator("log_level")
     @classmethod
     def _upper_level(cls, value: str) -> str:
@@ -81,7 +122,13 @@ class Settings(BaseSettings):
             raise ValueError(f"LOG_LEVEL debe ser uno de {sorted(allowed)}")
         return level
 
-    @field_validator("openai_model", "openai_base_url", mode="before")
+    @field_validator(
+        "openai_model",
+        "openai_base_url",
+        "elevenlabs_model_id",
+        "elevenlabs_voice_id",
+        mode="before",
+    )
     @classmethod
     def _empty_to_none(cls, value: Any) -> Any:
         if isinstance(value, str) and not value.strip():
@@ -118,6 +165,35 @@ class Settings(BaseSettings):
         assert self.openai_api_key is not None and self.openai_model is not None
         return self.openai_api_key.get_secret_value(), self.openai_model
 
+    def require_voice_settings(self) -> tuple[str, str]:
+        """Devuelve (api_key, model_id) o lanza ConfigError en modo real.
+
+        No toca la configuracion de OpenAI: generar voz sobre un guion que ya
+        existe no necesita credenciales del modulo 1.
+        """
+        missing: list[str] = []
+        if (
+            self.elevenlabs_api_key is None
+            or not self.elevenlabs_api_key.get_secret_value().strip()
+        ):
+            missing.append("ELEVENLABS_API_KEY")
+        if not self.elevenlabs_model_id:
+            missing.append("ELEVENLABS_MODEL_ID")
+        if missing:
+            raise ConfigError(
+                "Faltan variables obligatorias para la voz real: "
+                + ", ".join(missing)
+                + ". Usa --mock para ejecutar sin proveedor, o definelas en el entorno "
+                "o en .env (ver .env.example). No hay modelo por defecto a proposito.",
+                details={"missing": missing},
+            )
+        assert self.elevenlabs_api_key is not None and self.elevenlabs_model_id is not None
+        return self.elevenlabs_api_key.get_secret_value(), self.elevenlabs_model_id
+
+    def voice_pricing(self) -> float | None:
+        """Tarifa explicita por 1000 caracteres, o None."""
+        return self.price_voice_per_1k_chars_usd
+
     def pricing(self) -> tuple[float, float] | None:
         """Tarifas explicitas o None. Sin tarifas, el coste estimado es null."""
         if self.price_input_per_1m_usd is None or self.price_output_per_1m_usd is None:
@@ -140,6 +216,19 @@ class Settings(BaseSettings):
             "max_source_pack_facts_to_model": self.max_source_pack_facts_to_model,
             "send_temperature": self.send_temperature,
             "temperature": self.temperature if self.send_temperature else None,
+        }
+
+    def voice_hashable_view(self) -> dict[str, Any]:
+        """Ajustes de voz que influyen en el resultado. Sin secretos."""
+        return {
+            "voice_output_format": self.voice_output_format,
+            "voice_sample_rate_hz": self.voice_sample_rate_hz,
+            "voice_channels": self.voice_channels,
+            "voice_sample_width_bytes": self.voice_sample_width_bytes,
+            "voice_alignment_tolerance_ms": self.voice_alignment_tolerance_ms,
+            "voice_allow_forced_alignment": self.voice_allow_forced_alignment,
+            "voice_enable_sfx": self.voice_enable_sfx,
+            "voice_enable_music": self.voice_enable_music,
         }
 
     def config_hash(self, extra: dict[str, Any] | None = None) -> str:

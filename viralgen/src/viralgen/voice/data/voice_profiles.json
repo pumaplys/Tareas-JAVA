@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0",
+  "profiles": [
+    {
+      "profile_id": "infantil_cuentos",
+      "voice_id": null,
+      "voice_label": "Voz calida y pausada de cuentacuentos, registro medio-grave, sin estridencias.",
+      "direction": "Calidez y ritmo tranquilo. Respira entre escenas y baja el ritmo en el aprendizaje final. La pieza empieza con el gancho ya escrito: no se antepone ninguna presentacion.",
+      "settings": {
+        "stability": 0.6,
+        "similarity_boost": 0.75,
+        "style": 0.1,
+        "use_speaker_boost": true
+      },
+      "sfx_asset_id": null,
+      "music_asset_id": null
+    },
+    {
+      "profile_id": "curiosidades_corto",
+      "voice_id": null,
+      "voice_label": "Voz curiosa y cercana, apertura clara y expresiva, articulacion agil.",
+      "direction": "Apertura clara y expresiva, energia sostenida y pausa breve antes de la respuesta. La pieza empieza con el gancho ya escrito.",
+      "settings": {
+        "stability": 0.45,
+        "similarity_boost": 0.8,
+        "style": 0.35,
+        "use_speaker_boost": true
+      },
+      "sfx_asset_id": null,
+      "music_asset_id": null
+    },
+    {
+      "profile_id": "curiosidades_largo",
+      "voice_id": null,
+      "voice_label": "Voz curiosa y cercana, con mas recorrido para el desarrollo.",
+      "direction": "Apertura clara y expresiva; mantiene energia durante el desarrollo y marca una pausa clara antes de la respuesta.",
+      "settings": {
+        "stability": 0.5,
+        "similarity_boost": 0.8,
+        "style": 0.3,
+        "use_speaker_boost": true
+      },
+      "sfx_asset_id": null,
+      "music_asset_id": null
+    }
+  ]
+}

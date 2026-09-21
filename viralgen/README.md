@@ -1,10 +1,15 @@
-# viralgen — Módulo 1: generador de ideas, guiones y prompts de medios
+# viralgen — Módulos 1 y 2: guion, voz y tiempos medidos
 
-Este módulo produce **un único artefacto**: un documento JSON validado
-(`script.json`) que describe el plan completo de un vídeo vertical 9:16 —idea,
-guion, escenas, prompts de imagen y movimiento, indicaciones de voz,
-subtítulos, audio, loop, evidencia y borrador de publicación— listo para que lo
-consuman los módulos 2‑5 **sin tener que interpretar texto libre**.
+**Módulo 1** produce un documento JSON validado (`script.json`) que describe el
+plan completo de un vídeo vertical 9:16 —idea, guion, escenas, prompts de imagen
+y movimiento, indicaciones de voz, subtítulos, audio, loop, evidencia y borrador
+de publicación— listo para que lo consuman los módulos 2‑5 **sin tener que
+interpretar texto libre**.
+
+**Módulo 2** toma ese guion y produce la narración: `narration.wav` más un
+manifiesto lateral `voice.json` con los **tiempos medidos** (duración real por
+escena y alineación por palabra). El guion **no se modifica ni un byte**: ver
+§15 y [`docs/contrato_modulo_2_voz.md`](docs/contrato_modulo_2_voz.md).
 
 ## Qué hace y qué no hace
 
@@ -571,9 +576,10 @@ viralgen/
 ├── pyproject.toml              # dependencias fijadas y entry point `viralgen`
 ├── requirements.lock.txt       # conjunto exacto verificado
 ├── .env.example  .gitignore
-├── schema/script.schema.json   # contrato exportado
-├── docs/contrato_modulo_2_voz.md  # campos que necesita el modulo de voz
-├── examples/                   # dos salidas simuladas completas
+├── schema/script.schema.json   # contrato del modulo 1
+├── schema/voice.schema.json    # contrato del manifiesto de voz
+├── docs/contrato_modulo_2_voz.md  # contrato modulo 1 -> modulo 2 (voz)
+├── examples/                   # salidas simuladas completas (guion y voz)
 ├── src/viralgen/
 │   ├── config.py               # ajustes centralizados
 │   ├── errors.py               # jerarquía de errores y códigos de salida
@@ -586,7 +592,17 @@ viralgen/
 │   ├── assembly.py validation.py
 │   ├── storage.py diskutil.py  # SQLite, bloqueo, escritura atómica
 │   ├── pipeline.py cli.py
-│   └── data/                   # profiles.json, series_bible.json, facts_demo.json
+│   ├── data/                   # profiles.json, series_bible.json, facts_demo.json
+│   └── voice/                  # MODULO 2
+│       ├── audio.py timing.py      # PCM, pausas, medicion en muestras
+│       ├── alignment.py            # caracteres -> palabras, validacion
+│       ├── schemas.py              # contrato de voice.json
+│       ├── providers/              # base, elevenlabs, mock
+│       ├── profiles.py sound.py    # voces por perfil, catalogo de sonido
+│       ├── storage.py              # migracion idempotente de tablas de voz
+│       ├── admission.py            # puerta de entrada del modulo 4
+│       ├── pipeline.py
+│       └── data/voice_profiles.json
 └── tests/
 ```
 
@@ -599,8 +615,10 @@ source .venv/bin/activate
 pytest -q
 ```
 
-Resultado de la ejecución en este entorno: **160 pruebas, todas correctas**
-(Python 3.12, sin red y sin claves).
+Resultado de la ejecución en este entorno: **246 pruebas correctas y 1 saltada**
+(Python 3.12, sin red y sin claves). La saltada es la decodificación MP3, que
+necesita FFmpeg y aquí no está instalado; el salto se informa explícitamente y
+**no equivale a haberla pasado**.
 
 Qué se cubre, además de las unidades sueltas:
 
@@ -708,6 +726,52 @@ exclusivamente de prueba (`demo_only: true`, URLs en `example.org`) y el modo
 real lo rechaza por diseño. Cambiar ese campo a `false` para desbloquearlo
 sería falsear la procedencia, así que no se hace.
 
+### Voz real (también pendiente)
+
+**Estado: NO ejecutada.** No hay `ELEVENLABS_API_KEY`, ni `ELEVENLABS_MODEL_ID`,
+ni `voice_id` de cuenta, ni FFmpeg en este entorno. Todo el audio entregado es
+del proveedor simulado y está marcado como tal.
+
+El recorrido real, cuando haya credenciales, es: **guion real admitido → voz
+real → validación → repetir la misma `--voice-key` sin llamadas nuevas.** No
+puede empezar antes que la prueba real de OpenAI: el módulo 2 se niega a
+sintetizar un guion con `simulation=true`, y reclasificar un guion demo para
+desbloquearlo sería falsear el origen.
+
+```bash
+sudo apt install -y ffmpeg      # el adaptador real decodifica con FFmpeg
+
+read -rsp "ELEVENLABS_API_KEY: " ELEVENLABS_API_KEY && export ELEVENLABS_API_KEY
+export ELEVENLABS_MODEL_ID="eleven_multilingual_v2"   # o el que uses
+export ELEVENLABS_VOICE_ID="<voice_id de TU cuenta>"  # o rellénalo por perfil
+
+# Límites explícitos (son los valores por defecto; se fijan para dejar constancia).
+export VIRALGEN_VOICE_MAX_REQUESTS_PER_JOB=24
+export VIRALGEN_VOICE_MAX_REQUEST_CHARS=2500
+export VIRALGEN_VOICE_REQUEST_TIMEOUT_SECONDS=60
+export VIRALGEN_DATA_DIR="$PWD/.viralgen"
+
+# 1) Voz sobre un script.json REAL ya admitido (el del paso 1 de §13).
+viralgen voice generate \
+  --script .viralgen/jobs/<job_id>/script.json \
+  --voice-key real-voz-001
+
+# 2) Auditoría de la pareja.
+viralgen voice validate \
+  --script .viralgen/jobs/<job_id>/script.json \
+  --manifest .viralgen/jobs/<job_id>/voice/<voice_run_id>/voice.json
+
+# 3) Idempotencia: mismo comando -> "reused": true y "requests_new": 0.
+viralgen voice generate \
+  --script .viralgen/jobs/<job_id>/script.json \
+  --voice-key real-voz-001
+```
+
+Qué habrá que entregar: el `voice.json` completo, el `narration.wav`, el modelo
+y la voz usados, los `request_ids` que devuelva el servidor, las solicitudes
+nuevas y totales, los caracteres enviados, la duración medida y el resultado de
+la validación.
+
 ---
 
 ## 14. Limitaciones conocidas
@@ -735,7 +799,256 @@ sería falsear la procedencia, así que no se hace.
    prueba del payload real del SDK sobre transporte simulado, pero eso solo
    verifica lo que sale de esta máquina: **no demuestra que el servidor acepte
    el esquema**. Ver §13.
-10. **El contrato 1.0 no tiene sitio para las medidas del módulo 2** más allá de
-    `video.actual_duration_s`: faltan duraciones reales por escena y
-    alineaciones palabra‑a‑palabra. Hay dos vías propuestas en
-    `docs/contrato_modulo_2_voz.md`; decidirlas es el primer paso al conectar voz.
+10. **Resuelto:** el contrato 1.0 no tenía sitio para las medidas del módulo 2.
+    Se optó por el manifiesto lateral `voice.json` en vez de migrar el guion a
+    1.1 (§15). `video.actual_duration_s` queda como campo reservado.
+11. **La ruta real de voz nunca se ha ejecutado contra ElevenLabs.** Está
+    cubierta con transporte HTTP simulado (payload, errores, reintentos,
+    `Retry-After`, límites), pero eso solo verifica lo que sale de esta máquina.
+    Ver §13.
+12. **La decodificación MP3 no se ha probado aquí**: FFmpeg no está instalado y
+    esa prueba se salta explícitamente. El recorrido `--mock` no lo necesita
+    porque genera PCM directamente.
+13. **El audio simulado no es voz.** Son señales de prueba generadas con la
+    biblioteca estándar, y sus tiempos por carácter son sintéticos: no miden la
+    precisión de ningún proveedor real.
+14. **La alineación reversible admitida es estrecha a propósito**: igualdad
+    exacta o normalización Unicode/de espacios que conserve la longitud. Una
+    normalización que expanda números o abreviaturas exige otra alineación o
+    revisión humana.
+15. **No se promete facturación exactamente una vez** en voz: un timeout puede
+    haber consumido crédito, así que la reserva se cuenta igual.
+
+---
+
+## 15. Módulo 2: voz, alineación temporal y preparación de sonido
+
+Toma un `script.json` **admitido** y produce la narración medida. Contrato
+completo para quien monte: [`docs/contrato_modulo_2_voz.md`](docs/contrato_modulo_2_voz.md).
+
+### Decisión de contrato
+
+`script.json` se queda en el esquema **1.0 y con sus bytes intactos**.
+`video.actual_duration_s` sigue siendo `null` y queda como **campo reservado**.
+Los tiempos medidos viven en un manifiesto lateral `voice.json`
+(`document_type="voice_manifest"`, `schema_version="1.0"`), versionado por su
+cuenta y vinculado a la entrada por `job_id`, versión de esquema del guion y
+**SHA-256 de los bytes exactos** del `script.json`.
+
+Esto sustituye a la alternativa de migrar el guion a 1.1: los consumidores del
+contrato 1.0 siguen funcionando y los nuevos consultan `voice.json`.
+
+> Un hash comprueba la correspondencia entre archivos, **no autentica al autor**
+> de un guion. El consumidor debe revalidar guion y medios, además de comparar
+> hashes.
+
+### Uso
+
+```bash
+# Simulación: sin claves, sin red y sin FFmpeg.
+viralgen voice generate --script ruta/script.json --voice-key demo-voz-001 --mock
+
+# Real (requiere credenciales de VOZ; no las de OpenAI).
+viralgen voice generate --script ruta/script.json --voice-key voz-001
+
+# Auditoría de la pareja guion + manifiesto. No genera audio ni llama a nadie.
+viralgen voice validate --script ruta/script.json --manifest ruta/voice.json
+
+# Contrato exportable.
+viralgen voice schema --output ruta/voice.schema.json
+```
+
+Salidas en `DATA_DIR[/simulation]/jobs/<job_id>/voice/<voice_run_id>/`:
+`voice.json`, `audio/narration.wav` y `audio/scenes/<scene_id>.wav`.
+
+### Admisión
+
+Antes de **cualquier petición de pago**, el modo real exige el criterio completo
+del módulo 1 (§7): documento válido, versión compatible, exportación completa,
+`ready_for_production` y `simulation=false`. Una entrada `needs_review`,
+simulada, manipulada o de versión desconocida queda bloqueada con motivo
+explícito y **cero peticiones emitidas**.
+
+`--mock` es una ruta de pruebas explícita: reutiliza exactamente la misma
+validación y relaja **solo** la condición de origen simulado, leyendo las claves
+estructuradas del informe (nunca el texto de sus mensajes). Un borrador con
+avisos sigue bloqueado también en `--mock`.
+
+Toda salida del proveedor simulado lleva `simulation=true` y
+`admissible_for_assembly=false`, **aunque la entrada fuera real**. Los datos de
+simulación viven en su propio espacio (`DATA_DIR/simulation/`).
+
+### Proveedor de voz
+
+`POST /v1/text-to-speech/{voice_id}/with-timestamps`, autenticado con la
+cabecera `xi-api-key`; `output_format` va como parámetro de consulta y `text` +
+`model_id` en el cuerpo JSON, junto con `voice_settings`, `previous_text` y
+`next_text`. El contexto sirve para la continuidad: **no se pronuncia ni se
+concatena** al texto. La respuesta trae `audio_base64` y **puede** traer
+`alignment` y `normalized_alignment`: no se presupone que existan. Los
+`request_id` se guardan solo si el servidor los envía.
+
+`ELEVENLABS_MODEL_ID` no tiene valor por defecto. `eleven_multilingual_v2` es un
+punto de partida compatible con la referencia consultada, pero hay que
+declararlo: el modelo no se cambia en silencio. Los `voice_id` los aporta tu
+cuenta —vienen vacíos en `voice_profiles.json` y **no se inventan**—; sin uno,
+el modo real se detiene con un error de configuración.
+
+`voice_direction` y `pronunciation_notes` del guion son **indicaciones
+editoriales** para quien revise: no se envían dentro del texto que se pronuncia.
+Lo único que viaja como parámetro es el bloque `settings` del perfil de voz
+(`stability`, `similarity_boost`, `style`, `use_speaker_boost`), que debe ser
+admitido por el modelo configurado.
+
+Dirección creativa: voz cálida y pausada para infantil, apertura clara y
+expresiva para curiosidades. **La voz empieza con el gancho ya escrito**: no se
+antepone ninguna presentación ni se retoca el guion.
+
+### Formato interno y medición
+
+Se pide `mp3_44100_128` y se decodifica cada clip a **WAV PCM 16 bits, mono,
+24.000 Hz** con FFmpeg (lista de argumentos, `shell=False`, timeout, archivos
+locales controlados). FFmpeg se comprueba **antes** de las peticiones reales;
+`--mock` no lo necesita. El formato interno es una decisión del proyecto y queda
+registrado en el manifiesto.
+
+La duración real se mide **contando muestras** del PCM decodificado. Nunca a
+partir de palabras por minuto, del tamaño del MP3 ni de lo que declare el
+modelo. Las fórmulas exactas (`clip_samples`, `pause_samples`, `start_sample`,
+`end_sample` exclusivo, y los segundos derivados) están en
+`src/viralgen/voice/timing.py` y en el contrato.
+
+La pausa del guion se añade como silencio **exactamente una vez**, también tras
+la última escena si figura, y es adicional a las respiraciones del clip. Las
+escenas cubren el maestro desde la muestra 0 sin huecos ni solapamientos, y su
+suma es exactamente el número de muestras del maestro. No hay crossfades,
+recortes de silencio ni cambios de velocidad: cualquier transformación futura
+que desplace tiempos obligaría a recalcular la alineación.
+
+### Alineación por palabra
+
+Se prioriza `alignment` cuando su texto concatenado corresponde al
+`narration_text` original. `normalized_alignment` solo puede sustituirla si se
+relaciona **sin ambigüedad** con el texto fuente: en el MVP, igualdad exacta o
+una normalización Unicode/de espacios que conserve la longitud. **No se asume**
+que «12 km» y «doce kilómetros» se correspondan; eso exige otra alineación o
+revisión.
+
+Tolerancia explícita de redondeo: **20 ms** configurable. Los ajustes permitidos
+quedan registrados como incidencias informativas. Desviaciones mayores, palabras
+omitidas, duraciones inválidas o correspondencias ambiguas **bloquean** el uso
+para montaje. **No se fabrican timestamps** repartiendo la duración entre
+palabras.
+
+Si falta una alineación utilizable, **se conserva el audio**. Con
+`VOICE_ALLOW_FORCED_ALIGNMENT=true` se puede pedir `POST /v1/forced-alignment`
+sobre ese WAV y el texto original: cuenta contra el mismo presupuesto y **no
+regenera la voz**. El resultado se vuelve a validar igual que cualquier otro —
+una puntuación del proveedor no es una probabilidad de exactitud—. Si sigue sin
+servir, el manifiesto queda `needs_review` con el motivo y se dejan de pedir
+alineaciones adicionales; los clips obtenidos se conservan.
+
+### Sonido opcional
+
+Catálogo local con `asset_id`, ruta, hash y nota de licencia. **Nada se
+descarga** y las descripciones del guion no se interpretan como rutas ni URLs:
+solo se usan los assets declarados y el mapeo explícito. Los efectos y la música
+están **desactivados por defecto**; una indicación sin asset produce un aviso
+informativo (`blocking=false`) y el montaje puede seguir solo con narración.
+`scene_start` es el comienzo real de la escena y `scene_end`, el final del clip
+hablado antes de su pausa. La mezcla definitiva es del módulo 4.
+
+### Presupuestos, reanudación y disco
+
+| Ajuste | Por defecto | Unidad |
+| --- | --- | --- |
+| `VOICE_MAX_REQUESTS_PER_JOB` | 24 | peticiones **por trabajo**, no por proceso |
+| `VOICE_MAX_TRANSPORT_RETRIES` | 2 | reintentos además del intento inicial |
+| `VOICE_REQUEST_TIMEOUT_SECONDS` | 60 | segundos |
+| `VOICE_MAX_REQUEST_CHARS` | 2500 | caracteres por petición |
+| `VOICE_MAX_RESPONSE_BYTES` | 10 MiB | bytes por respuesta HTTP |
+| `VOICE_MAX_JOB_STORAGE_MB` | 250 | MiB por trabajo de voz |
+| `VOICE_ALIGNMENT_TOLERANCE_MS` | 20 | milisegundos |
+
+Cada petición se **reserva en SQLite antes de enviarse**, así que reiniciar el
+proceso no restablece el presupuesto; los reintentos y las alineaciones forzadas
+cuentan igual. Se distinguen `requests_total` (histórico del trabajo) y
+`requests_this_run`, de modo que reutilizar un resultado muestre **cero
+solicitudes nuevas** sin perder el total.
+
+Solo se reintentan fallos transitorios (conexión, timeout, 429 temporal, 5xx),
+con retroceso y `Retry-After` acotados. Clave, permisos, parámetros, modelo o
+crédito agotado **se detienen**. El cliente HTTP se construye con `retries=0`
+para no duplicar reintentos.
+
+> **Un timeout puede haber consumido crédito.** Por eso la reserva se persiste
+> antes de enviar y se cuenta igual. Este proyecto **no promete facturación
+> exactamente una vez**.
+
+`--voice-key` da idempotencia: su *fingerprint* incluye el hash del guion, voz,
+modelo, parámetros, formato, versión del procesamiento y modo simulado/real.
+Misma clave y misma solicitud devuelven el resultado disponible sin peticiones;
+un cambio con la misma clave produce conflicto. Los clips se persisten con su
+identidad de síntesis (texto + contexto + parámetros) y solo se recuperan si
+hash e identidad coinciden: **un fallo de exportación o de alineación no provoca
+otra síntesis de una voz ya guardada**.
+
+Se respetan `MIN_FREE_DISK_MB` y los límites de log del módulo 1. El base64 se
+decodifica y se descarta enseguida —nunca entra en el JSON ni en los logs—, se
+procesa un clip cada vez y el WAV maestro se construye por bloques. Los
+temporales regenerables se borran tras consolidar; maestro, manifiesto y clips
+se conservan.
+
+### Admisión para el módulo 4
+
+`viralgen voice validate` revalida **desde los archivos reales**: el guion y su
+propia admisión, el SHA-256 de sus bytes, el manifiesto, los hashes y el formato
+de todos los WAV, la cobertura de escenas sin huecos, que las palabras cubran la
+narración y caigan dentro del clip de su escena, el origen real de ambos
+artefactos y la duración medida frente al rango del perfil y al ±10 %.
+**No se fía del booleano guardado en `voice.json`.**
+
+Informa por separado la **validez del contrato** y la **admisión para
+producción**: un manifiesto puede ser válido y aun así no servir para montar.
+Los incumplimientos quedan `needs_review`; no se alarga con silencio, bucles ni
+cambios de velocidad para satisfacer una duración.
+
+### Ejemplo simulado incluido
+
+`examples/voz_simulada/` contiene un recorrido completo producido por el
+**proveedor simulado** (`--mock --seed 2026`) sobre
+`examples/ejemplo_cuento_infantil.json`: `voice.json`, `audio/narration.wav` y
+los siete clips por escena (~4,6 MB). Se valida solo:
+
+```bash
+viralgen voice validate \
+  --script examples/ejemplo_cuento_infantil.json \
+  --manifest examples/voz_simulada/voice.json --allow-simulation
+```
+
+El PCM son **señales de prueba** (un tono con envolvente) generadas con la
+biblioteca estándar, **no voz hablada**, y sus tiempos por carácter son
+sintéticos: sirven para ejercitar el recorrido y las pruebas, no son evidencia
+de la precisión del proveedor real. Sin `--allow-simulation` el mismo comando
+devuelve **no admisible**, que es lo correcto.
+
+### Reproducir por perfil
+
+```bash
+PACK=src/viralgen/data/facts_demo.json
+
+# 1) Infantil (ficción: sin catálogo de hechos).
+viralgen generate --profile infantil_cuentos --topic "aprender a compartir" \
+  --job-key voz-infantil --mock --seed 5
+# 2) Curiosidades corto y largo (exigen catálogo).
+viralgen generate --profile curiosidades_corto --topic "pieza que reparte la fuerza" \
+  --source-pack "$PACK" --job-key voz-corto --mock --seed 5
+viralgen generate --profile curiosidades_largo --topic "pieza que reparte la fuerza" \
+  --source-pack "$PACK" --job-key voz-largo --mock --seed 5
+
+# Cada comando imprime su script_path en el resumen JSON. Con él:
+viralgen voice generate --script <ruta/script.json> --voice-key v-001 --mock --seed 5
+
+# Repetir EXACTAMENTE el mismo comando devuelve "reused": true y "requests_new": 0.
+viralgen voice generate --script <ruta/script.json> --voice-key v-001 --mock --seed 5
+```

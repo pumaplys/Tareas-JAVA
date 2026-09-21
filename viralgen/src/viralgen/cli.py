@@ -74,7 +74,50 @@ def build_parser() -> argparse.ArgumentParser:
     schema.add_argument("--output", type=Path, required=True, help="Ruta del esquema a escribir.")
 
     subparsers.add_parser("profiles", help="Lista los perfiles editoriales disponibles.")
+
+    _add_voice_parser(subparsers)
     return parser
+
+
+def _add_voice_parser(subparsers: argparse._SubParsersAction) -> None:
+    """Comandos del modulo 2 bajo `viralgen voice ...`."""
+    voice = subparsers.add_parser(
+        "voice", help="Modulo 2: voz, alineacion temporal y preparacion de sonido."
+    )
+    voice_sub = voice.add_subparsers(dest="voice_command", required=True)
+
+    generate = voice_sub.add_parser(
+        "generate", help="Sintetiza la narracion y exporta voice.json."
+    )
+    generate.add_argument(
+        "--script", type=Path, required=True, help="Ruta del script.json del modulo 1."
+    )
+    generate.add_argument(
+        "--voice-key", default=None, help="Clave de idempotencia de la ejecucion."
+    )
+    generate.add_argument(
+        "--mock",
+        action="store_true",
+        help="Proveedor simulado: sin claves, sin red y sin FFmpeg. simulation=true.",
+    )
+    generate.add_argument(
+        "--seed", type=int, default=None, help="Semilla del proveedor simulado."
+    )
+
+    validate = voice_sub.add_parser(
+        "validate",
+        help="Valida contrato y admision de una pareja guion + manifiesto. No genera audio.",
+    )
+    validate.add_argument("--script", type=Path, required=True, help="Ruta del script.json.")
+    validate.add_argument("--manifest", type=Path, required=True, help="Ruta del voice.json.")
+    validate.add_argument(
+        "--allow-simulation",
+        action="store_true",
+        help="Audita un recorrido simulado sin exigir origen real.",
+    )
+
+    schema = voice_sub.add_parser("schema", help="Exporta el JSON Schema del manifiesto de voz.")
+    schema.add_argument("--output", type=Path, required=True, help="Ruta del esquema a escribir.")
 
 
 def _add_generation_args(parser: argparse.ArgumentParser) -> None:
@@ -209,6 +252,70 @@ def _run_schema(args: argparse.Namespace) -> int:
     return int(ExitCode.OK)
 
 
+def _run_voice(args: argparse.Namespace, settings: Settings) -> int:
+    from .voice import VOICE_SCHEMA_VERSION
+    from .voice.admission import check_voice_admission
+    from .voice.pipeline import VoiceJobRequest, VoicePipeline
+    from .voice.schemas import VoiceManifest
+
+    if args.voice_command == "generate":
+        peticion = VoiceJobRequest(
+            script_path=args.script,
+            voice_key=args.voice_key,
+            simulation=bool(args.mock),
+            seed=args.seed,
+        )
+        resultado = VoicePipeline(settings, peticion).run()
+        _emit(resultado.summary())
+        return int(resultado.exit_code)
+
+    if args.voice_command == "validate":
+        informe = check_voice_admission(
+            script_path=args.script,
+            manifest_path=args.manifest,
+            settings=settings,
+            require_real=not args.allow_simulation,
+        )
+        # El contrato y la admision se informan por separado: un manifiesto
+        # puede ser valido y aun asi no servir para montar.
+        codigo = ExitCode.OK
+        if not informe.contract_valid:
+            codigo = ExitCode.VALIDATION
+        elif not informe.admissible:
+            codigo = ExitCode.NEEDS_REVIEW
+        _emit(
+            {
+                "script": str(args.script),
+                "manifest": str(args.manifest),
+                "contract_valid": informe.contract_valid,
+                **informe.to_dict(),
+                "exit_code": int(codigo),
+            }
+        )
+        return int(codigo)
+
+    if args.voice_command == "schema":
+        schema = VoiceManifest.model_json_schema()
+        schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
+        schema["title"] = "viralgen voice manifest"
+        schema["description"] = (
+            "Manifiesto lateral de voz del modulo 2. Fuente de tiempos medidos para "
+            f"los modulos 3 y 4. schema_version={VOICE_SCHEMA_VERSION}."
+        )
+        atomic_write_json(args.output, schema)
+        _emit(
+            {
+                "schema_path": str(args.output),
+                "document_type": "voice_manifest",
+                "schema_version": VOICE_SCHEMA_VERSION,
+                "exit_code": int(ExitCode.OK),
+            }
+        )
+        return int(ExitCode.OK)
+
+    raise ConfigError(f"Subcomando de voz desconocido: {args.voice_command}")
+
+
 def _run_profiles(settings: Settings) -> int:
     profiles = load_profiles(settings.profiles_path)
     _emit(
@@ -276,6 +383,8 @@ def main(argv: list[str] | None = None) -> int:
             return _run_schema(args)
         if args.command == "profiles":
             return _run_profiles(settings)
+        if args.command == "voice":
+            return _run_voice(args, settings)
         parser.error(f"Comando desconocido: {args.command}")
         return int(ExitCode.USAGE)
     except ViralgenError as exc:
