@@ -360,9 +360,14 @@ def test_la_limpieza_no_invalida_el_paquete(render_inputs, run_render) -> None:
     assert not (directorio / "video.mp4").exists()
     assert (directorio / "captions.ass").is_file()
     assert (directorio / "render.json").is_file()
-    assert list((directorio / "frames").glob("*.png"))
 
     manifiesto = json.loads((directorio / "render.json").read_text(encoding="utf-8"))
+    # Los fotogramas se comprueban por el MANIFIESTO, no por su extension: el
+    # contrato dice donde estan, y suponer ".png" ataria la prueba a un
+    # detalle de formato que el modulo puede cambiar.
+    assert manifiesto["inspection"]["frames"]
+    for muestra in manifiesto["inspection"]["frames"]:
+        assert (directorio / muestra["path"]).is_file()
     # Los hashes de los intermedios borrados se conservan, pero NO se declaran
     # archivos obligatorios del paquete.
     assert manifiesto["processing"]["segments"]

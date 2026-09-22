@@ -622,7 +622,9 @@ def test_una_imagen_renombrada_a_mp4_no_pasa_por_video(render_real, tmp_path) ->
     from viralgen.render.probe import ProbeError
 
     falso = tmp_path / "falso.mp4"
-    origen = next((render_real["dir"] / "frames").glob("*.png"))
+    # El fotograma se toma del manifiesto, no suponiendo su extension.
+    muestra = render_real["manifest"]["inspection"]["frames"][0]
+    origen = render_real["dir"] / muestra["path"]
     falso.write_bytes(origen.read_bytes())
 
     reporte = probe_file(falso, ffprobe_path="ffprobe")
