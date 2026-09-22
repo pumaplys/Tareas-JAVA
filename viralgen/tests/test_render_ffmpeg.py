@@ -33,12 +33,21 @@ from viralgen.render.ffmpeg import (
 
 #: Marca de integracion local real, igual que en las pruebas del modulo 3.
 TIENE_FFMPEG = probe_capabilities("ffmpeg", "ffprobe").usable
-necesita_ffmpeg = pytest.mark.ffmpeg(
-    pytest.mark.skipif(
+
+
+def necesita_ffmpeg(prueba):
+    """Aplica DOS marcas: `ffmpeg` (seleccion) y `skipif` (salto sin las herramientas).
+
+    OJO con la forma corta: `pytest.mark.ffmpeg(pytest.mark.skipif(...))` NO
+    compone dos marcas. Convierte el `skipif` en un ARGUMENTO de la marca
+    `ffmpeg` y el salto queda muerto, asi que sin FFmpeg la prueba intenta
+    ejecutarse en vez de saltarse. Se componen apilandolas.
+    """
+    con_salto = pytest.mark.skipif(
         not TIENE_FFMPEG,
         reason="FFmpeg/ffprobe (con libx264, aac y libass) no estan disponibles",
-    )
-)
+    )(prueba)
+    return pytest.mark.ffmpeg(con_salto)
 
 
 # ---------------------------------------------------------------------------

@@ -696,10 +696,10 @@ source .venv/bin/activate
 pytest -q
 ```
 
-Resultado de la ejecución en este entorno: **481 pruebas correctas y ninguna
-saltada** (Python 3.12, sin red y sin claves), en unos 11 minutos. Con FFmpeg
-instalado se ejecutan también las cinco que antes se saltaban en los módulos 2
-y 3, y las **51 de integración local** del módulo 4 (marca `ffmpeg`).
+Resultado de la ejecución en este entorno: **493 pruebas correctas y ninguna
+saltada** (Python 3.12, sin red y sin claves). Con FFmpeg instalado se ejecutan
+también las cinco que antes se saltaban en los módulos 2 y 3, y las **51 de
+integración local** del módulo 4 (marca `ffmpeg`).
 
 Las pruebas se dividen en **cuatro** categorías que este README no mezcla:
 
@@ -708,7 +708,7 @@ Las pruebas se dividen en **cuatro** categorías que este README no mezcla:
 | **Local** | Lógica, esquemas, aritmética, validadores, proveedor simulado, Pillow. | Ejecutadas. |
 | **Transporte simulado** | El cliente HTTP real (SDK de `openai`, `httpx2` con `MockTransport`) contra un transporte de prueba: se captura la solicitud y se comprueban ruta, cabeceras y cuerpo. **No hay red.** | Ejecutadas. |
 | **Integración local** (marca `ffmpeg`) | FFmpeg y `ffprobe` **reales**: se codifican MP4 de verdad y se miden fotograma a fotograma. Sin red y sin credenciales. | **Ejecutadas**: 51 pruebas. |
-| **Integración externa** | Las APIs reales de OpenAI, ElevenLabs y Runway. | **Pendiente**: sin credenciales ni red en este entorno. Ver §13 (texto y voz) y §16.1 (imagen y vídeo). |
+| **Integración externa** | Las APIs reales de OpenAI y ElevenLabs, y Runway **solo si el guion pide clips**. | **Pendiente**: sin credenciales ni red en este entorno. Ver §13 (texto y voz) y §16.1 (imagen y vídeo). |
 
 Una prueba de transporte simulado **no es** integración externa, y una
 integración **local** con FFmpeg tampoco: este proyecto no las presenta como
@@ -717,17 +717,41 @@ tales.
 ### La integración local es obligatoria, no opcional
 
 ```bash
-pytest -m ffmpeg -rs          # 51: solo la integracion local real
-pytest -m "not ffmpeg"        # 430: solo lo que no necesita FFmpeg
+pytest -m ffmpeg -rs          # 51:  solo la integracion local real
+pytest -m "not ffmpeg"        # 442: solo lo que no necesita FFmpeg
 ```
 
-Las dos selecciones son una **partición exacta** de las 481: entre ambas se
-ejecuta todo una sola vez, sin solape ni huecos.
+Las dos selecciones son una **partición exacta** de las 493: entre ambas se
+ejecuta todo una sola vez, sin solape ni huecos. Es como las ejecuta la CI.
 
-`.github/workflows/viralgen-ffmpeg.yml` instala FFmpeg y la fuente, **exige**
-que la selección `-m ffmpeg` no quede vacía (pytest sale con 5 si no recoge
-nada) y **falla si alguna se salta**. Una suite verde porque todo se saltó no
-acredita ningún render.
+`.github/workflows/viralgen-ffmpeg.yml` instala FFmpeg y la fuente, ejecuta la
+selección obligatoria y pasa su informe **JUnit XML** por
+`tools/verificar_integracion.py`, que rechaza tres cosas: una selección vacía,
+una selección saltada y una selección marcada `xfail`.
+
+**Por qué sobre XML y no sobre el texto del resumen.** El código de salida 5
+solo cubre la colección vacía, no los saltos
+([exit codes](https://docs.pytest.org/en/stable/reference/exit-codes.html),
+[skipping](https://docs.pytest.org/en/stable/how-to/skipping.html)). Y un
+`grep SKIPPED` tiene un hueco comprobado: una selección **entera en `xfail`**
+sale con código 0 y `-rs` **no imprime** esa palabra, así que la aprobaría. En
+el XML sí consta, porque pytest registra el `xfail` como
+`<skipped type="pytest.xfail">`.
+
+Las tres formas de no ejecutar están cubiertas por pruebas
+(`tests/test_verificar_integracion.py`), sobre informes generados por pytest de
+verdad, no escritos a mano. El `--minimo` es un **suelo** contra un derrumbe
+silencioso de la marca, no el recuento exacto.
+
+Una suite verde porque todo se saltó no acredita ningún render.
+
+**Qué está comprobado y qué no**, que no es lo mismo:
+
+| | Estado |
+| --- | --- |
+| El guard rechaza una selección vacía, saltada o en `xfail` | **Comprobado localmente**, con informes de pytest reales (`tests/test_verificar_integracion.py`) |
+| El guard rechaza las 51 pruebas del repo cuando FFmpeg no está | **Comprobado localmente**: con FFmpeg oculto del `PATH`, pytest sale con 0 y 51 saltadas, y el guard responde `ejecutadas=0` y falla |
+| El workflow completo en GitHub Actions | **Preparado, no ejecutado**: este entorno no lanza CI. Lo que está verificado es el guard y su integración, no el runner |
 
 Qué se cubre, además de las unidades sueltas:
 
@@ -1019,7 +1043,10 @@ la validación.
     se reserva **antes** de enviar y un `outcome_unknown` **bloquea** la
     repetición automática en lugar de arriesgar un cobro doble.
 22. **El montaje de producción nunca se ha ejecutado**, porque no hay fuentes
-    reales que montar: depende de las integraciones externas pendientes. El
+    reales que montar. El montaje en sí **no llama a ningún proveedor**: las
+    credenciales hacen falta antes, para producir el paquete. Para un caso
+    solo de imágenes bastan OpenAI y ElevenLabs; Runway solo si el guion pide
+    clips. El
     recorrido **preview** sí se ha ejecutado entero y produce un MP4 auténtico
     (§17.1).
 23. **Un MP4 real con contenido simulado sigue siendo simulado.** FFmpeg
@@ -2012,6 +2039,25 @@ FFmpeg está y funciona. Falta lo anterior en la cadena. `render generate` sin
 `--preview` exige `admissible_for_assembly` en guion, voz y medios, y eso
 requiere las integraciones externas de §13 y §16.1, que siguen pendientes por
 falta de credenciales y de red.
+
+**El montaje no llama a ningún proveedor.** Una vez existe un paquete real y
+admisible, renderiza en local: no vuelve a pedir guion, ni voz, ni imágenes.
+Las credenciales hacen falta **antes**, para producir ese paquete.
+
+Qué proveedor hace falta depende del guion:
+
+| Para producir… | Hace falta |
+| --- | --- |
+| Guion e imágenes de escena | OpenAI (`OPENAI_API_KEY` + `OPENAI_MODEL` y `OPENAI_IMAGE_MODEL`) |
+| Narración | ElevenLabs (`ELEVENLABS_API_KEY` + `ELEVENLABS_MODEL_ID` + un `voice_id` de tu cuenta) |
+| Clips de vídeo | Runway — **solo si el guion pide escenas `asset_type: video`** |
+
+Un primer caso real de **cuentos compuesto solo por imágenes** no necesita
+Runway en absoluto: basta OpenAI para guion e imágenes y ElevenLabs para la
+voz. Es exactamente la forma del catálogo
+`examples/perfiles_solo_imagenes.json`, con `video_scene_budget: 0`. Runway
+entra únicamente cuando el guion solicita clips que ese adaptador deba
+generar.
 
 Cuando existan esas fuentes reales, el recorrido es el mismo cambiando dos
 cosas: sin `--preview` y con otra `--render-key`.

@@ -1,8 +1,10 @@
 # Integracion local del modulo 4: FFmpeg real, fuentes reales, render real.
 #
 # Este trabajo EXIGE las pruebas marcadas `ffmpeg`. No puede aparecer verde
-# porque se hayan saltado: el paso "Exigir integracion real" falla si la
-# seleccion queda vacia, y las pruebas se ejecutan sin `-m "not ffmpeg"`.
+# porque se hayan saltado: su informe JUnit XML pasa por
+# `tools/verificar_integracion.py`, que rechaza una seleccion vacia, saltada o
+# marcada `xfail`. Las tres formas de no ejecutar estan cubiertas por pruebas
+# en tests/test_verificar_integracion.py.
 #
 # No usa red ni credenciales: monta archivos que ya existen en el repositorio.
 name: viralgen (integracion FFmpeg)
@@ -74,31 +76,31 @@ jobs:
           print("fuente:", fuente.family, fuente.sha256[:16])
           PY
 
-      - name: Exigir integracion real (la seleccion no puede quedar vacia)
+      - name: Integracion FFmpeg, obligatoria y EJECUTADA
         run: |
-          # pytest sale con 5 cuando no recoge ninguna prueba. Si nadie marca
-          # pruebas `ffmpeg`, esto falla ANTES de que la suite pueda declararse
-          # verde por omision.
-          python -m pytest -m ffmpeg --collect-only -q || {
-            echo "ERROR: no hay pruebas de integracion FFmpeg seleccionadas"
-            exit 1
-          }
-
-      - name: Integracion FFmpeg, obligatoria y sin saltos
-        run: |
-          # Se ejecuta UNA vez y se comprueba el resultado sobre la misma
-          # salida: correr las mismas pruebas dos veces solo gasta minutos.
+          # Se ejecuta UNA sola vez y se comprueba sobre su informe
+          # estructurado. El `|| true` deja que el guard explique el motivo en
+          # vez de cortar aqui con un codigo pelado; el guard vuelve a exigir
+          # cero fallos, asi que no relaja nada.
           python -m pytest -m ffmpeg -o addopts="" -q -rs --durations=10 \
-            | tee integracion.txt
-          estado=${PIPESTATUS[0]}
-          [ "$estado" -eq 0 ] || exit "$estado"
-          # Un salto se informa con `-rs`. Aqui no se admite ninguno: saltarse
-          # la integracion no acredita ningun render.
-          if grep -q "SKIPPED" integracion.txt; then
-            echo "ERROR: alguna prueba de integracion FFmpeg se salto"
-            grep "SKIPPED" integracion.txt
-            exit 1
-          fi
+            --junitxml=integracion.xml || true
+
+      - name: La integracion no puede quedar vacia, saltada ni en xfail
+        run: |
+          # Sobre JUnit XML, no sobre el texto del resumen: el codigo 5 solo
+          # cubre la coleccion vacia, y una seleccion entera en `xfail` sale
+          # con codigo 0 SIN imprimir "SKIPPED". Ver tools/ y sus pruebas.
+          # El minimo es un SUELO contra un derrumbe silencioso de la marca,
+          # no el recuento exacto: puede crecer o menguar con el tiempo.
+          python tools/verificar_integracion.py integracion.xml --minimo 40
+
+      - name: Subir el informe de integracion
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: informe-integracion-ffmpeg
+          path: viralgen/integracion.xml
+          if-no-files-found: error
 
       - name: Resto de la suite (sin red y sin credenciales)
         # Complementario de la marca: entre los dos pasos se ejecuta todo

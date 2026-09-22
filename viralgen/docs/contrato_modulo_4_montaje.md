@@ -324,6 +324,10 @@ Comprobados por `viralgen render validate` sobre los archivos reales:
   renderiza el MP4 de verdad, pero los tonos y las imágenes siguen siendo
   simulados: sirven para medir transporte temporal y mezcla, **no** para juzgar
   inteligibilidad de una voz hablada ni calidad de imagen.
+* **El montaje no llama a ningún proveedor.** Trabaja en local sobre un paquete
+  ya admitido. Las credenciales hacen falta aguas arriba: OpenAI para guion e
+  imágenes y ElevenLabs para la voz; **Runway solo si el guion pide escenas
+  `asset_type: video`**. Un caso solo de imágenes no lo necesita.
 * **Un único objetivo de entrega**: 1080×1920 a 30 fps. Otros formatos no están
   implementados y el objetivo del contrato de medios se comprueba, no se
   sobrescribe.

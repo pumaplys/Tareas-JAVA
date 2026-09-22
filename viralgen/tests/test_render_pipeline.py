@@ -18,9 +18,21 @@ from viralgen.errors import DiskSpaceError, IdempotencyConflictError
 from viralgen.render.ffmpeg import ProcessRunner, RenderStageError, probe_capabilities
 
 TIENE_FFMPEG = probe_capabilities("ffmpeg", "ffprobe").usable
-necesita_ffmpeg = pytest.mark.ffmpeg(
-    pytest.mark.skipif(not TIENE_FFMPEG, reason="FFmpeg/ffprobe no disponibles")
-)
+
+
+def necesita_ffmpeg(prueba):
+    """Aplica DOS marcas: `ffmpeg` (seleccion) y `skipif` (salto sin las herramientas).
+
+    OJO con la forma corta: `pytest.mark.ffmpeg(pytest.mark.skipif(...))` NO
+    compone dos marcas. Convierte el `skipif` en un ARGUMENTO de la marca
+    `ffmpeg` y el salto queda muerto, asi que sin FFmpeg la prueba intenta
+    ejecutarse en vez de saltarse. Se componen apilandolas.
+    """
+    con_salto = pytest.mark.skipif(
+        not TIENE_FFMPEG,
+        reason="FFmpeg/ffprobe no disponibles",
+    )(prueba)
+    return pytest.mark.ffmpeg(con_salto)
 
 
 # ---------------------------------------------------------------------------
