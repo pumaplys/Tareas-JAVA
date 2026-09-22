@@ -1,0 +1,1638 @@
+{
+  "$defs": {
+    "AudioStreamInfo": {
+      "additionalProperties": false,
+      "description": "Propiedades MEDIDAS del stream de audio.",
+      "properties": {
+        "codec_name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Codec Name",
+          "type": "string"
+        },
+        "sample_rate_hz": {
+          "maximum": 192000,
+          "minimum": 8000,
+          "title": "Sample Rate Hz",
+          "type": "integer"
+        },
+        "channels": {
+          "maximum": 8,
+          "minimum": 1,
+          "title": "Channels",
+          "type": "integer"
+        },
+        "channel_layout": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Channel Layout",
+          "type": "string"
+        },
+        "stream_duration_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stream Duration S"
+        },
+        "decoded_samples": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Muestras por canal realmente decodificadas.",
+          "title": "Decoded Samples"
+        },
+        "initial_padding_samples": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Priming que declara el decodificador AAC, si lo expone.",
+          "title": "Initial Padding Samples"
+        },
+        "source": {
+          "const": "local_measurement",
+          "default": "local_measurement",
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "codec_name",
+        "sample_rate_hz",
+        "channels",
+        "channel_layout"
+      ],
+      "title": "AudioStreamInfo",
+      "type": "object"
+    },
+    "CameraMove": {
+      "enum": [
+        "static",
+        "zoom_in",
+        "zoom_out"
+      ],
+      "title": "CameraMove",
+      "type": "string"
+    },
+    "CueUsage": {
+      "additionalProperties": false,
+      "properties": {
+        "cue_type": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Cue Type",
+          "type": "string"
+        },
+        "asset_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "start_s": {
+          "minimum": 0,
+          "title": "Start S",
+          "type": "number"
+        },
+        "end_s": {
+          "exclusiveMinimum": 0,
+          "title": "End S",
+          "type": "number"
+        },
+        "gain_db": {
+          "maximum": 12.0,
+          "minimum": -60.0,
+          "title": "Gain Db",
+          "type": "number"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "cue_type",
+        "asset_id",
+        "start_s",
+        "end_s",
+        "gain_db",
+        "sha256"
+      ],
+      "title": "CueUsage",
+      "type": "object"
+    },
+    "FontInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "description": "Ruta del SISTEMA, no del paquete.",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "family": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Family",
+          "type": "string"
+        },
+        "units_per_em": {
+          "minimum": 1,
+          "title": "Units Per Em",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "sha256",
+        "family",
+        "units_per_em"
+      ],
+      "title": "FontInfo",
+      "type": "object"
+    },
+    "FrameSample": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "frame_index": {
+          "minimum": 0,
+          "title": "Frame Index",
+          "type": "integer"
+        },
+        "time_s": {
+          "minimum": 0,
+          "title": "Time S",
+          "type": "number"
+        },
+        "path": {
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "frame_index",
+        "time_s",
+        "path",
+        "sha256"
+      ],
+      "title": "FrameSample",
+      "type": "object"
+    },
+    "GeometryPolicy": {
+      "enum": [
+        "contain",
+        "crop"
+      ],
+      "title": "GeometryPolicy",
+      "type": "string"
+    },
+    "IssueSeverity": {
+      "enum": [
+        "info",
+        "warning",
+        "error"
+      ],
+      "title": "IssueSeverity",
+      "type": "string"
+    },
+    "LoudnessInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "integrated_lufs": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Integrated Lufs"
+        },
+        "true_peak_dbtp": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "True Peak Dbtp"
+        },
+        "loudness_range_lu": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Loudness Range Lu"
+        },
+        "threshold_lufs": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Threshold Lufs"
+        },
+        "usable": {
+          "title": "Usable",
+          "type": "boolean"
+        },
+        "note": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "usable",
+        "note"
+      ],
+      "title": "LoudnessInfo",
+      "type": "object"
+    },
+    "RenderAudio": {
+      "additionalProperties": false,
+      "description": "Mezcla: que se uso, como se convirtio y que se midio al final.",
+      "properties": {
+        "narration_used_once": {
+          "const": true,
+          "default": true,
+          "description": "La narracion maestra entra UNA vez; los clips por escena no.",
+          "title": "Narration Used Once",
+          "type": "boolean"
+        },
+        "clip_audio_used": {
+          "const": false,
+          "default": false,
+          "description": "use_source_audio=false: el audio de los clips nunca se mezcla.",
+          "title": "Clip Audio Used",
+          "type": "boolean"
+        },
+        "work_sample_rate_hz": {
+          "maximum": 192000,
+          "minimum": 8000,
+          "title": "Work Sample Rate Hz",
+          "type": "integer"
+        },
+        "work_sample_count": {
+          "minimum": 1,
+          "title": "Work Sample Count",
+          "type": "integer"
+        },
+        "channels": {
+          "maximum": 2,
+          "minimum": 1,
+          "title": "Channels",
+          "type": "integer"
+        },
+        "resample": {
+          "$ref": "#/$defs/ResampleInfo"
+        },
+        "cues_used": {
+          "items": {
+            "$ref": "#/$defs/CueUsage"
+          },
+          "maxItems": 60,
+          "title": "Cues Used",
+          "type": "array"
+        },
+        "ducking": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "title": "Ducking",
+          "type": "object"
+        },
+        "normalization": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": "Normalization",
+          "type": "object"
+        },
+        "measured": {
+          "$ref": "#/$defs/LoudnessInfo"
+        },
+        "loudness_compliant": {
+          "title": "Loudness Compliant",
+          "type": "boolean"
+        },
+        "aac_tolerance_samples": {
+          "description": "Margen tecnico del codec (un frame AAC). No sirve para tapar voz truncada: solo cubre priming y padding.",
+          "minimum": 0,
+          "title": "Aac Tolerance Samples",
+          "type": "integer"
+        },
+        "audio_sample_deficit": {
+          "description": "decoded_samples - esperadas. Negativo significa que FALTA audio; solo se admite dentro de aac_tolerance_samples.",
+          "title": "Audio Sample Deficit",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "work_sample_rate_hz",
+        "work_sample_count",
+        "channels",
+        "resample",
+        "measured",
+        "loudness_compliant",
+        "aac_tolerance_samples",
+        "audio_sample_deficit"
+      ],
+      "title": "RenderAudio",
+      "type": "object"
+    },
+    "RenderCaptions": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "style_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Style Id",
+          "type": "string"
+        },
+        "style_version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Style Version",
+          "type": "string"
+        },
+        "font": {
+          "$ref": "#/$defs/FontInfo"
+        },
+        "word_count": {
+          "minimum": 0,
+          "title": "Word Count",
+          "type": "integer"
+        },
+        "group_count": {
+          "minimum": 0,
+          "title": "Group Count",
+          "type": "integer"
+        },
+        "event_count": {
+          "minimum": 0,
+          "title": "Event Count",
+          "type": "integer"
+        },
+        "play_res_x": {
+          "minimum": 1,
+          "title": "Play Res X",
+          "type": "integer"
+        },
+        "play_res_y": {
+          "minimum": 1,
+          "title": "Play Res Y",
+          "type": "integer"
+        },
+        "text_region": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "description": "Region de composicion. DECISION de diseno, no zona segura.",
+          "title": "Text Region",
+          "type": "object"
+        },
+        "rounding_policy": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Rounding Policy",
+          "type": "string"
+        },
+        "collapsed_highlights": {
+          "description": "Palabras cuyo resaltado colapso al cuantizar. Su texto sigue visible; no se fabrico duracion de voz.",
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 200,
+          "title": "Collapsed Highlights",
+          "type": "array"
+        },
+        "preview_mark": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Preview Mark"
+        },
+        "rendered_by": {
+          "const": "libass",
+          "default": "libass",
+          "title": "Rendered By",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "sha256",
+        "style_id",
+        "style_version",
+        "font",
+        "word_count",
+        "group_count",
+        "event_count",
+        "play_res_x",
+        "play_res_y",
+        "text_region",
+        "rounding_policy"
+      ],
+      "title": "RenderCaptions",
+      "type": "object"
+    },
+    "RenderControl": {
+      "additionalProperties": false,
+      "properties": {
+        "render_status": {
+          "$ref": "#/$defs/RenderStatus"
+        },
+        "issues": {
+          "items": {
+            "$ref": "#/$defs/RenderIssue"
+          },
+          "maxItems": 200,
+          "title": "Issues",
+          "type": "array"
+        },
+        "visual_review": {
+          "$ref": "#/$defs/VisualReviewState",
+          "default": "not_performed"
+        },
+        "visual_review_method": {
+          "default": "none",
+          "description": "Como se reviso: 'none', 'frame_sampling', 'human'.",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Visual Review Method",
+          "type": "string"
+        },
+        "admissible_for_publisher": {
+          "description": "Resultado calculado. Un consumidor NO debe fiarse de este booleano: debe repetir la comprobacion sobre los archivos reales.",
+          "title": "Admissible For Publisher",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "render_status",
+        "admissible_for_publisher"
+      ],
+      "title": "RenderControl",
+      "type": "object"
+    },
+    "RenderInspection": {
+      "additionalProperties": false,
+      "properties": {
+        "contact_sheet_path": {
+          "anyOf": [
+            {
+              "maxLength": 400,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Contact Sheet Path"
+        },
+        "frames": {
+          "items": {
+            "$ref": "#/$defs/FrameSample"
+          },
+          "maxItems": 20,
+          "title": "Frames",
+          "type": "array"
+        },
+        "checks_performed": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 40,
+          "title": "Checks Performed",
+          "type": "array"
+        },
+        "note": {
+          "default": "Los fotogramas son evidencia de que hay texto integrado y de que la marca de preview aparece. Un detector de pixeles no certifica legibilidad ni correccion semantica.",
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "title": "RenderInspection",
+      "type": "object"
+    },
+    "RenderIssue": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/IssueSeverity"
+        },
+        "blocking": {
+          "title": "Blocking",
+          "type": "boolean"
+        },
+        "scene_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scene Id"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "severity",
+        "blocking"
+      ],
+      "title": "RenderIssue",
+      "type": "object"
+    },
+    "RenderMode": {
+      "description": "Modo de la ejecucion. Nunca se deriva de una bandera del validador.",
+      "enum": [
+        "production",
+        "preview"
+      ],
+      "title": "RenderMode",
+      "type": "string"
+    },
+    "RenderOutput": {
+      "additionalProperties": false,
+      "description": "El archivo entregado. Todo aqui esta MEDIDO sobre el archivo.",
+      "properties": {
+        "path": {
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size_bytes": {
+          "minimum": 1,
+          "title": "Size Bytes",
+          "type": "integer"
+        },
+        "container_format": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Container Format",
+          "type": "string"
+        },
+        "container_duration_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Container Duration S"
+        },
+        "faststart": {
+          "title": "Faststart",
+          "type": "boolean"
+        },
+        "video": {
+          "$ref": "#/$defs/VideoStreamInfo"
+        },
+        "audio": {
+          "$ref": "#/$defs/AudioStreamInfo"
+        },
+        "decode_check_passed": {
+          "description": "Ambas pistas decodificadas enteras a salida nula, sin errores.",
+          "title": "Decode Check Passed",
+          "type": "boolean"
+        },
+        "color_primaries": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Color Primaries"
+        },
+        "color_transfer": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Color Transfer"
+        },
+        "color_space": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Color Space"
+        }
+      },
+      "required": [
+        "path",
+        "sha256",
+        "size_bytes",
+        "container_format",
+        "faststart",
+        "video",
+        "audio",
+        "decode_check_passed"
+      ],
+      "title": "RenderOutput",
+      "type": "object"
+    },
+    "RenderProcessing": {
+      "additionalProperties": false,
+      "properties": {
+        "pipeline_version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Pipeline Version",
+          "type": "string"
+        },
+        "tools": {
+          "$ref": "#/$defs/ToolInfo"
+        },
+        "encode_settings": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": "Encode Settings",
+          "type": "object"
+        },
+        "plan_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Plan Sha256",
+          "type": "string"
+        },
+        "fingerprint": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Fingerprint",
+          "type": "string"
+        },
+        "segments": {
+          "items": {
+            "$ref": "#/$defs/SegmentInfo"
+          },
+          "maxItems": 40,
+          "title": "Segments",
+          "type": "array"
+        },
+        "concat_mode": {
+          "default": "stream_copy",
+          "description": "'stream_copy' o 'reencode'. Copiar exige segmentos compatibles.",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Concat Mode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pipeline_version",
+        "tools",
+        "plan_sha256",
+        "fingerprint"
+      ],
+      "title": "RenderProcessing",
+      "type": "object"
+    },
+    "RenderResources": {
+      "additionalProperties": false,
+      "properties": {
+        "wall_time_s": {
+          "minimum": 0,
+          "title": "Wall Time S",
+          "type": "number"
+        },
+        "peak_work_dir_mib": {
+          "minimum": 0,
+          "title": "Peak Work Dir Mib",
+          "type": "number"
+        },
+        "free_disk_mb_before": {
+          "minimum": 0,
+          "title": "Free Disk Mb Before",
+          "type": "number"
+        },
+        "free_disk_mb_after": {
+          "minimum": 0,
+          "title": "Free Disk Mb After",
+          "type": "number"
+        },
+        "renders_new": {
+          "description": "Codificaciones nuevas de ESTA invocacion.",
+          "minimum": 0,
+          "title": "Renders New",
+          "type": "integer"
+        },
+        "renders_total": {
+          "description": "Codificaciones de todo el trabajo.",
+          "minimum": 0,
+          "title": "Renders Total",
+          "type": "integer"
+        },
+        "segment_cache_hits": {
+          "minimum": 0,
+          "title": "Segment Cache Hits",
+          "type": "integer"
+        },
+        "peak_memory_mib": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "null si no se midio: no se estima.",
+          "title": "Peak Memory Mib"
+        }
+      },
+      "required": [
+        "wall_time_s",
+        "peak_work_dir_mib",
+        "free_disk_mb_before",
+        "free_disk_mb_after",
+        "renders_new",
+        "renders_total",
+        "segment_cache_hits"
+      ],
+      "title": "RenderResources",
+      "type": "object"
+    },
+    "RenderSources": {
+      "additionalProperties": false,
+      "description": "Los tres documentos de entrada, por version y por hash de sus BYTES.",
+      "properties": {
+        "script_schema_version": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Script Schema Version",
+          "type": "string"
+        },
+        "script_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Script Sha256",
+          "type": "string"
+        },
+        "script_simulation": {
+          "title": "Script Simulation",
+          "type": "boolean"
+        },
+        "voice_schema_version": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Voice Schema Version",
+          "type": "string"
+        },
+        "voice_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Voice Sha256",
+          "type": "string"
+        },
+        "voice_simulation": {
+          "title": "Voice Simulation",
+          "type": "boolean"
+        },
+        "media_schema_version": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Media Schema Version",
+          "type": "string"
+        },
+        "media_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Media Sha256",
+          "type": "string"
+        },
+        "media_simulation": {
+          "title": "Media Simulation",
+          "type": "boolean"
+        },
+        "profile_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "channel": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Channel",
+          "type": "string"
+        },
+        "caption_style": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Caption Style",
+          "type": "string"
+        }
+      },
+      "required": [
+        "script_schema_version",
+        "script_sha256",
+        "script_simulation",
+        "voice_schema_version",
+        "voice_sha256",
+        "voice_simulation",
+        "media_schema_version",
+        "media_sha256",
+        "media_simulation",
+        "profile_id",
+        "channel",
+        "caption_style"
+      ],
+      "title": "RenderSources",
+      "type": "object"
+    },
+    "RenderStatus": {
+      "enum": [
+        "ready",
+        "needs_review"
+      ],
+      "title": "RenderStatus",
+      "type": "string"
+    },
+    "RenderTimelineInfo": {
+      "additionalProperties": false,
+      "description": "Reloj de voz, reloj de video y el exceso de cuantizacion entre ambos.",
+      "properties": {
+        "sample_rate_hz": {
+          "maximum": 48000,
+          "minimum": 8000,
+          "title": "Sample Rate Hz",
+          "type": "integer"
+        },
+        "sample_count": {
+          "minimum": 1,
+          "title": "Sample Count",
+          "type": "integer"
+        },
+        "narration_duration_s": {
+          "description": "N/S. Reloj de VOZ.",
+          "exclusiveMinimum": 0,
+          "title": "Narration Duration S",
+          "type": "number"
+        },
+        "narration_source": {
+          "const": "source_manifest",
+          "default": "source_manifest",
+          "title": "Narration Source",
+          "type": "string"
+        },
+        "fps": {
+          "maximum": 120,
+          "minimum": 1,
+          "title": "Fps",
+          "type": "integer"
+        },
+        "total_frames": {
+          "minimum": 1,
+          "title": "Total Frames",
+          "type": "integer"
+        },
+        "visual_duration_s": {
+          "description": "total_frames/F. Reloj de VIDEO.",
+          "exclusiveMinimum": 0,
+          "title": "Visual Duration S",
+          "type": "number"
+        },
+        "quantization_excess_s": {
+          "description": "visual_duration_s - narration_duration_s. Siempre < 1/F.",
+          "minimum": 0,
+          "title": "Quantization Excess S",
+          "type": "number"
+        },
+        "max_frame_hold_s": {
+          "description": "1/F. Es lo unico que se permite sostener de la ultima muestra visual al cerrar el fotograma final; nunca sirve para alargar un clip corto.",
+          "exclusiveMinimum": 0,
+          "title": "Max Frame Hold S",
+          "type": "number"
+        },
+        "target_source": {
+          "const": "montage_decision",
+          "default": "montage_decision",
+          "title": "Target Source",
+          "type": "string"
+        },
+        "scenes": {
+          "items": {
+            "$ref": "#/$defs/SceneBoundary"
+          },
+          "maxItems": 40,
+          "minItems": 1,
+          "title": "Scenes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "sample_rate_hz",
+        "sample_count",
+        "narration_duration_s",
+        "fps",
+        "total_frames",
+        "visual_duration_s",
+        "quantization_excess_s",
+        "max_frame_hold_s",
+        "scenes"
+      ],
+      "title": "RenderTimelineInfo",
+      "type": "object"
+    },
+    "ResampleInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "source_rate_hz": {
+          "maximum": 192000,
+          "minimum": 8000,
+          "title": "Source Rate Hz",
+          "type": "integer"
+        },
+        "target_rate_hz": {
+          "maximum": 192000,
+          "minimum": 8000,
+          "title": "Target Rate Hz",
+          "type": "integer"
+        },
+        "source_samples": {
+          "minimum": 1,
+          "title": "Source Samples",
+          "type": "integer"
+        },
+        "expected_samples": {
+          "minimum": 1,
+          "title": "Expected Samples",
+          "type": "integer"
+        },
+        "ratio": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Ratio",
+          "type": "string"
+        },
+        "exact_integer_ratio": {
+          "title": "Exact Integer Ratio",
+          "type": "boolean"
+        },
+        "note": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_rate_hz",
+        "target_rate_hz",
+        "source_samples",
+        "expected_samples",
+        "ratio",
+        "exact_integer_ratio",
+        "note"
+      ],
+      "title": "ResampleInfo",
+      "type": "object"
+    },
+    "SceneBoundary": {
+      "additionalProperties": false,
+      "description": "Frontera de una escena, en los DOS relojes, con su desplazamiento.",
+      "properties": {
+        "scene_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Scene Id",
+          "type": "string"
+        },
+        "order": {
+          "maximum": 40,
+          "minimum": 1,
+          "title": "Order",
+          "type": "integer"
+        },
+        "start_sample": {
+          "minimum": 0,
+          "title": "Start Sample",
+          "type": "integer"
+        },
+        "end_sample": {
+          "minimum": 1,
+          "title": "End Sample",
+          "type": "integer"
+        },
+        "start_frame": {
+          "minimum": 0,
+          "title": "Start Frame",
+          "type": "integer"
+        },
+        "end_frame": {
+          "minimum": 1,
+          "title": "End Frame",
+          "type": "integer"
+        },
+        "frames": {
+          "description": "Nunca cero: una escena vacia es un fallo.",
+          "minimum": 1,
+          "title": "Frames",
+          "type": "integer"
+        },
+        "voice_start_s": {
+          "minimum": 0,
+          "title": "Voice Start S",
+          "type": "number"
+        },
+        "voice_end_s": {
+          "exclusiveMinimum": 0,
+          "title": "Voice End S",
+          "type": "number"
+        },
+        "frame_start_s": {
+          "minimum": 0,
+          "title": "Frame Start S",
+          "type": "number"
+        },
+        "frame_duration_s": {
+          "exclusiveMinimum": 0,
+          "title": "Frame Duration S",
+          "type": "number"
+        },
+        "start_offset_s": {
+          "description": "frame_start_s - voice_start_s. En [0, 1/F) por construccion.",
+          "title": "Start Offset S",
+          "type": "number"
+        },
+        "end_offset_s": {
+          "title": "End Offset S",
+          "type": "number"
+        },
+        "asset_type": {
+          "enum": [
+            "image",
+            "video"
+          ],
+          "title": "Asset Type",
+          "type": "string"
+        },
+        "camera_move": {
+          "$ref": "#/$defs/CameraMove"
+        },
+        "geometry_policy": {
+          "$ref": "#/$defs/GeometryPolicy"
+        },
+        "geometry_already_applied": {
+          "title": "Geometry Already Applied",
+          "type": "boolean"
+        },
+        "clip_from_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Clip From S"
+        },
+        "clip_to_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Clip To S"
+        }
+      },
+      "required": [
+        "scene_id",
+        "order",
+        "start_sample",
+        "end_sample",
+        "start_frame",
+        "end_frame",
+        "frames",
+        "voice_start_s",
+        "voice_end_s",
+        "frame_start_s",
+        "frame_duration_s",
+        "start_offset_s",
+        "end_offset_s",
+        "asset_type",
+        "camera_move",
+        "geometry_policy",
+        "geometry_already_applied"
+      ],
+      "title": "SceneBoundary",
+      "type": "object"
+    },
+    "SegmentInfo": {
+      "additionalProperties": false,
+      "description": "Un segmento visual ya validado. Su archivo puede haberse limpiado.",
+      "properties": {
+        "scene_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Scene Id",
+          "type": "string"
+        },
+        "order": {
+          "maximum": 40,
+          "minimum": 1,
+          "title": "Order",
+          "type": "integer"
+        },
+        "frames": {
+          "minimum": 1,
+          "title": "Frames",
+          "type": "integer"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size_bytes": {
+          "minimum": 1,
+          "title": "Size Bytes",
+          "type": "integer"
+        },
+        "retained": {
+          "description": "False: se limpio tras consolidar. Su hash queda aqui.",
+          "title": "Retained",
+          "type": "boolean"
+        },
+        "reused": {
+          "default": false,
+          "description": "Se reutilizo un checkpoint validado.",
+          "title": "Reused",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "scene_id",
+        "order",
+        "frames",
+        "sha256",
+        "size_bytes",
+        "retained"
+      ],
+      "title": "SegmentInfo",
+      "type": "object"
+    },
+    "ToolInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "ffmpeg_version": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Ffmpeg Version",
+          "type": "string"
+        },
+        "ffprobe_version": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Ffprobe Version",
+          "type": "string"
+        },
+        "min_tested_version": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Min Tested Version",
+          "type": "string"
+        },
+        "meets_min_tested_version": {
+          "title": "Meets Min Tested Version",
+          "type": "boolean"
+        },
+        "libass": {
+          "title": "Libass",
+          "type": "boolean"
+        },
+        "encoders_required": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Encoders Required",
+          "type": "array"
+        },
+        "filters_required": {
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 40,
+          "title": "Filters Required",
+          "type": "array"
+        }
+      },
+      "required": [
+        "ffmpeg_version",
+        "ffprobe_version",
+        "min_tested_version",
+        "meets_min_tested_version",
+        "libass"
+      ],
+      "title": "ToolInfo",
+      "type": "object"
+    },
+    "VideoStreamInfo": {
+      "additionalProperties": false,
+      "description": "Propiedades MEDIDAS del stream de video del archivo exportado.",
+      "properties": {
+        "codec_name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Codec Name",
+          "type": "string"
+        },
+        "width": {
+          "minimum": 1,
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "minimum": 1,
+          "title": "Height",
+          "type": "integer"
+        },
+        "pix_fmt": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Pix Fmt",
+          "type": "string"
+        },
+        "sample_aspect_ratio": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Sample Aspect Ratio",
+          "type": "string"
+        },
+        "display_aspect_ratio": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Display Aspect Ratio",
+          "type": "string"
+        },
+        "fps_rational": {
+          "description": "Ej. '30/1'. Racional, no decimal.",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Fps Rational",
+          "type": "string"
+        },
+        "fps": {
+          "exclusiveMinimum": 0,
+          "title": "Fps",
+          "type": "number"
+        },
+        "frame_count": {
+          "description": "Contado decodificando, no leido de la cabecera.",
+          "minimum": 1,
+          "title": "Frame Count",
+          "type": "integer"
+        },
+        "stream_duration_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stream Duration S"
+        },
+        "rotation_degrees": {
+          "default": 0,
+          "maximum": 360,
+          "minimum": -360,
+          "title": "Rotation Degrees",
+          "type": "integer"
+        },
+        "has_b_frames": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Has B Frames",
+          "type": "integer"
+        },
+        "constant_frame_rate": {
+          "title": "Constant Frame Rate",
+          "type": "boolean"
+        },
+        "pts_monotonic": {
+          "title": "Pts Monotonic",
+          "type": "boolean"
+        },
+        "source": {
+          "const": "local_measurement",
+          "default": "local_measurement",
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "codec_name",
+        "width",
+        "height",
+        "pix_fmt",
+        "sample_aspect_ratio",
+        "display_aspect_ratio",
+        "fps_rational",
+        "fps",
+        "frame_count",
+        "constant_frame_rate",
+        "pts_monotonic"
+      ],
+      "title": "VideoStreamInfo",
+      "type": "object"
+    },
+    "VisualReviewState": {
+      "description": "Revision humana. `ready` es preparacion TECNICA, no aprobacion.",
+      "enum": [
+        "not_performed",
+        "approved",
+        "rejected"
+      ],
+      "title": "VisualReviewState",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Manifiesto lateral del montaje. Unica salida estructurada del modulo 4.",
+  "properties": {
+    "document_type": {
+      "const": "render_manifest",
+      "default": "render_manifest",
+      "title": "Document Type",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "render_run_id": {
+      "pattern": "^[0-9a-f\\-]{36}$",
+      "title": "Render Run Id",
+      "type": "string"
+    },
+    "job_id": {
+      "pattern": "^[0-9a-f\\-]{36}$",
+      "title": "Job Id",
+      "type": "string"
+    },
+    "voice_run_id": {
+      "pattern": "^[0-9a-f\\-]{36}$",
+      "title": "Voice Run Id",
+      "type": "string"
+    },
+    "media_run_id": {
+      "pattern": "^[0-9a-f\\-]{36}$",
+      "title": "Media Run Id",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "render_mode": {
+      "$ref": "#/$defs/RenderMode"
+    },
+    "simulation": {
+      "description": "Derivado de las FUENTES y de las operaciones, no de una bandera.",
+      "title": "Simulation",
+      "type": "boolean"
+    },
+    "sources": {
+      "$ref": "#/$defs/RenderSources"
+    },
+    "control": {
+      "$ref": "#/$defs/RenderControl"
+    },
+    "output": {
+      "$ref": "#/$defs/RenderOutput"
+    },
+    "timeline": {
+      "$ref": "#/$defs/RenderTimelineInfo"
+    },
+    "audio": {
+      "$ref": "#/$defs/RenderAudio"
+    },
+    "captions": {
+      "$ref": "#/$defs/RenderCaptions"
+    },
+    "processing": {
+      "$ref": "#/$defs/RenderProcessing"
+    },
+    "resources": {
+      "$ref": "#/$defs/RenderResources"
+    },
+    "inspection": {
+      "$ref": "#/$defs/RenderInspection"
+    }
+  },
+  "required": [
+    "render_run_id",
+    "job_id",
+    "voice_run_id",
+    "media_run_id",
+    "created_at",
+    "render_mode",
+    "simulation",
+    "sources",
+    "control",
+    "output",
+    "timeline",
+    "audio",
+    "captions",
+    "processing",
+    "resources",
+    "inspection"
+  ],
+  "title": "viralgen render manifest",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

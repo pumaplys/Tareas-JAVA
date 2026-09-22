@@ -1,4 +1,4 @@
-# viralgen — Módulos 1, 2 y 3: guion, voz y medios visuales
+# viralgen — Módulos 1‑4: guion, voz, medios visuales y montaje
 
 **Módulo 1** produce un documento JSON validado (`script.json`) que describe el
 plan completo de un vídeo vertical 9:16 —idea, guion, escenas, prompts de imagen
@@ -18,6 +18,14 @@ Ni el guion ni `voice.json` se modifican: ver §16 y
 [`docs/contrato_modulo_3_visuales.md`](docs/contrato_modulo_3_visuales.md).
 **No monta ni publica**: eso es del módulo 4.
 
+**Módulo 4** toma los tres y produce el **vídeo**: `video.mp4` vertical con la
+narración, los subtítulos integrados, los sonidos opcionales que ya existan y
+un manifiesto lateral `render.json`. Usa **FFmpeg directamente desde Python**:
+Python orquesta, calcula el plan y escribe contratos; no carga el vídeo en
+memoria ni construye sus fotogramas. Ver §17 y
+[`docs/contrato_modulo_4_montaje.md`](docs/contrato_modulo_4_montaje.md).
+**No publica**: eso sería del módulo 5.
+
 ## Qué hace y qué no hace
 
 Hace:
@@ -32,8 +40,8 @@ Hace:
 monta vídeo, no publica nada, no descarga analíticas y no consulta buscadores.
 Tampoco instala ni despliega nada en una VPS.
 
-Lo que **ningún** módulo de esta entrega hace: montar, mezclar audio, poner
-subtítulos en pantalla, publicar en plataformas, ni desplegar en una VPS.
+Lo que **ningún** módulo de esta entrega hace: publicar en plataformas,
+programar publicaciones, consultar analíticas ni desplegar en una VPS.
 
 `production_status=ready_for_production` significa **solo** que el plan puede
 pasar a producir medios. No autoriza publicaciones, no certifica originalidad y
@@ -60,13 +68,24 @@ sobra dentro de los 10 GB de la VPS. Los datos generados (SQLite + JSON + logs)
 son texto: un trabajo completo ocupa del orden de 30‑60 KB. Los **medios** no:
 ver §16 para los presupuestos de disco del módulo 3.
 
-FFmpeg/`ffprobe` son opcionales y solo hacen falta para **voz real** (decodificar
-el MP3 del proveedor) y para **clips de vídeo** (medirlos). Un recorrido de
-imágenes en modo simulado no los necesita:
+FFmpeg es **obligatorio para el módulo 4** (monta el vídeo) y opcional para los
+anteriores: el 2 lo usa para decodificar el MP3 del proveedor y el 3 para medir
+clips. Se necesita con **libx264, AAC y libass**, más una fuente tipográfica:
 
 ```bash
-sudo apt install -y ffmpeg      # aporta ffmpeg y ffprobe
+sudo apt install -y ffmpeg fonts-dejavu-core
 ```
+
+Versión **realmente probada** en esta entrega: `ffmpeg 6.1.1-3ubuntu5` en Ubuntu
+24.04, con `--enable-libx264 --enable-libass`. Las capacidades se leen de los
+ejecutables instalados, **no de la documentación en línea**: si al paquete de tu
+distribución le falta un codificador o un filtro, `viralgen render plan` lo dice
+por nombre antes de intentar nada.
+
+`fonts-dejavu-core` aporta **DejaVu Sans Bold**, la fuente por defecto de los
+subtítulos: licencia redistribuible (Bitstream Vera / Arev) y cobertura completa
+del español. El módulo fija el **archivo** de la fuente, no su nombre de
+familia, y registra su SHA-256: así no hay sustitución silenciosa.
 
 ### Versiones fijadas y cómo se verificaron
 
@@ -78,6 +97,12 @@ conjunto exacto resuelto.
 `Pillow` la añade el **módulo 3**: se usa para abrir cada imagen, verificarla y
 medirla, y para calcular la geometría de encuadre y la hoja de contacto. El
 módulo no se fía de la extensión del archivo ni de lo que declare el proveedor.
+
+El **módulo 4 no añade ninguna dependencia de Python**. La cobertura de glifos y
+las anchuras de la fuente se leen con un lector mínimo de TrueType propio
+(`render/sfnt.py`, ~200 líneas sobre `struct`), en vez de arrastrar una
+biblioteca tipográfica completa para tres tablas. FFmpeg es una dependencia del
+**sistema**, no del paquete.
 
 Verificación realizada (no son versiones inventadas): se creó un entorno virtual
 limpio de Python 3.12, se instalaron las dependencias sin fijar versión, se
@@ -590,7 +615,7 @@ Estado del **documento**: `ready_for_production` o `needs_review`.
 | 8 | idempotencia | Misma `--job-key` con parámetros distintos. |
 | 9 | concurrencia | Ya hay otra ejecución en curso. |
 | 10 | revisión | Documento exportado y válido, pero con avisos: revisión humana. |
-| 11 | espera remota | Módulo 3: hay una tarea de vídeo viva en el proveedor y la espera local se agotó. **Ni éxito ni fallo**: vuelve a invocar el mismo `--media-key` para seguir consultando ese mismo `task_id`. |
+| 11 | espera remota (solo módulo 3; el montaje local nunca inventa una espera remota) | Módulo 3: hay una tarea de vídeo viva en el proveedor y la espera local se agotó. **Ni éxito ni fallo**: vuelve a invocar el mismo `--media-key` para seguir consultando ese mismo `task_id`. |
 
 ---
 
@@ -604,9 +629,12 @@ viralgen/
 ├── schema/script.schema.json   # contrato del modulo 1
 ├── schema/voice.schema.json    # contrato del manifiesto de voz
 ├── schema/media.schema.json    # contrato del manifiesto de medios
+├── schema/render.schema.json   # contrato del manifiesto de montaje
 ├── docs/contrato_modulo_2_voz.md       # contrato modulo 1 -> modulo 2 (voz)
 ├── docs/contrato_modulo_3_visuales.md  # contrato modulo 3 -> modulo 4 (montaje)
-├── examples/                   # salidas simuladas completas (guion, voz, medios)
+├── docs/contrato_modulo_4_montaje.md   # contrato modulo 4 -> modulo 5 (publicacion)
+├── .github/workflows/viralgen-ffmpeg.yml  # CI con FFmpeg real (en la raiz del repo)
+├── examples/                   # salidas simuladas completas y un preview.mp4 real
 ├── src/viralgen/
 │   ├── config.py               # ajustes centralizados
 │   ├── errors.py               # jerarquía de errores y códigos de salida
@@ -630,18 +658,31 @@ viralgen/
 │   │   ├── admission.py        # puerta de entrada del modulo 4 (voz)
 │   │   ├── pipeline.py
 │   │   └── data/voice_profiles.json
-│   └── media/                  # MODULO 3
-│       ├── capabilities.py     # tamanos, calidades y duraciones ADMITIDAS
-│       ├── imaging.py          # Pillow: decodificar, medir, geometria, hoja
-│       ├── videoprobe.py       # ffprobe: medir el STREAM de video
-│       ├── timeline.py         # reloj tomado de voice.json
-│       ├── prompts.py          # prompt efectivo versionado (v1)
-│       ├── references.py       # conjunto de referencias versionado
-│       ├── schemas.py          # contrato de media.json
-│       ├── providers/          # base, openai_images, runway, mock
-│       ├── planner.py          # preflight `media plan` e identidad de cache
-│       ├── storage.py          # tablas de medios, cache y tareas remotas
-│       ├── admission.py        # puerta de entrada del modulo 4 (medios)
+│   ├── media/                  # MODULO 3
+│   │   ├── capabilities.py     # tamanos, calidades y duraciones ADMITIDAS
+│   │   ├── imaging.py          # Pillow: decodificar, medir, geometria, hoja
+│   │   ├── videoprobe.py       # ffprobe: medir el STREAM de video
+│   │   ├── timeline.py         # reloj tomado de voice.json
+│   │   ├── prompts.py          # prompt efectivo versionado (v1)
+│   │   ├── references.py       # conjunto de referencias versionado
+│   │   ├── schemas.py          # contrato de media.json
+│   │   ├── providers/          # base, openai_images, runway, mock
+│   │   ├── planner.py          # preflight `media plan` e identidad de cache
+│   │   ├── storage.py          # tablas de medios, cache y tareas remotas
+│   │   ├── admission.py        # puerta de entrada del modulo 4 (medios)
+│   │   └── pipeline.py
+│   └── render/                 # MODULO 4
+│       ├── timeline.py         # cuantizacion de muestras a fotogramas
+│       ├── ffmpeg.py           # capacidades reales y subprocesos acotados
+│       ├── sfnt.py fonts.py    # lector TrueType propio y eleccion de fuente
+│       ├── captions.py         # ASS: agrupacion, resaltado y escapado
+│       ├── audio.py            # mezcla, ducking y sonoridad EBU R128
+│       ├── video.py            # geometria, segmentos, concat y mux
+│       ├── probe.py            # medicion del archivo terminado con ffprobe
+│       ├── schemas.py          # contrato de render.json
+│       ├── planner.py          # preflight `render plan`
+│       ├── storage.py          # etapas, checkpoints e intentos persistidos
+│       ├── admission.py        # puerta de entrada del modulo 5
 │       └── pipeline.py
 └── tests/
 ```
@@ -655,23 +696,38 @@ source .venv/bin/activate
 pytest -q
 ```
 
-Resultado de la ejecución en este entorno: **361 pruebas correctas y 5
-saltadas** (Python 3.12, sin red y sin claves). Las cinco saltadas necesitan
-FFmpeg/`ffprobe`, que aquí no están instalados: la decodificación MP3 del
-módulo 2 y las cuatro de medición de vídeo del módulo 3
-(`tests/test_media_video.py`). El salto se informa explícitamente con
-`pytest -rs` y **no equivale a haberlas pasado**.
+Resultado de la ejecución en este entorno: **481 pruebas correctas y ninguna
+saltada** (Python 3.12, sin red y sin claves), en unos 11 minutos. Con FFmpeg
+instalado se ejecutan también las cinco que antes se saltaban en los módulos 2
+y 3, y las **51 de integración local** del módulo 4 (marca `ffmpeg`).
 
-Las pruebas se dividen en tres categorías que este README no mezcla:
+Las pruebas se dividen en **cuatro** categorías que este README no mezcla:
 
 | Categoría | Qué ejercita | Estado |
 | --- | --- | --- |
 | **Local** | Lógica, esquemas, aritmética, validadores, proveedor simulado, Pillow. | Ejecutadas. |
 | **Transporte simulado** | El cliente HTTP real (SDK de `openai`, `httpx2` con `MockTransport`) contra un transporte de prueba: se captura la solicitud y se comprueban ruta, cabeceras y cuerpo. **No hay red.** | Ejecutadas. |
+| **Integración local** (marca `ffmpeg`) | FFmpeg y `ffprobe` **reales**: se codifican MP4 de verdad y se miden fotograma a fotograma. Sin red y sin credenciales. | **Ejecutadas**: 51 pruebas. |
 | **Integración externa** | Las APIs reales de OpenAI, ElevenLabs y Runway. | **Pendiente**: sin credenciales ni red en este entorno. Ver §13 (texto y voz) y §16.1 (imagen y vídeo). |
 
-Una prueba de transporte simulado **no es** integración externa y este proyecto
-no la presenta como tal.
+Una prueba de transporte simulado **no es** integración externa, y una
+integración **local** con FFmpeg tampoco: este proyecto no las presenta como
+tales.
+
+### La integración local es obligatoria, no opcional
+
+```bash
+pytest -m ffmpeg -rs          # 51: solo la integracion local real
+pytest -m "not ffmpeg"        # 430: solo lo que no necesita FFmpeg
+```
+
+Las dos selecciones son una **partición exacta** de las 481: entre ambas se
+ejecuta todo una sola vez, sin solape ni huecos.
+
+`.github/workflows/viralgen-ffmpeg.yml` instala FFmpeg y la fuente, **exige**
+que la selección `-m ffmpeg` no quede vacía (pytest sale con 5 si no recoge
+nada) y **falla si alguna se salta**. Una suite verde porque todo se saltó no
+acredita ningún render.
 
 Qué se cubre, además de las unidades sueltas:
 
@@ -739,8 +795,45 @@ Del **módulo 3** (`tests/test_media_*.py`), además:
   coincide con la voz y los tres veredictos separados.
 - **Medición de vídeo con `ffprobe`** (`tests/test_media_video.py`): se mide el
   **stream de vídeo**, no la pista de audio ni el contenedor, y se comprueba la
-  integridad decodificando. **Estas cuatro se saltan aquí** por falta de
-  `ffprobe`; el salto se informa y no equivale a pasarlas.
+  integridad decodificando.
+
+Del **módulo 4** (`tests/test_render_*.py`), además:
+
+- **Cuantización acumulada**: el ejemplo de 91 fotogramas, fronteras
+  fraccionarias, pausas ya incluidas, primera y última escena, cero huecos, y
+  el rechazo de una escena que colapsaría a cero fotogramas.
+- **Admisión**: producción rechaza fuentes simuladas **antes de codificar**
+  (`renders_new = 0`); preview acepta su origen pero **no** relaja hashes rotos,
+  cuantización falseada ni archivos ausentes; elegir el modo del informe no
+  cambia ningún `check`; un manifiesto manipulado no se cree.
+- **Render real de un fixture breve**: cuenta exacta de fotogramas, cambios de
+  escena donde dice el reloj, PTS monótonos y CFR, `+faststart`, y ausencia de
+  desplazamiento acumulado.
+- **Subtítulos realmente visibles**: se extraen fotogramas y se cuentan píxeles
+  claros dentro de la región de texto; el resaltado cambia entre dos eventos del
+  mismo grupo, comparando **regiones con tolerancia** (exigir imágenes idénticas
+  entre compilaciones de libass sería frágil).
+- **Sin inyección ASS**: `{`/`}` del guion se escapan; una barra invertida
+  bloquea con motivo en vez de convertirse en `\N`.
+- **Geometría**: `contain` no deforma (se verifica con una cuadrícula de prueba),
+  `crop` recorta, una transformación **ya aplicada** no se repite, y una política
+  o un color desconocidos se rechazan en vez de interpretarse como filtro.
+- **24 → 30 fps**: 120 fotogramas pasan a 150 y la **duración no cambia**.
+- **Audio**: la narración entra una sola vez, la conversión 24→48 kHz es exacta
+  (2×), la sonoridad medida cae en −16 ±1 LUFS con pico bajo −1 dBTP, un audio
+  silencioso **no inventa una medida**, los cues se colocan en su tiempo global
+  y un asset corto **no se repite** automáticamente.
+- **Reutilización y reanudación**: repetir la clave da `renders_new = 0`; cambiar
+  la configuración es conflicto; un fallo de segmento corta las etapas
+  siguientes sin publicar manifiesto; un fallo de muxing **no obliga a
+  recodificar** los segmentos; los intentos por etapa están acotados y persisten.
+- **Procesos**: los argumentos van en lista sin shell, `stdin` cerrado, un
+  timeout mata el **grupo** de procesos (se comprueba que no queda ningún hijo
+  vivo), una salida que crece de más se corta y el log está acotado.
+- **Limpieza**: borra los intermedios y **no invalida el paquete**; `validate` y
+  la reutilización siguen funcionando después.
+- **Un archivo que no es lo que dice**: un MP4 truncado supera `ffprobe` y falla
+  al decodificar entero; una imagen renombrada a `.mp4` no pasa por vídeo.
 
 ### Ejemplos de salida
 
@@ -892,9 +985,8 @@ la validación.
     cubierta con transporte HTTP simulado (payload, errores, reintentos,
     `Retry-After`, límites), pero eso solo verifica lo que sale de esta máquina.
     Ver §13.
-12. **La decodificación MP3 no se ha probado aquí**: FFmpeg no está instalado y
-    esa prueba se salta explícitamente. El recorrido `--mock` no lo necesita
-    porque genera PCM directamente.
+12. **Resuelto:** la decodificación MP3 ya se prueba, con FFmpeg instalado.
+    El recorrido `--mock` sigue sin necesitarlo porque genera PCM directamente.
 13. **El audio simulado no es voz.** Son señales de prueba generadas con la
     biblioteca estándar, y sus tiempos por carácter son sintéticos: no miden la
     precisión de ningún proveedor real.
@@ -908,8 +1000,9 @@ la validación.
     Images ni Runway. Está cubierta con transporte HTTP simulado (rutas,
     cabeceras, multipart, cuerpos, errores, sondeo de tareas), que verifica
     **lo que sale de esta máquina** y nada más. Ver §16.1.
-17. **Las cuatro pruebas de medición de vídeo se saltan aquí**: `ffprobe` no
-    está instalado. Se saltan explícitamente y eso **no equivale a pasarlas**.
+17. **Resuelto:** las pruebas que necesitaban FFmpeg ya se ejecutan. Se
+    instaló `ffmpeg 6.1.1-3ubuntu5` en el entorno de desarrollo y las cinco
+    que antes se saltaban en los módulos 2 y 3 **pasan**.
 18. **Las imágenes simuladas no son imágenes generadas.** Son placeholders
     dibujados con Pillow, rotulados `SIMULACION - NO ES UNA IMAGEN REAL`. Sirven
     para ejercitar el recorrido, los hashes y la aritmética; no dicen nada sobre
@@ -925,6 +1018,27 @@ la validación.
     vídeo puede consumir crédito aunque la respuesta se pierda: el presupuesto
     se reserva **antes** de enviar y un `outcome_unknown` **bloquea** la
     repetición automática en lugar de arriesgar un cobro doble.
+22. **El montaje de producción nunca se ha ejecutado**, porque no hay fuentes
+    reales que montar: depende de las integraciones externas pendientes. El
+    recorrido **preview** sí se ha ejecutado entero y produce un MP4 auténtico
+    (§17.1).
+23. **Un MP4 real con contenido simulado sigue siendo simulado.** FFmpeg
+    renderiza de verdad, pero las imágenes son placeholders y el audio son
+    tonos: el ejemplo acredita transporte temporal, mezcla y aritmética, no
+    inteligibilidad ni calidad visual.
+24. **Nada mide la calidad del vídeo.** No hay medida de ritmo, de legibilidad
+    ni de acierto editorial. `visual_review` empieza en `not_performed` y solo
+    lo cambia una persona.
+25. **La región de subtítulos no es una zona segura certificada.** Es una
+    decisión de diseño de este proyecto; cada plataforma recorta y superpone su
+    propia interfaz, y eso no se puede comprobar desde aquí.
+26. **Un único objetivo de entrega**: 1080×1920 a 30 fps. Otros formatos no
+    están implementados, y el objetivo declarado en `media.json` se **comprueba**
+    en vez de sobrescribirse.
+27. **No hay medida de memoria.** `peak_memory_mib` es `null` porque no se
+    instrumentó; no se estima un número que nadie midió.
+28. **El montaje es secuencial por diseño**: un trabajador y un proceso pesado a
+    la vez. No hay cola distribuida ni paralelismo entre escenas.
 
 ---
 
@@ -1542,3 +1656,375 @@ y los clips, los modelos usados, los `task_id` reales que devuelva Runway, los
 intentos nuevos y totales, los segundos de vídeo reservados, las duraciones
 medidas con `ffprobe` frente a las solicitadas y el resultado de la validación.
 **Hasta entonces, nada de este recorrido se presenta como ejecutado.**
+
+---
+
+## 17. Módulo 4: montaje local, subtítulos y exportación
+
+Toma un `script.json`, un `voice.json` y un `media.json` **admitidos** y produce
+el vídeo. Contrato completo para quien publique:
+[`docs/contrato_modulo_4_montaje.md`](docs/contrato_modulo_4_montaje.md).
+
+**No publica, no programa y no consulta analíticas.** Termina en un MP4, un
+`captions.ass`, unos fotogramas de inspección y `render.json`.
+
+### Decisión de contrato
+
+Igual que en los módulos anteriores: ninguna entrada se toca. `script.json`
+sigue en el esquema 1.0 y su `video.actual_duration_s` **sigue siendo `null`**;
+`render.json` describe el **archivo exportado**, que es otra cosa.
+
+### Uso
+
+```bash
+# Preflight: valida, calcula fotogramas y subtítulos, estima espacio. NO codifica.
+viralgen render plan --script <script.json> --voice <voice.json> --media <media.json>
+
+# Montaje de producción (exige admisión completa de toda la cadena).
+viralgen render generate --script <script.json> --voice <voice.json> \
+  --media <media.json> --render-key real-001
+
+# Montaje preview (admite fuentes simuladas; marca el vídeo y nunca publica).
+viralgen render generate --script <script.json> --voice <voice.json> \
+  --media <media.json> --render-key demo-001 --preview
+
+# Auditoría del cuarteto. Solo lectura: mide y decodifica, no escribe.
+viralgen render validate --script <script.json> --voice <voice.json> \
+  --media <media.json> --manifest <render.json>
+
+# Contrato exportable.
+viralgen render schema --output schema/render.schema.json
+```
+
+**Ningún comando necesita credenciales.** Se montan archivos que ya existen;
+una configuración de proveedores ausente no impide montar.
+
+`render plan` contesta antes de gastar CPU: escenas, fotogramas por escena,
+grupos y eventos de subtítulo, fuente elegida con su hash, capacidades de FFmpeg
+que faltan (`missing_tools`), disco libre, presupuesto estimado e incidencias.
+`can_render` dice si merece la pena invocar `generate`.
+
+> Un plan con `can_render: false` por falta de un ejecutable **sigue siendo un
+> plan aritmético válido**, pero las comprobaciones que necesitaban ese
+> ejecutable quedan **no verificadas**, nunca aprobadas. Eso es distinto de una
+> fuente comprobada como inadmisible, y el plan las distingue
+> (`unverified_checks` frente a `issues`).
+
+### El reloj: dos relojes y un exceso menor que un fotograma
+
+`voice.json` manda. Se convierten los **límites acumulados**, nunca cada
+duración por separado:
+
+```
+start_frame  = ceil(start_sample × F / S)
+end_frame    = ceil(end_sample   × F / S)      # exclusivo
+total_frames = ceil(N × F / S)
+```
+
+Con fronteras en 0 / 1,01 / 2,02 / 3,03 s a 30 fps salen fronteras
+**0 / 31 / 61 / 91** y segmentos de **31, 30 y 30** fotogramas. Redondear cada
+duración por separado daría 93, y eso es exactamente el error que se evita. El
+`ceil` se calcula con enteros: a 48 kHz y varios minutos, `math.ceil(a/b)` puede
+caer del lado equivocado de un entero exacto.
+
+Las escenas **particionan** [0, `total_frames`) sin huecos ni solapes, y ninguna
+puede quedarse en cero fotogramas. El exceso visual final está siempre en
+[0, 1/F) y se registra como `quantization_excess_s`.
+
+**La narración no se acelera, no se recorta y no se alarga** para cuadrar. La
+pequeña diferencia entre el final del audio y el del vídeo es esa cuantización,
+documentada. No se usa `-shortest`: taparía una pista truncada en vez de
+delatarla.
+
+### Montaje visual: un segmento por escena
+
+Cada escena se procesa y **se valida antes de empezar la siguiente**: si un
+segmento no tiene los fotogramas exactos o el tamaño objetivo, el trabajo se
+detiene ahí.
+
+Geometría: `contain` (relleno lateral) o `crop` (recorte). **Nunca deformación.**
+Una transformación que el módulo 3 ya incorporó a un derivado **no se repite**.
+Una política desconocida se rechaza: el guion no puede colar una expresión de
+FFmpeg por esta vía.
+
+Movimiento de cámara determinista y **opcional**, sin alterar la duración:
+`static` por defecto, y `zoom_in` de hasta 1,04 solo cuando el estilo es
+dinámico **y** hay un recorte que lo permite. Las escenas de vídeo conservan su
+movimiento original y no reciben otro. Un `contain` nunca se recorta para
+simular movimiento.
+
+Cortes directos, sin intros, outros, transiciones ni fundidos que cambien el
+reloj. El loop narrativo se conserva por la secuencia existente: **no se añade
+una repetición al final y no se promete continuidad visual perfecta entre
+extremos**.
+
+Los segmentos se codifican con ajustes **homogéneos** (mismo codec, resolución,
+formato de píxel, fps, base temporal, GOP cerrado de 2 s y `scenecut`
+desactivado), que es lo que permite concatenarlos con `concat` **copiando el
+stream** en vez de recodificar. La lista de `concat` se escribe con nombres
+relativos y FFmpeg se ejecuta con ese directorio como `cwd`: así no puede
+referirse a rutas de fuera ni a una URL.
+
+Formato de salida: **MP4 no fragmentado, H.264 (`libx264`), `yuv420p`, SAR 1:1,
+CFR 30/1, AAC-LC a 48 000 Hz**, orientación neutra y `+faststart`. Se empieza en
+`veryfast` y CRF 21, configurables. **El tamaño final se mide**; CRF no lo
+promete.
+
+### Subtítulos
+
+`captions.ass` se genera desde la **alineación que ya existe** en `voice.json`:
+no se transcribe, no se inventan timestamps y no se vuelve a pedir voz.
+
+Grupos de 2 a 5 palabras, máximo dos líneas, cortando también por las pausas que
+el módulo 2 midió. Los subtítulos completos cubren **todas** las palabras.
+`PlayResX=1080`, `PlayResY=1920`, y una región de texto en x 96..984, y
+1080..1530 — una **decisión de diseño, no una zona segura** garantizada en
+ninguna plataforma. La marca de preview vive arriba, fuera de esa región.
+
+| Perfil | Estilo |
+| --- | --- |
+| Curiosidades (`dynamic_emphasis`) | Letra gruesa de 76, texto claro con borde oscuro, **palabra activa resaltada** y una entrada breve del grupo a escala 106 % durante 120 ms. |
+| Infantil (`calm_readable`) | Tamaño 72, contraste alto, **grupos estables** y sin resaltado por palabra: nada de sacudidas ni saltos. |
+
+Son **valores iniciales para ajustar mirando el render**, no un algoritmo de
+viralidad.
+
+Mientras cambia la palabra activa **solo cambia el color**: la caja y los saltos
+de línea se quedan quietos, para que la frase no salte de lado en cada palabra.
+En los huecos el grupo sigue visible sin palabra activa, y el resaltado no se
+queda pegado durante una pausa larga ni se adelanta al grupo siguiente.
+
+Una palabra legítima muy larga (`extraordinariamente` mide 889 px a tamaño 76 y
+la región tiene 888) **encoge de forma acotada** hasta el 80 % antes de darse
+por vencida: bloquear un render entero por una palabra del español sería peor.
+Si ni al mínimo cabe, se bloquea; **nunca se recorta el texto ni se elimina una
+palabra**.
+
+Tres unidades que no se mezclan: eventos ASS en **centésimas**,
+transformaciones `\t(...)` en **milisegundos relativos al evento**, alineación
+original en **segundos globales**. Política única de redondeo: se cuantiza cada
+**frontera** con `floor(t*100 + 0.5)`, nunca la duración; como dos eventos
+contiguos comparten el valor de origen, no hay solapes ni deriva acumulada. Una
+palabra cuyo resaltado colapsa conserva su texto y se anota en
+`collapsed_highlights`: no se fabrica duración de voz.
+
+**El texto del guion es dato.** Las etiquetas salen solo de plantillas de este
+módulo; `{` y `}` se escapan, y una barra invertida **bloquea con motivo** en
+vez de convertirse en una directiva `\N` de libass.
+
+La fuente se fija por **archivo** (no por nombre de familia), se registra su
+SHA-256 y se comprueba que cubre los caracteres realmente usados más los del
+español (`áéíóúüñ¿¡«»—…`). Un glifo ausente saldría como cuadro vacío, así que
+bloquea antes de renderizar.
+
+### Audio
+
+`narration.wav` se usa **una sola vez**: los clips por escena ya están dentro
+del maestro, y volver a concatenarlos duplicaría la voz y sus pausas. El audio
+de los clips de vídeo **nunca** entra en la mezcla (`use_source_audio=false`).
+
+Solo se consumen `sound_cues` **ya resueltos y verificables** del manifiesto de
+voz, y se comprueba su hash antes de mezclar. Un asset obligatorio que falta es
+un **error**, no una excusa; una indicación que el módulo 2 dejó sin resolver
+conserva su aviso y **no dispara ninguna descarga**. Un asset más corto que su
+intervalo **no se repite** automáticamente.
+
+La mezcla de trabajo va a 48 000 Hz. Con narración a 24 000 Hz la conversión es
+exactamente **2×**, así que hay `2N` muestras por canal sin redondeo; para otras
+frecuencias se aplica una conversión racional y se declara el factor. **La
+narración no se ajusta a la duración redondeada del vídeo.**
+
+Normalización EBU R128 en dos pasadas, activada por defecto: **−16 LUFS** y
+techo de **−1,5 dBTP**, con la frecuencia de salida fijada explícitamente
+(`loudnorm` remuestrea a 192 kHz por dentro). Son objetivos **propios del
+proyecto**, no requisitos de ninguna plataforma. Se comprueban sobre el audio
+**final decodificado** con tolerancia de ±1 LU y pico máximo −1 dBTP; un
+incumplimiento deja el candidato en `needs_review` y **no abre un bucle de
+recodificación**. Si la señal es silenciosa o el análisis no sirve, se dice y
+**no se inventa una medida**.
+
+### Validación del archivo terminado
+
+Que FFmpeg termine con código 0 no basta. Sobre el archivo se comprueba:
+
+- codec, dimensiones, SAR/DAR, fps racional, orientación y formato de píxel;
+- la cuenta de fotogramas **contando, no leyendo la cabecera**, y exigiendo
+  exactamente `total_frames`;
+- PTS de **presentación** consistentes con CFR (con B-frames el orden de
+  decodificación no es el de presentación: se ordena por PTS);
+- **decodificación completa de ambas pistas** a salida nula — lo único que
+  demuestra que el archivo no está truncado;
+- que el audio contenga la narración entera, con un margen técnico de **un frame
+  AAC (1024 muestras)** para el priming y el padding del codec. Ese margen
+  **no tapa voz truncada**;
+- que todo evento de subtítulo venga de palabras de la voz, quepa en el reloj y
+  use un estilo declarado;
+- fotogramas de muestra en gancho, frontera de escena (y el anterior), medio y
+  cierre, como **evidencia** de texto integrado y de la marca de preview.
+
+> Un detector de píxeles no certifica legibilidad ni corrección semántica.
+> `inspection.checks_performed` dice exactamente qué se comprobó.
+
+Si falta un segmento, falla la decodificación o hay discrepancia de reloj, **no
+se publica un `render.json` ready**. Un candidato completo con incumplimientos
+medidos se conserva como `needs_review`, y eso lo rechaza también para preview.
+
+### Admisión para el módulo 5: tres veredictos separados
+
+| Campo | Qué autoriza |
+| --- | --- |
+| `contract_valid` | Nada. Los cuatro archivos se leen, sus vínculos y hashes cuadran y el MP4 decodifica entero. |
+| `admissible_for_preview` | Revisión y CI de recorridos de **prueba**. Ignora **únicamente** `origin_checks`. |
+| `admissible_for_publisher` | **El módulo 5 puede recibir el archivo.** Exige `render_mode=production`, `simulation=false` y origen real. |
+
+`origin_checks = {guion_real, voz_real, medios_reales, render_real,
+modo_produccion}`.
+
+`admissible_for_publisher` significa que el módulo 5 **puede recibir** el
+archivo. **No certifica monetización, calidad editorial ni permiso para
+publicarlo.**
+
+`--allow-simulation` elige solo el modo del informe y su código de salida:
+**nunca cambia `checks`** ni habilita al publicador.
+
+**Una salida preview no llega nunca al publicador**, aunque todas sus fuentes
+fueran reales: lleva una marca `PREVIEW` incrustada en los píxeles, y eso no se
+quita del archivo. Preview usa **la misma resolución y las mismas
+comprobaciones técnicas** que producción, para que el ejemplo ejercite el
+recorrido final de verdad.
+
+En preview el archivo se llama **`preview.mp4`** y en producción `video.mp4`: el
+nombre dice lo que es, y así nadie sube un preview por descuido.
+
+### Reanudación, recursos y limpieza
+
+`--render-key` es la clave de idempotencia. Su *fingerprint* incluye los hashes
+de las tres fuentes, el modo, el objetivo, los codecs, los estilos, la fuente
+tipográfica, la mezcla y las versiones del pipeline y del motor. Misma clave y
+misma configuración **recuperan el resultado** (`renders_new: 0`); un cambio da
+**conflicto**. Comprobar el archivo con `ffprobe` **no cuenta** como
+codificación nueva.
+
+La identidad de **etapa** es independiente de la de la ejecución, así que un
+fallo de muxing no obliga a recodificar las escenas. Un segmento preview nunca
+vale para una salida de producción: el modo entra en su identidad.
+
+Tras consolidar y validar, se limpian los intermedios regenerables **de este
+render**, y se retiran a la vez sus filas de caché. **La limpieza no puede
+invalidar el paquete**: el MP4, el `captions.ass`, los fotogramas y el
+manifiesto viven fuera del área de trabajo, y `validate` y la reutilización
+siguen funcionando después. Los hashes de lo borrado se conservan en
+`render.json` como dato histórico, **no como archivos obligatorios**. Ante un
+fallo no se limpia nada: las etapas validadas se conservan para reanudar.
+
+Todos los subprocesos se lanzan con **lista de argumentos, `shell=False` y
+`stdin` cerrado**, con timeout por etapa, logs acotados y terminación del
+**grupo** de procesos —matar solo al padre dejaría hijos codificando—. El
+progreso legible por máquina va a su propio archivo, nunca al `stdout` de la
+CLI, que lleva el resumen JSON.
+
+| Parámetro | Valor inicial |
+| --- | --- |
+| `RENDER_WORKERS` | 1 |
+| `RENDER_FFMPEG_THREADS` | 2 (los hilos de filtros se limitan aparte) |
+| `RENDER_MAX_DURATION_S` | 120, además de las reglas del perfil |
+| `RENDER_STAGE_TIMEOUT_S` | 600 |
+| `RENDER_JOB_TIMEOUT_S` | 1800 por invocación |
+| `RENDER_MAX_ATTEMPTS_PER_STAGE` | 2, persistidos |
+| `RENDER_MAX_WORK_MIB` | 1536 (pico simultáneo: segmentos, mezcla, candidato y temporales) |
+| `RENDER_MAX_OUTPUT_MIB` | 200 |
+| `RENDER_LOG_MAX_MIB` | 5 por ejecución |
+
+`MIN_FREE_DISK_MB` se respeta **antes y durante** la ejecución. El crecimiento
+del archivo de salida se vigila mientras se escribe: CRF no impone tamaño, así
+que si se pasa del presupuesto el proceso se detiene y **el candidato queda
+inválido a propósito**. Un archivo truncado por un límite no se presenta como
+exportación correcta.
+
+### Ejemplo real incluido
+
+`examples/montaje_preview/` es un **MP4 auténtico**, producido por FFmpeg sobre
+el paquete `examples/visuales_simulados/` (~2,0 MB):
+
+```
+examples/montaje_preview/
+├── preview.mp4        # 1,6 MB · 1080x1920 · 30 fps · 765 fotogramas
+├── render.json        # el manifiesto de este render
+├── captions.ass       # artefacto de diagnostico
+└── frames/            # 5 fotogramas de inspeccion (gancho, frontera, medio, cierre)
+```
+
+Se valida solo, contra sus entradas:
+
+```bash
+viralgen render validate \
+  --script examples/visuales_simulados/script.json \
+  --voice  examples/visuales_simulados/voz/voice.json \
+  --media  examples/visuales_simulados/medios/media.json \
+  --manifest examples/montaje_preview/render.json --allow-simulation
+```
+
+Resultado real: `contract_valid: true`, `admissible_for_preview: true`,
+`admissible_for_publisher: false`, `preview_reasons: []`. Sin
+`--allow-simulation` el código de salida es **10**, que es lo correcto.
+
+Cifras medidas de ese archivo: **765 fotogramas** (= `ceil(611272 × 30 / 24000)`),
+25,5 s de vídeo frente a **25,469667 s** de narración —un exceso de cuantización
+de 0,030333 s, por debajo de 1/30 = 0,033333—, **−16,01 LUFS** integrados y
+**−12,83 dBTP** de pico.
+
+> **El MP4 es real; su contenido sigue siendo simulado.** Las imágenes son
+> placeholders de Pillow rotulados `SIMULACION - NO ES UNA IMAGEN REAL` y el
+> audio son tonos de prueba, no voz hablada. Que FFmpeg lo renderice
+> correctamente acredita **transporte temporal, mezcla y aritmética**, no
+> inteligibilidad ni calidad visual. Por eso lleva la marca
+> `PREVIEW · SIMULACIÓN` incrustada.
+
+### Reproducir ese recorrido
+
+```bash
+export VIRALGEN_DATA_DIR=/tmp/viralgen-montaje
+E=examples/visuales_simulados
+
+# 1) Preflight local, sin codificar.
+viralgen render plan --script $E/script.json --voice $E/voz/voice.json \
+  --media $E/medios/media.json --preview
+
+# 2) Render preview real.
+viralgen render generate --script $E/script.json --voice $E/voz/voice.json \
+  --media $E/medios/media.json --render-key ejemplo-preview-001 --preview
+
+# 3) Admisible para preview (exit 0). El resumen imprime manifest_path.
+viralgen render validate --script $E/script.json --voice $E/voz/voice.json \
+  --media $E/medios/media.json --manifest <render.json> --allow-simulation
+
+# 4) Rechazado para publicacion (exit 10), que es lo correcto.
+viralgen render validate --script $E/script.json --voice $E/voz/voice.json \
+  --media $E/medios/media.json --manifest <render.json>
+
+# 5) Repetir el paso 2: "reused": true y "renders_new": 0.
+```
+
+### 17.1 Montaje de producción (pendiente de fuentes reales)
+
+El recorrido de **producción** no se ha ejecutado, y no por falta de FFmpeg:
+FFmpeg está y funciona. Falta lo anterior en la cadena. `render generate` sin
+`--preview` exige `admissible_for_assembly` en guion, voz y medios, y eso
+requiere las integraciones externas de §13 y §16.1, que siguen pendientes por
+falta de credenciales y de red.
+
+Cuando existan esas fuentes reales, el recorrido es el mismo cambiando dos
+cosas: sin `--preview` y con otra `--render-key`.
+
+```bash
+viralgen render plan --script <real/script.json> --voice <real/voice.json> \
+  --media <real/media.json>
+viralgen render generate --script <real/script.json> --voice <real/voice.json> \
+  --media <real/media.json> --render-key produccion-001
+viralgen render validate --script <real/script.json> --voice <real/voice.json> \
+  --media <real/media.json> --manifest <real/render.json>
+```
+
+Solo entonces `admissible_for_publisher` puede ser `true`. Hasta ese momento,
+**ningún archivo de este repositorio es publicable**, y el módulo 4 lo dice en
+cada resumen.

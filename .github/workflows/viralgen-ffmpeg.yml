@@ -1,0 +1,147 @@
+# Integracion local del modulo 4: FFmpeg real, fuentes reales, render real.
+#
+# Este trabajo EXIGE las pruebas marcadas `ffmpeg`. No puede aparecer verde
+# porque se hayan saltado: el paso "Exigir integracion real" falla si la
+# seleccion queda vacia, y las pruebas se ejecutan sin `-m "not ffmpeg"`.
+#
+# No usa red ni credenciales: monta archivos que ya existen en el repositorio.
+name: viralgen (integracion FFmpeg)
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "viralgen/**"
+      - ".github/workflows/viralgen-ffmpeg.yml"
+  pull_request:
+    paths:
+      - "viralgen/**"
+      - ".github/workflows/viralgen-ffmpeg.yml"
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: viralgen
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar FFmpeg y la fuente tipografica
+        run: |
+          sudo apt-get update
+          # `ffmpeg` trae libx264, AAC y libass; `fonts-dejavu-core` trae
+          # DejaVu Sans Bold, que es la fuente por defecto del modulo 4.
+          sudo apt-get install -y --no-install-recommends ffmpeg fonts-dejavu-core
+
+      - name: Registrar las versiones REALMENTE usadas
+        run: |
+          ffmpeg -version | head -1
+          ffprobe -version | head -1
+          # Las capacidades salen de los ejecutables instalados, no de la
+          # documentacion en linea.
+          ffmpeg -hide_banner -encoders | grep -E ' (libx264|aac) '
+          ffmpeg -hide_banner -filters | grep -E ' (ass|loudnorm) '
+          ls -l /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar el proyecto
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.lock.txt
+          pip install -e ".[dev]"
+
+      - name: Comprobar que el entorno cumple lo que el montaje exige
+        run: |
+          python - <<'PY'
+          import sys
+          from viralgen.render.ffmpeg import probe_capabilities
+          from viralgen.render.fonts import load_font
+
+          capacidades = probe_capabilities("ffmpeg", "ffprobe")
+          if not capacidades.usable:
+              sys.exit(f"faltan capacidades: {capacidades.missing}")
+          print("ffmpeg:", capacidades.ffmpeg_version)
+          print("libass:", capacidades.has_libass)
+          fuente = load_font(None)
+          print("fuente:", fuente.family, fuente.sha256[:16])
+          PY
+
+      - name: Exigir integracion real (la seleccion no puede quedar vacia)
+        run: |
+          # pytest sale con 5 cuando no recoge ninguna prueba. Si nadie marca
+          # pruebas `ffmpeg`, esto falla ANTES de que la suite pueda declararse
+          # verde por omision.
+          python -m pytest -m ffmpeg --collect-only -q || {
+            echo "ERROR: no hay pruebas de integracion FFmpeg seleccionadas"
+            exit 1
+          }
+
+      - name: Integracion FFmpeg, obligatoria y sin saltos
+        run: |
+          # Se ejecuta UNA vez y se comprueba el resultado sobre la misma
+          # salida: correr las mismas pruebas dos veces solo gasta minutos.
+          python -m pytest -m ffmpeg -o addopts="" -q -rs --durations=10 \
+            | tee integracion.txt
+          estado=${PIPESTATUS[0]}
+          [ "$estado" -eq 0 ] || exit "$estado"
+          # Un salto se informa con `-rs`. Aqui no se admite ninguno: saltarse
+          # la integracion no acredita ningun render.
+          if grep -q "SKIPPED" integracion.txt; then
+            echo "ERROR: alguna prueba de integracion FFmpeg se salto"
+            grep "SKIPPED" integracion.txt
+            exit 1
+          fi
+
+      - name: Resto de la suite (sin red y sin credenciales)
+        # Complementario de la marca: entre los dos pasos se ejecuta todo
+        # exactamente una vez.
+        run: python -m pytest -m "not ffmpeg" -o addopts="" -q -rs
+
+      - name: Recorrido reproducible sobre el ejemplo incluido
+        env:
+          VIRALGEN_DATA_DIR: ${{ runner.temp }}/viralgen-ci
+        run: |
+          set -euo pipefail
+          E=examples/visuales_simulados
+          # 1) Preflight local, sin codificar.
+          viralgen render plan --script $E/script.json --voice $E/voz/voice.json \
+            --media $E/medios/media.json --preview
+          # 2) Render preview real.
+          viralgen render generate --script $E/script.json --voice $E/voz/voice.json \
+            --media $E/medios/media.json --render-key ci-preview --preview > salida.json
+          python -c "import json;d=json.load(open('salida.json'));print(d['render_status'], d['measured'])"
+          M=$(python -c "import json;print(json.load(open('salida.json'))['manifest_path'])")
+          # 3) Admisible para preview.
+          viralgen render validate --script $E/script.json --voice $E/voz/voice.json \
+            --media $E/medios/media.json --manifest "$M" --allow-simulation
+          # 4) RECHAZADO para publicacion: una simulacion nunca llega al modulo 5.
+          if viralgen render validate --script $E/script.json --voice $E/voz/voice.json \
+               --media $E/medios/media.json --manifest "$M"; then
+            echo "ERROR: una salida preview simulada no puede ser publicable"
+            exit 1
+          fi
+          # 5) Repeticion: cero codificaciones nuevas.
+          viralgen render generate --script $E/script.json --voice $E/voz/voice.json \
+            --media $E/medios/media.json --render-key ci-preview --preview > repetido.json
+          python - <<'PY'
+          import json, sys
+          d = json.load(open("repetido.json"))
+          assert d["reused"] is True, d
+          assert d["renders_new"] == 0, d
+          print("reutilizacion correcta: renders_new =", d["renders_new"])
+          PY
+
+      - name: Validar el paquete de ejemplo que va en el repositorio
+        run: |
+          E=examples/visuales_simulados
+          viralgen render validate --script $E/script.json --voice $E/voz/voice.json \
+            --media $E/medios/media.json \
+            --manifest examples/montaje_preview/render.json --allow-simulation

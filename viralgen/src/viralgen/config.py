@@ -168,6 +168,52 @@ class Settings(BaseSettings):
     price_image_per_unit_usd: float | None = Field(default=None, ge=0.0)
     price_video_per_second_usd: float | None = Field(default=None, ge=0.0)
 
+    # --- Modulo 4: montaje local -----------------------------------------
+    # No necesita ninguna credencial: monta archivos que ya existen. Una
+    # configuracion de proveedores ausente NO impide montar.
+    #: Objetivo de entrega del MVP. Se comprueba contra el objetivo declarado
+    #: en media.json; no se sobrescribe en silencio.
+    render_width: int = Field(default=1080, ge=240, le=4320)
+    render_height: int = Field(default=1920, ge=240, le=7680)
+    render_fps: int = Field(default=30, ge=1, le=120)
+
+    render_preset: str = "veryfast"
+    render_crf: int = Field(default=21, ge=0, le=51)
+    render_audio_bitrate: str = "192k"
+
+    #: Un trabajador y un proceso pesado a la vez, por diseno.
+    render_workers: int = Field(default=1, ge=1, le=1)
+    render_ffmpeg_threads: int = Field(default=2, ge=1, le=32)
+    render_filter_threads: int = Field(default=2, ge=1, le=32)
+
+    #: Limites de tiempo, en segundos.
+    render_max_duration_s: int = Field(default=120, ge=1, le=3600)
+    render_stage_timeout_s: int = Field(default=600, ge=1, le=7200)
+    render_job_timeout_s: int = Field(default=1800, ge=1, le=14_400)
+    #: Intentos por etapa, PERSISTIDOS. Un bloqueo exige resolucion explicita.
+    render_max_attempts_per_stage: int = Field(default=2, ge=1, le=10)
+
+    #: Limites de disco, en MiB.
+    render_max_work_mib: int = Field(default=1536, ge=16, le=102_400)
+    render_max_output_mib: int = Field(default=200, ge=1, le=10_240)
+    render_log_max_mib: int = Field(default=5, ge=1, le=512)
+
+    #: Subtitulos y tipografia.
+    render_font_path: Path | None = None
+    render_caption_style_override: str | None = None
+
+    #: Mezcla.
+    render_enable_ducking: bool = True
+    render_ducking_reduction_db: float = Field(default=-9.0, ge=-40.0, le=0.0)
+    render_cue_fade_s: float = Field(default=0.25, ge=0.0, le=5.0)
+    render_enable_loudnorm: bool = True
+    render_lufs_target: float = Field(default=-16.0, ge=-40.0, le=0.0)
+    render_true_peak_dbtp: float = Field(default=-1.5, ge=-9.0, le=0.0)
+    render_lufs_tolerance_lu: float = Field(default=1.0, ge=0.1, le=6.0)
+
+    #: Limpieza de intermedios tras consolidar y validar.
+    render_keep_segments: bool = False
+
     @field_validator("log_level")
     @classmethod
     def _upper_level(cls, value: str) -> str:

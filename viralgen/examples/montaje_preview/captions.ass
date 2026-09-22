@@ -1,0 +1,141 @@
+[Script Info]
+; Generado por viralgen (modulo 4). No editar a mano: se regenera.
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+WrapStyle: 2
+ScaledBorderAndShadow: yes
+YCbCr Matrix: TV.709
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Curiosidades,DejaVu Sans,76,&H00FFFFFF,&H00FFFFFF,&H00101418,&H80000000,-1,0,0,0,100,100,0,0,1,4,1,2,96,96,390,1
+Style: Preview,DejaVu Sans,52,&H00FFFFFF,&H00FFFFFF,&H00000000,&H30000000,-1,0,0,0,100,100,0,0,3,2,0,8,96,96,60,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,0:00:25.50,Preview,,0,0,0,,PREVIEW · SIMULACIÓN
+Dialogue: 0,0:00:00.00,0:00:00.30,Curiosidades,,0,0,0,,{\fscx106\fscy106\t(0,120,\fscx100\fscy100)}{\c&H0030D7FF}Mira {\c&H00FFFFFF}otra {\c&H00FFFFFF}vez\N{\c&H00FFFFFF}este {\c&H00FFFFFF}objeto.
+Dialogue: 0,0:00:00.30,0:00:00.33,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Mira {\c&H00FFFFFF}otra {\c&H00FFFFFF}vez\N{\c&H00FFFFFF}este {\c&H00FFFFFF}objeto.
+Dialogue: 0,0:00:00.33,0:00:00.63,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Mira {\c&H0030D7FF}otra {\c&H00FFFFFF}vez\N{\c&H00FFFFFF}este {\c&H00FFFFFF}objeto.
+Dialogue: 0,0:00:00.63,0:00:00.66,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Mira {\c&H00FFFFFF}otra {\c&H00FFFFFF}vez\N{\c&H00FFFFFF}este {\c&H00FFFFFF}objeto.
+Dialogue: 0,0:00:00.66,0:00:00.89,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Mira {\c&H00FFFFFF}otra {\c&H0030D7FF}vez\N{\c&H00FFFFFF}este {\c&H00FFFFFF}objeto.
+Dialogue: 0,0:00:00.89,0:00:00.92,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Mira {\c&H00FFFFFF}otra {\c&H00FFFFFF}vez\N{\c&H00FFFFFF}este {\c&H00FFFFFF}objeto.
+Dialogue: 0,0:00:00.92,0:00:01.22,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Mira {\c&H00FFFFFF}otra {\c&H00FFFFFF}vez\N{\c&H0030D7FF}este {\c&H00FFFFFF}objeto.
+Dialogue: 0,0:00:01.22,0:00:01.25,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Mira {\c&H00FFFFFF}otra {\c&H00FFFFFF}vez\N{\c&H00FFFFFF}este {\c&H00FFFFFF}objeto.
+Dialogue: 0,0:00:01.25,0:00:01.72,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Mira {\c&H00FFFFFF}otra {\c&H00FFFFFF}vez\N{\c&H00FFFFFF}este {\c&H0030D7FF}objeto.
+Dialogue: 0,0:00:01.72,0:00:01.76,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Mira {\c&H00FFFFFF}otra {\c&H00FFFFFF}vez\N{\c&H00FFFFFF}este {\c&H00FFFFFF}objeto.
+Dialogue: 0,0:00:01.76,0:00:01.90,Curiosidades,,0,0,0,,{\fscx106\fscy106\t(0,120,\fscx100\fscy100)}{\c&H0030D7FF}Lo {\c&H00FFFFFF}tienes\N{\c&H00FFFFFF}delante {\c&H00FFFFFF}todos {\c&H00FFFFFF}los
+Dialogue: 0,0:00:01.90,0:00:01.94,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Lo {\c&H00FFFFFF}tienes\N{\c&H00FFFFFF}delante {\c&H00FFFFFF}todos {\c&H00FFFFFF}los
+Dialogue: 0,0:00:01.94,0:00:02.39,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Lo {\c&H0030D7FF}tienes\N{\c&H00FFFFFF}delante {\c&H00FFFFFF}todos {\c&H00FFFFFF}los
+Dialogue: 0,0:00:02.39,0:00:02.42,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Lo {\c&H00FFFFFF}tienes\N{\c&H00FFFFFF}delante {\c&H00FFFFFF}todos {\c&H00FFFFFF}los
+Dialogue: 0,0:00:02.42,0:00:02.94,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Lo {\c&H00FFFFFF}tienes\N{\c&H0030D7FF}delante {\c&H00FFFFFF}todos {\c&H00FFFFFF}los
+Dialogue: 0,0:00:02.94,0:00:02.97,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Lo {\c&H00FFFFFF}tienes\N{\c&H00FFFFFF}delante {\c&H00FFFFFF}todos {\c&H00FFFFFF}los
+Dialogue: 0,0:00:02.97,0:00:03.35,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Lo {\c&H00FFFFFF}tienes\N{\c&H00FFFFFF}delante {\c&H0030D7FF}todos {\c&H00FFFFFF}los
+Dialogue: 0,0:00:03.35,0:00:03.38,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Lo {\c&H00FFFFFF}tienes\N{\c&H00FFFFFF}delante {\c&H00FFFFFF}todos {\c&H00FFFFFF}los
+Dialogue: 0,0:00:03.38,0:00:03.60,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Lo {\c&H00FFFFFF}tienes\N{\c&H00FFFFFF}delante {\c&H00FFFFFF}todos {\c&H0030D7FF}los
+Dialogue: 0,0:00:03.60,0:00:03.64,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Lo {\c&H00FFFFFF}tienes\N{\c&H00FFFFFF}delante {\c&H00FFFFFF}todos {\c&H00FFFFFF}los
+Dialogue: 0,0:00:03.64,0:00:03.96,Curiosidades,,0,0,0,,{\fscx106\fscy106\t(0,120,\fscx100\fscy100)}{\c&H0030D7FF}dias, {\c&H00FFFFFF}sin\N{\c&H00FFFFFF}excepcion.
+Dialogue: 0,0:00:03.96,0:00:03.99,Curiosidades,,0,0,0,,{\c&H00FFFFFF}dias, {\c&H00FFFFFF}sin\N{\c&H00FFFFFF}excepcion.
+Dialogue: 0,0:00:03.99,0:00:04.21,Curiosidades,,0,0,0,,{\c&H00FFFFFF}dias, {\c&H0030D7FF}sin\N{\c&H00FFFFFF}excepcion.
+Dialogue: 0,0:00:04.21,0:00:04.25,Curiosidades,,0,0,0,,{\c&H00FFFFFF}dias, {\c&H00FFFFFF}sin\N{\c&H00FFFFFF}excepcion.
+Dialogue: 0,0:00:04.25,0:00:04.94,Curiosidades,,0,0,0,,{\c&H00FFFFFF}dias, {\c&H00FFFFFF}sin\N{\c&H0030D7FF}excepcion.
+Dialogue: 0,0:00:04.94,0:00:05.19,Curiosidades,,0,0,0,,{\c&H00FFFFFF}dias, {\c&H00FFFFFF}sin\N{\c&H00FFFFFF}excepcion.
+Dialogue: 0,0:00:05.19,0:00:05.41,Curiosidades,,0,0,0,,{\fscx106\fscy106\t(0,120,\fscx100\fscy100)}{\c&H0030D7FF}Los {\c&H00FFFFFF}dientes {\c&H00FFFFFF}de\N{\c&H00FFFFFF}una {\c&H00FFFFFF}cremallera
+Dialogue: 0,0:00:05.41,0:00:05.44,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Los {\c&H00FFFFFF}dientes {\c&H00FFFFFF}de\N{\c&H00FFFFFF}una {\c&H00FFFFFF}cremallera
+Dialogue: 0,0:00:05.44,0:00:05.96,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Los {\c&H0030D7FF}dientes {\c&H00FFFFFF}de\N{\c&H00FFFFFF}una {\c&H00FFFFFF}cremallera
+Dialogue: 0,0:00:05.96,0:00:05.99,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Los {\c&H00FFFFFF}dientes {\c&H00FFFFFF}de\N{\c&H00FFFFFF}una {\c&H00FFFFFF}cremallera
+Dialogue: 0,0:00:05.99,0:00:06.14,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Los {\c&H00FFFFFF}dientes {\c&H0030D7FF}de\N{\c&H00FFFFFF}una {\c&H00FFFFFF}cremallera
+Dialogue: 0,0:00:06.14,0:00:06.17,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Los {\c&H00FFFFFF}dientes {\c&H00FFFFFF}de\N{\c&H00FFFFFF}una {\c&H00FFFFFF}cremallera
+Dialogue: 0,0:00:06.17,0:00:06.39,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Los {\c&H00FFFFFF}dientes {\c&H00FFFFFF}de\N{\c&H0030D7FF}una {\c&H00FFFFFF}cremallera
+Dialogue: 0,0:00:06.39,0:00:06.42,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Los {\c&H00FFFFFF}dientes {\c&H00FFFFFF}de\N{\c&H00FFFFFF}una {\c&H00FFFFFF}cremallera
+Dialogue: 0,0:00:06.42,0:00:07.15,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Los {\c&H00FFFFFF}dientes {\c&H00FFFFFF}de\N{\c&H00FFFFFF}una {\c&H0030D7FF}cremallera
+Dialogue: 0,0:00:07.15,0:00:07.19,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Los {\c&H00FFFFFF}dientes {\c&H00FFFFFF}de\N{\c&H00FFFFFF}una {\c&H00FFFFFF}cremallera
+Dialogue: 0,0:00:07.19,0:00:07.70,Curiosidades,,0,0,0,,{\fscx106\fscy106\t(0,120,\fscx100\fscy100)}{\c&H0030D7FF}encajan {\c&H00FFFFFF}por\N{\c&H00FFFFFF}parejas, {\c&H00FFFFFF}aunque {\c&H00FFFFFF}no
+Dialogue: 0,0:00:07.70,0:00:07.73,Curiosidades,,0,0,0,,{\c&H00FFFFFF}encajan {\c&H00FFFFFF}por\N{\c&H00FFFFFF}parejas, {\c&H00FFFFFF}aunque {\c&H00FFFFFF}no
+Dialogue: 0,0:00:07.73,0:00:07.95,Curiosidades,,0,0,0,,{\c&H00FFFFFF}encajan {\c&H0030D7FF}por\N{\c&H00FFFFFF}parejas, {\c&H00FFFFFF}aunque {\c&H00FFFFFF}no
+Dialogue: 0,0:00:07.95,0:00:07.98,Curiosidades,,0,0,0,,{\c&H00FFFFFF}encajan {\c&H00FFFFFF}por\N{\c&H00FFFFFF}parejas, {\c&H00FFFFFF}aunque {\c&H00FFFFFF}no
+Dialogue: 0,0:00:07.98,0:00:08.52,Curiosidades,,0,0,0,,{\c&H00FFFFFF}encajan {\c&H00FFFFFF}por\N{\c&H0030D7FF}parejas, {\c&H00FFFFFF}aunque {\c&H00FFFFFF}no
+Dialogue: 0,0:00:08.52,0:00:08.55,Curiosidades,,0,0,0,,{\c&H00FFFFFF}encajan {\c&H00FFFFFF}por\N{\c&H00FFFFFF}parejas, {\c&H00FFFFFF}aunque {\c&H00FFFFFF}no
+Dialogue: 0,0:00:08.55,0:00:08.99,Curiosidades,,0,0,0,,{\c&H00FFFFFF}encajan {\c&H00FFFFFF}por\N{\c&H00FFFFFF}parejas, {\c&H0030D7FF}aunque {\c&H00FFFFFF}no
+Dialogue: 0,0:00:08.99,0:00:09.02,Curiosidades,,0,0,0,,{\c&H00FFFFFF}encajan {\c&H00FFFFFF}por\N{\c&H00FFFFFF}parejas, {\c&H00FFFFFF}aunque {\c&H00FFFFFF}no
+Dialogue: 0,0:00:09.02,0:00:09.17,Curiosidades,,0,0,0,,{\c&H00FFFFFF}encajan {\c&H00FFFFFF}por\N{\c&H00FFFFFF}parejas, {\c&H00FFFFFF}aunque {\c&H0030D7FF}no
+Dialogue: 0,0:00:09.17,0:00:09.20,Curiosidades,,0,0,0,,{\c&H00FFFFFF}encajan {\c&H00FFFFFF}por\N{\c&H00FFFFFF}parejas, {\c&H00FFFFFF}aunque {\c&H00FFFFFF}no
+Dialogue: 0,0:00:09.20,0:00:09.35,Curiosidades,,0,0,0,,{\fscx106\fscy106\t(0,120,\fscx100\fscy100)}{\c&H0030D7FF}lo {\c&H00FFFFFF}parezca {\c&H00FFFFFF}ahora.
+Dialogue: 0,0:00:09.35,0:00:09.38,Curiosidades,,0,0,0,,{\c&H00FFFFFF}lo {\c&H00FFFFFF}parezca {\c&H00FFFFFF}ahora.
+Dialogue: 0,0:00:09.38,0:00:09.89,Curiosidades,,0,0,0,,{\c&H00FFFFFF}lo {\c&H0030D7FF}parezca {\c&H00FFFFFF}ahora.
+Dialogue: 0,0:00:09.89,0:00:09.93,Curiosidades,,0,0,0,,{\c&H00FFFFFF}lo {\c&H00FFFFFF}parezca {\c&H00FFFFFF}ahora.
+Dialogue: 0,0:00:09.93,0:00:10.31,Curiosidades,,0,0,0,,{\c&H00FFFFFF}lo {\c&H00FFFFFF}parezca {\c&H0030D7FF}ahora.
+Dialogue: 0,0:00:10.31,0:00:10.56,Curiosidades,,0,0,0,,{\c&H00FFFFFF}lo {\c&H00FFFFFF}parezca {\c&H00FFFFFF}ahora.
+Dialogue: 0,0:00:10.56,0:00:10.76,Curiosidades,,0,0,0,,{\fscx106\fscy106\t(0,120,\fscx100\fscy100)}{\c&H0030D7FF}Los {\c&H00FFFFFF}ensayos {\c&H00FFFFFF}fueron\N{\c&H00FFFFFF}corrigiendo {\c&H00FFFFFF}cada
+Dialogue: 0,0:00:10.76,0:00:10.79,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Los {\c&H00FFFFFF}ensayos {\c&H00FFFFFF}fueron\N{\c&H00FFFFFF}corrigiendo {\c&H00FFFFFF}cada
+Dialogue: 0,0:00:10.79,0:00:11.24,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Los {\c&H0030D7FF}ensayos {\c&H00FFFFFF}fueron\N{\c&H00FFFFFF}corrigiendo {\c&H00FFFFFF}cada
+Dialogue: 0,0:00:11.24,0:00:11.27,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Los {\c&H00FFFFFF}ensayos {\c&H00FFFFFF}fueron\N{\c&H00FFFFFF}corrigiendo {\c&H00FFFFFF}cada
+Dialogue: 0,0:00:11.27,0:00:11.66,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Los {\c&H00FFFFFF}ensayos {\c&H0030D7FF}fueron\N{\c&H00FFFFFF}corrigiendo {\c&H00FFFFFF}cada
+Dialogue: 0,0:00:11.66,0:00:11.69,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Los {\c&H00FFFFFF}ensayos {\c&H00FFFFFF}fueron\N{\c&H00FFFFFF}corrigiendo {\c&H00FFFFFF}cada
+Dialogue: 0,0:00:11.69,0:00:12.40,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Los {\c&H00FFFFFF}ensayos {\c&H00FFFFFF}fueron\N{\c&H0030D7FF}corrigiendo {\c&H00FFFFFF}cada
+Dialogue: 0,0:00:12.40,0:00:12.43,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Los {\c&H00FFFFFF}ensayos {\c&H00FFFFFF}fueron\N{\c&H00FFFFFF}corrigiendo {\c&H00FFFFFF}cada
+Dialogue: 0,0:00:12.43,0:00:12.69,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Los {\c&H00FFFFFF}ensayos {\c&H00FFFFFF}fueron\N{\c&H00FFFFFF}corrigiendo {\c&H0030D7FF}cada
+Dialogue: 0,0:00:12.69,0:00:12.72,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Los {\c&H00FFFFFF}ensayos {\c&H00FFFFFF}fueron\N{\c&H00FFFFFF}corrigiendo {\c&H00FFFFFF}cada
+Dialogue: 0,0:00:12.72,0:00:13.19,Curiosidades,,0,0,0,,{\fscx106\fscy106\t(0,120,\fscx100\fscy100)}{\c&H0030D7FF}detalle, {\c&H00FFFFFF}el\N{\c&H00FFFFFF}desgaste {\c&H00FFFFFF}avisa
+Dialogue: 0,0:00:13.19,0:00:13.22,Curiosidades,,0,0,0,,{\c&H00FFFFFF}detalle, {\c&H00FFFFFF}el\N{\c&H00FFFFFF}desgaste {\c&H00FFFFFF}avisa
+Dialogue: 0,0:00:13.22,0:00:13.35,Curiosidades,,0,0,0,,{\c&H00FFFFFF}detalle, {\c&H0030D7FF}el\N{\c&H00FFFFFF}desgaste {\c&H00FFFFFF}avisa
+Dialogue: 0,0:00:13.35,0:00:13.38,Curiosidades,,0,0,0,,{\c&H00FFFFFF}detalle, {\c&H00FFFFFF}el\N{\c&H00FFFFFF}desgaste {\c&H00FFFFFF}avisa
+Dialogue: 0,0:00:13.38,0:00:13.90,Curiosidades,,0,0,0,,{\c&H00FFFFFF}detalle, {\c&H00FFFFFF}el\N{\c&H0030D7FF}desgaste {\c&H00FFFFFF}avisa
+Dialogue: 0,0:00:13.90,0:00:13.93,Curiosidades,,0,0,0,,{\c&H00FFFFFF}detalle, {\c&H00FFFFFF}el\N{\c&H00FFFFFF}desgaste {\c&H00FFFFFF}avisa
+Dialogue: 0,0:00:13.93,0:00:14.25,Curiosidades,,0,0,0,,{\c&H00FFFFFF}detalle, {\c&H00FFFFFF}el\N{\c&H00FFFFFF}desgaste {\c&H0030D7FF}avisa
+Dialogue: 0,0:00:14.25,0:00:14.28,Curiosidades,,0,0,0,,{\c&H00FFFFFF}detalle, {\c&H00FFFFFF}el\N{\c&H00FFFFFF}desgaste {\c&H00FFFFFF}avisa
+Dialogue: 0,0:00:14.28,0:00:14.61,Curiosidades,,0,0,0,,{\fscx106\fscy106\t(0,120,\fscx100\fscy100)}{\c&H0030D7FF}antes {\c&H00FFFFFF}de {\c&H00FFFFFF}fallar.
+Dialogue: 0,0:00:14.61,0:00:14.64,Curiosidades,,0,0,0,,{\c&H00FFFFFF}antes {\c&H00FFFFFF}de {\c&H00FFFFFF}fallar.
+Dialogue: 0,0:00:14.64,0:00:14.77,Curiosidades,,0,0,0,,{\c&H00FFFFFF}antes {\c&H0030D7FF}de {\c&H00FFFFFF}fallar.
+Dialogue: 0,0:00:14.77,0:00:14.80,Curiosidades,,0,0,0,,{\c&H00FFFFFF}antes {\c&H00FFFFFF}de {\c&H00FFFFFF}fallar.
+Dialogue: 0,0:00:14.80,0:00:15.21,Curiosidades,,0,0,0,,{\c&H00FFFFFF}antes {\c&H00FFFFFF}de {\c&H0030D7FF}fallar.
+Dialogue: 0,0:00:15.21,0:00:15.46,Curiosidades,,0,0,0,,{\c&H00FFFFFF}antes {\c&H00FFFFFF}de {\c&H00FFFFFF}fallar.
+Dialogue: 0,0:00:15.46,0:00:15.54,Curiosidades,,0,0,0,,{\fscx106\fscy106\t(0,120,\fscx100\fscy100)}{\c&H0030D7FF}Y {\c&H00FFFFFF}esa {\c&H00FFFFFF}es {\c&H00FFFFFF}la\N{\c&H00FFFFFF}respuesta
+Dialogue: 0,0:00:15.54,0:00:15.58,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Y {\c&H00FFFFFF}esa {\c&H00FFFFFF}es {\c&H00FFFFFF}la\N{\c&H00FFFFFF}respuesta
+Dialogue: 0,0:00:15.58,0:00:15.83,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Y {\c&H0030D7FF}esa {\c&H00FFFFFF}es {\c&H00FFFFFF}la\N{\c&H00FFFFFF}respuesta
+Dialogue: 0,0:00:15.83,0:00:15.87,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Y {\c&H00FFFFFF}esa {\c&H00FFFFFF}es {\c&H00FFFFFF}la\N{\c&H00FFFFFF}respuesta
+Dialogue: 0,0:00:15.87,0:00:16.04,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Y {\c&H00FFFFFF}esa {\c&H0030D7FF}es {\c&H00FFFFFF}la\N{\c&H00FFFFFF}respuesta
+Dialogue: 0,0:00:16.04,0:00:16.08,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Y {\c&H00FFFFFF}esa {\c&H00FFFFFF}es {\c&H00FFFFFF}la\N{\c&H00FFFFFF}respuesta
+Dialogue: 0,0:00:16.08,0:00:16.24,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Y {\c&H00FFFFFF}esa {\c&H00FFFFFF}es {\c&H0030D7FF}la\N{\c&H00FFFFFF}respuesta
+Dialogue: 0,0:00:16.24,0:00:16.28,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Y {\c&H00FFFFFF}esa {\c&H00FFFFFF}es {\c&H00FFFFFF}la\N{\c&H00FFFFFF}respuesta
+Dialogue: 0,0:00:16.28,0:00:17.04,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Y {\c&H00FFFFFF}esa {\c&H00FFFFFF}es {\c&H00FFFFFF}la\N{\c&H0030D7FF}respuesta
+Dialogue: 0,0:00:17.04,0:00:17.08,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Y {\c&H00FFFFFF}esa {\c&H00FFFFFF}es {\c&H00FFFFFF}la\N{\c&H00FFFFFF}respuesta
+Dialogue: 0,0:00:17.08,0:00:17.78,Curiosidades,,0,0,0,,{\fscx106\fscy106\t(0,120,\fscx100\fscy100)}{\c&H0030D7FF}completa, {\c&H00FFFFFF}queda\N{\c&H00FFFFFF}claro {\c&H00FFFFFF}en {\c&H00FFFFFF}cuanto
+Dialogue: 0,0:00:17.78,0:00:17.82,Curiosidades,,0,0,0,,{\c&H00FFFFFF}completa, {\c&H00FFFFFF}queda\N{\c&H00FFFFFF}claro {\c&H00FFFFFF}en {\c&H00FFFFFF}cuanto
+Dialogue: 0,0:00:17.82,0:00:18.24,Curiosidades,,0,0,0,,{\c&H00FFFFFF}completa, {\c&H0030D7FF}queda\N{\c&H00FFFFFF}claro {\c&H00FFFFFF}en {\c&H00FFFFFF}cuanto
+Dialogue: 0,0:00:18.24,0:00:18.28,Curiosidades,,0,0,0,,{\c&H00FFFFFF}completa, {\c&H00FFFFFF}queda\N{\c&H00FFFFFF}claro {\c&H00FFFFFF}en {\c&H00FFFFFF}cuanto
+Dialogue: 0,0:00:18.28,0:00:18.70,Curiosidades,,0,0,0,,{\c&H00FFFFFF}completa, {\c&H00FFFFFF}queda\N{\c&H0030D7FF}claro {\c&H00FFFFFF}en {\c&H00FFFFFF}cuanto
+Dialogue: 0,0:00:18.70,0:00:18.74,Curiosidades,,0,0,0,,{\c&H00FFFFFF}completa, {\c&H00FFFFFF}queda\N{\c&H00FFFFFF}claro {\c&H00FFFFFF}en {\c&H00FFFFFF}cuanto
+Dialogue: 0,0:00:18.74,0:00:18.91,Curiosidades,,0,0,0,,{\c&H00FFFFFF}completa, {\c&H00FFFFFF}queda\N{\c&H00FFFFFF}claro {\c&H0030D7FF}en {\c&H00FFFFFF}cuanto
+Dialogue: 0,0:00:18.91,0:00:18.95,Curiosidades,,0,0,0,,{\c&H00FFFFFF}completa, {\c&H00FFFFFF}queda\N{\c&H00FFFFFF}claro {\c&H00FFFFFF}en {\c&H00FFFFFF}cuanto
+Dialogue: 0,0:00:18.95,0:00:19.45,Curiosidades,,0,0,0,,{\c&H00FFFFFF}completa, {\c&H00FFFFFF}queda\N{\c&H00FFFFFF}claro {\c&H00FFFFFF}en {\c&H0030D7FF}cuanto
+Dialogue: 0,0:00:19.45,0:00:19.49,Curiosidades,,0,0,0,,{\c&H00FFFFFF}completa, {\c&H00FFFFFF}queda\N{\c&H00FFFFFF}claro {\c&H00FFFFFF}en {\c&H00FFFFFF}cuanto
+Dialogue: 0,0:00:19.49,0:00:19.66,Curiosidades,,0,0,0,,{\fscx106\fscy106\t(0,120,\fscx100\fscy100)}{\c&H0030D7FF}lo {\c&H00FFFFFF}miras.
+Dialogue: 0,0:00:19.66,0:00:19.70,Curiosidades,,0,0,0,,{\c&H00FFFFFF}lo {\c&H00FFFFFF}miras.
+Dialogue: 0,0:00:19.70,0:00:20.15,Curiosidades,,0,0,0,,{\c&H00FFFFFF}lo {\c&H0030D7FF}miras.
+Dialogue: 0,0:00:20.15,0:00:20.40,Curiosidades,,0,0,0,,{\c&H00FFFFFF}lo {\c&H00FFFFFF}miras.
+Dialogue: 0,0:00:20.40,0:00:20.77,Curiosidades,,0,0,0,,{\fscx106\fscy106\t(0,120,\fscx100\fscy100)}{\c&H0030D7FF}Ahora {\c&H00FFFFFF}ya\N{\c&H00FFFFFF}sabes {\c&H00FFFFFF}por {\c&H00FFFFFF}que
+Dialogue: 0,0:00:20.77,0:00:20.80,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Ahora {\c&H00FFFFFF}ya\N{\c&H00FFFFFF}sabes {\c&H00FFFFFF}por {\c&H00FFFFFF}que
+Dialogue: 0,0:00:20.80,0:00:20.95,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Ahora {\c&H0030D7FF}ya\N{\c&H00FFFFFF}sabes {\c&H00FFFFFF}por {\c&H00FFFFFF}que
+Dialogue: 0,0:00:20.95,0:00:20.99,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Ahora {\c&H00FFFFFF}ya\N{\c&H00FFFFFF}sabes {\c&H00FFFFFF}por {\c&H00FFFFFF}que
+Dialogue: 0,0:00:20.99,0:00:21.36,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Ahora {\c&H00FFFFFF}ya\N{\c&H0030D7FF}sabes {\c&H00FFFFFF}por {\c&H00FFFFFF}que
+Dialogue: 0,0:00:21.36,0:00:21.39,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Ahora {\c&H00FFFFFF}ya\N{\c&H00FFFFFF}sabes {\c&H00FFFFFF}por {\c&H00FFFFFF}que
+Dialogue: 0,0:00:21.39,0:00:21.62,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Ahora {\c&H00FFFFFF}ya\N{\c&H00FFFFFF}sabes {\c&H0030D7FF}por {\c&H00FFFFFF}que
+Dialogue: 0,0:00:21.62,0:00:21.65,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Ahora {\c&H00FFFFFF}ya\N{\c&H00FFFFFF}sabes {\c&H00FFFFFF}por {\c&H00FFFFFF}que
+Dialogue: 0,0:00:21.65,0:00:21.88,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Ahora {\c&H00FFFFFF}ya\N{\c&H00FFFFFF}sabes {\c&H00FFFFFF}por {\c&H0030D7FF}que
+Dialogue: 0,0:00:21.88,0:00:21.91,Curiosidades,,0,0,0,,{\c&H00FFFFFF}Ahora {\c&H00FFFFFF}ya\N{\c&H00FFFFFF}sabes {\c&H00FFFFFF}por {\c&H00FFFFFF}que
+Dialogue: 0,0:00:21.91,0:00:22.13,Curiosidades,,0,0,0,,{\fscx106\fscy106\t(0,120,\fscx100\fscy100)}{\c&H0030D7FF}los {\c&H00FFFFFF}dientes {\c&H00FFFFFF}de\N{\c&H00FFFFFF}una {\c&H00FFFFFF}cremallera
+Dialogue: 0,0:00:22.13,0:00:22.17,Curiosidades,,0,0,0,,{\c&H00FFFFFF}los {\c&H00FFFFFF}dientes {\c&H00FFFFFF}de\N{\c&H00FFFFFF}una {\c&H00FFFFFF}cremallera
+Dialogue: 0,0:00:22.17,0:00:22.69,Curiosidades,,0,0,0,,{\c&H00FFFFFF}los {\c&H0030D7FF}dientes {\c&H00FFFFFF}de\N{\c&H00FFFFFF}una {\c&H00FFFFFF}cremallera
+Dialogue: 0,0:00:22.69,0:00:22.72,Curiosidades,,0,0,0,,{\c&H00FFFFFF}los {\c&H00FFFFFF}dientes {\c&H00FFFFFF}de\N{\c&H00FFFFFF}una {\c&H00FFFFFF}cremallera
+Dialogue: 0,0:00:22.72,0:00:22.87,Curiosidades,,0,0,0,,{\c&H00FFFFFF}los {\c&H00FFFFFF}dientes {\c&H0030D7FF}de\N{\c&H00FFFFFF}una {\c&H00FFFFFF}cremallera
+Dialogue: 0,0:00:22.87,0:00:22.91,Curiosidades,,0,0,0,,{\c&H00FFFFFF}los {\c&H00FFFFFF}dientes {\c&H00FFFFFF}de\N{\c&H00FFFFFF}una {\c&H00FFFFFF}cremallera
+Dialogue: 0,0:00:22.91,0:00:23.13,Curiosidades,,0,0,0,,{\c&H00FFFFFF}los {\c&H00FFFFFF}dientes {\c&H00FFFFFF}de\N{\c&H0030D7FF}una {\c&H00FFFFFF}cremallera
+Dialogue: 0,0:00:23.13,0:00:23.16,Curiosidades,,0,0,0,,{\c&H00FFFFFF}los {\c&H00FFFFFF}dientes {\c&H00FFFFFF}de\N{\c&H00FFFFFF}una {\c&H00FFFFFF}cremallera
+Dialogue: 0,0:00:23.16,0:00:23.91,Curiosidades,,0,0,0,,{\c&H00FFFFFF}los {\c&H00FFFFFF}dientes {\c&H00FFFFFF}de\N{\c&H00FFFFFF}una {\c&H0030D7FF}cremallera
+Dialogue: 0,0:00:23.91,0:00:23.95,Curiosidades,,0,0,0,,{\c&H00FFFFFF}los {\c&H00FFFFFF}dientes {\c&H00FFFFFF}de\N{\c&H00FFFFFF}una {\c&H00FFFFFF}cremallera
+Dialogue: 0,0:00:23.95,0:00:24.49,Curiosidades,,0,0,0,,{\fscx106\fscy106\t(0,120,\fscx100\fscy100)}{\c&H0030D7FF}encajan, {\c&H00FFFFFF}todavia.
+Dialogue: 0,0:00:24.49,0:00:24.52,Curiosidades,,0,0,0,,{\c&H00FFFFFF}encajan, {\c&H00FFFFFF}todavia.
+Dialogue: 0,0:00:24.52,0:00:25.07,Curiosidades,,0,0,0,,{\c&H00FFFFFF}encajan, {\c&H0030D7FF}todavia.
+Dialogue: 0,0:00:25.07,0:00:25.47,Curiosidades,,0,0,0,,{\c&H00FFFFFF}encajan, {\c&H00FFFFFF}todavia.

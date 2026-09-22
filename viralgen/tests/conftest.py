@@ -224,3 +224,109 @@ def run_media(media_settings):
         return MediaPipeline(media_settings, peticion, **kwargs).run()
 
     return _run
+
+
+# ---------------------------------------------------------------------------
+# Modulo 4: montaje
+# ---------------------------------------------------------------------------
+
+
+def _tools_available() -> bool:
+    from viralgen.render.ffmpeg import probe_capabilities
+
+    return probe_capabilities("ffmpeg", "ffprobe").usable
+
+
+#: Marca de integracion local real. NO se salta en la ejecucion de aceptacion:
+#: una suite verde porque todas se saltaron no acredita ningun render.
+TIENE_FFMPEG = _tools_available()
+necesita_ffmpeg = pytest.mark.skipif(
+    not TIENE_FFMPEG,
+    reason="FFmpeg/ffprobe (con libx264, aac y libass) no estan disponibles",
+)
+
+
+@pytest.fixture
+def render_settings(tmp_path: Path, image_only_profiles: Path) -> Settings:
+    return Settings(
+        _env_file=None,
+        data_dir=tmp_path / "data",
+        min_free_disk_mb=0,
+        log_level="ERROR",
+        profiles_path=image_only_profiles,
+    )
+
+
+@pytest.fixture
+def render_short_inputs(render_settings):
+    """Guion CORTO + voz, para que cada prueba codifique poco video.
+
+    Las pruebas del modulo 4 codifican de verdad: un guion de 50 s multiplica
+    por dos el tiempo de toda la suite sin comprobar nada adicional.
+    """
+    from viralgen.pipeline import JobRequest, Pipeline
+    from viralgen.voice.pipeline import VoiceJobRequest, VoicePipeline
+
+    guion = Pipeline(
+        render_settings,
+        JobRequest(
+            command="generate",
+            profile_id="infantil_cuentos",
+            topic="aprender a compartir",
+            duration_s=40,   # minimo del perfil: menos video que codificar por prueba
+            simulation=True,
+            seed=5,
+            job_key="render-corto",
+        ),
+    ).run()
+    assert guion.script_path is not None
+    voz = VoicePipeline(
+        render_settings,
+        VoiceJobRequest(
+            script_path=Path(guion.script_path),
+            voice_key="render-corto-voz",
+            simulation=True,
+            seed=5,
+        ),
+    ).run()
+    assert voz.manifest_path is not None
+    return Path(guion.script_path), Path(voz.manifest_path)
+
+
+@pytest.fixture
+def render_inputs(render_settings, render_short_inputs):
+    """Guion + voz + medios simulados, coherentes entre si."""
+    from viralgen.media.pipeline import MediaJobRequest, MediaPipeline
+
+    script, voice = render_short_inputs
+    medios = MediaPipeline(
+        render_settings,
+        MediaJobRequest(
+            script_path=script,
+            voice_path=voice,
+            media_key="render-base",
+            simulation=True,
+            seed=5,
+        ),
+    ).run()
+    assert medios.manifest_path is not None, medios.admission_reasons
+    return script, voice, Path(medios.manifest_path)
+
+
+@pytest.fixture
+def run_render(render_settings):
+    """Ejecuta el pipeline de montaje."""
+    from viralgen.render.pipeline import RenderJobRequest, RenderPipeline
+
+    def _run(script: Path, voice: Path, media: Path, **kwargs):
+        peticion = RenderJobRequest(
+            script_path=script,
+            voice_path=voice,
+            media_path=media,
+            render_key=kwargs.pop("render_key", "render-001"),
+            preview=kwargs.pop("preview", True),
+            seed=kwargs.pop("seed", 5),
+        )
+        return RenderPipeline(render_settings, peticion, **kwargs).run()
+
+    return _run

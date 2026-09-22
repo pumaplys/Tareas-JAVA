@@ -39,3 +39,9 @@ viralgen = ["data/*.json", "prompts/v1/*.md", "voice/data/*.json"]
 testpaths = ["tests"]
 addopts = "-q"
 filterwarnings = ["error::DeprecationWarning:viralgen.*"]
+markers = [
+    # Pruebas que EJECUTAN FFmpeg/ffprobe de verdad y producen archivos reales.
+    # La ejecucion de aceptacion las EXIGE: una suite verde porque todas se
+    # saltaron no acredita nada. Se seleccionan con `-m ffmpeg`.
+    "ffmpeg: necesita FFmpeg y ffprobe instalados (integracion local real)",
+]

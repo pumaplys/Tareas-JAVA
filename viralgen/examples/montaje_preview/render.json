@@ -1,0 +1,418 @@
+{
+  "document_type": "render_manifest",
+  "schema_version": "1.0",
+  "render_run_id": "3dd0a718-4df4-40c7-adf8-899bd0b3f054",
+  "job_id": "016495c3-41d9-4123-a8e7-6b3e4ceb6cfb",
+  "voice_run_id": "a9455db6-6d4b-4fa5-a0e2-c43b16bb47ad",
+  "media_run_id": "b2cdf28f-8019-4681-8928-80848de24c7a",
+  "created_at": "2026-09-22T13:44:17Z",
+  "render_mode": "preview",
+  "simulation": true,
+  "sources": {
+    "script_schema_version": "1.0",
+    "script_sha256": "aeeecbb76d1922a34e180b82582b8047d53f7f416f0e12d8209fe0e00f711c60",
+    "script_simulation": true,
+    "voice_schema_version": "1.0",
+    "voice_sha256": "a7bbf3bb5797faf5d845031dcc557ed84868f9b576a13df2f6e1fa77b2ad948a",
+    "voice_simulation": true,
+    "media_schema_version": "1.0",
+    "media_sha256": "59cf66b605f832c7d6eed9a0f5d8157f78cf81ea5ec56feeae905b1fb91565c6",
+    "media_simulation": true,
+    "profile_id": "curiosidades_corto",
+    "channel": "curiosidades",
+    "caption_style": "dynamic_emphasis"
+  },
+  "control": {
+    "render_status": "ready",
+    "issues": [],
+    "visual_review": "not_performed",
+    "visual_review_method": "frame_sampling",
+    "admissible_for_publisher": false
+  },
+  "output": {
+    "path": "preview.mp4",
+    "sha256": "fe314fa77bc4501595a392d79527d83d1a4aa998cd6e9a14ecb9bd802b3a9cdf",
+    "size_bytes": 1640844,
+    "container_format": "mov,mp4,m4a,3gp,3g2,mj2",
+    "container_duration_s": 25.5,
+    "faststart": true,
+    "video": {
+      "codec_name": "h264",
+      "width": 1080,
+      "height": 1920,
+      "pix_fmt": "yuv420p",
+      "sample_aspect_ratio": "1:1",
+      "display_aspect_ratio": "9:16",
+      "fps_rational": "30/1",
+      "fps": 30.0,
+      "frame_count": 765,
+      "stream_duration_s": 25.5,
+      "rotation_degrees": 0,
+      "has_b_frames": 2,
+      "constant_frame_rate": true,
+      "pts_monotonic": true,
+      "source": "local_measurement"
+    },
+    "audio": {
+      "codec_name": "aac",
+      "sample_rate_hz": 48000,
+      "channels": 2,
+      "channel_layout": "stereo",
+      "stream_duration_s": 25.469,
+      "decoded_samples": 1222512,
+      "initial_padding_samples": 0,
+      "source": "local_measurement"
+    },
+    "decode_check_passed": true,
+    "color_primaries": null,
+    "color_transfer": null,
+    "color_space": null
+  },
+  "timeline": {
+    "sample_rate_hz": 24000,
+    "sample_count": 611272,
+    "narration_duration_s": 25.469666666666665,
+    "narration_source": "source_manifest",
+    "fps": 30,
+    "total_frames": 765,
+    "visual_duration_s": 25.5,
+    "quantization_excess_s": 0.030333333333334878,
+    "max_frame_hold_s": 0.03333333333333333,
+    "target_source": "montage_decision",
+    "scenes": [
+      {
+        "scene_id": "sc_01",
+        "order": 1,
+        "start_sample": 0,
+        "end_sample": 124600,
+        "start_frame": 0,
+        "end_frame": 156,
+        "frames": 156,
+        "voice_start_s": 0.0,
+        "voice_end_s": 5.191667,
+        "frame_start_s": 0.0,
+        "frame_duration_s": 5.2,
+        "start_offset_s": 0.0,
+        "end_offset_s": 0.008333,
+        "asset_type": "image",
+        "camera_move": "static",
+        "geometry_policy": "contain",
+        "geometry_already_applied": false,
+        "clip_from_s": null,
+        "clip_to_s": null
+      },
+      {
+        "scene_id": "sc_02",
+        "order": 2,
+        "start_sample": 124600,
+        "end_sample": 253548,
+        "start_frame": 156,
+        "end_frame": 317,
+        "frames": 161,
+        "voice_start_s": 5.191667,
+        "voice_end_s": 10.5645,
+        "frame_start_s": 5.2,
+        "frame_duration_s": 5.366667,
+        "start_offset_s": 0.008333,
+        "end_offset_s": 0.002167,
+        "asset_type": "image",
+        "camera_move": "static",
+        "geometry_policy": "contain",
+        "geometry_already_applied": false,
+        "clip_from_s": null,
+        "clip_to_s": null
+      },
+      {
+        "scene_id": "sc_03",
+        "order": 3,
+        "start_sample": 253548,
+        "end_sample": 370920,
+        "start_frame": 317,
+        "end_frame": 464,
+        "frames": 147,
+        "voice_start_s": 10.5645,
+        "voice_end_s": 15.455,
+        "frame_start_s": 10.566667,
+        "frame_duration_s": 4.9,
+        "start_offset_s": 0.002167,
+        "end_offset_s": 0.011667,
+        "asset_type": "image",
+        "camera_move": "static",
+        "geometry_policy": "contain",
+        "geometry_already_applied": false,
+        "clip_from_s": null,
+        "clip_to_s": null
+      },
+      {
+        "scene_id": "sc_04",
+        "order": 4,
+        "start_sample": 370920,
+        "end_sample": 489519,
+        "start_frame": 464,
+        "end_frame": 612,
+        "frames": 148,
+        "voice_start_s": 15.455,
+        "voice_end_s": 20.396625,
+        "frame_start_s": 15.466667,
+        "frame_duration_s": 4.933333,
+        "start_offset_s": 0.011667,
+        "end_offset_s": 0.003375,
+        "asset_type": "image",
+        "camera_move": "static",
+        "geometry_policy": "contain",
+        "geometry_already_applied": false,
+        "clip_from_s": null,
+        "clip_to_s": null
+      },
+      {
+        "scene_id": "sc_05",
+        "order": 5,
+        "start_sample": 489519,
+        "end_sample": 611272,
+        "start_frame": 612,
+        "end_frame": 765,
+        "frames": 153,
+        "voice_start_s": 20.396625,
+        "voice_end_s": 25.469667,
+        "frame_start_s": 20.4,
+        "frame_duration_s": 5.1,
+        "start_offset_s": 0.003375,
+        "end_offset_s": 0.030333,
+        "asset_type": "image",
+        "camera_move": "static",
+        "geometry_policy": "contain",
+        "geometry_already_applied": false,
+        "clip_from_s": null,
+        "clip_to_s": null
+      }
+    ]
+  },
+  "audio": {
+    "narration_used_once": true,
+    "clip_audio_used": false,
+    "work_sample_rate_hz": 48000,
+    "work_sample_count": 1222544,
+    "channels": 2,
+    "resample": {
+      "source_rate_hz": 24000,
+      "target_rate_hz": 48000,
+      "source_samples": 611272,
+      "expected_samples": 1222544,
+      "ratio": "2/1",
+      "exact_integer_ratio": true,
+      "note": "Conversion de relacion entera: la cuenta de muestras es exacta."
+    },
+    "cues_used": [],
+    "ducking": {
+      "enabled": true,
+      "reduction_db": -9.0,
+      "applies_to": "music",
+      "note": "ganancia fija y reproducible; los efectos puntuales no se atenuan"
+    },
+    "normalization": {
+      "enabled": true,
+      "mode": "two_pass_linear",
+      "target_lufs": -16.0,
+      "true_peak_ceiling_dbtp": -1.5,
+      "measured_input_lufs": -20.9,
+      "output_sample_rate_hz": 48000.0
+    },
+    "measured": {
+      "integrated_lufs": -16.01,
+      "true_peak_dbtp": -12.83,
+      "loudness_range_lu": 3.2,
+      "threshold_lufs": -26.31,
+      "usable": true,
+      "note": "medido con loudnorm (EBU R128) sobre el audio decodificado"
+    },
+    "loudness_compliant": true,
+    "aac_tolerance_samples": 1024,
+    "audio_sample_deficit": -32
+  },
+  "captions": {
+    "path": "captions.ass",
+    "sha256": "399631489cfba25d3eb655be6d4bbb95401a515df015e0e3d9ff750284beb0a1",
+    "style_id": "dynamic_emphasis",
+    "style_version": "v1",
+    "font": {
+      "path": "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+      "sha256": "5c1247acef7f2b8522a31742c76d6adcb5569bacc0be7ceaa4dc39dd252ce895",
+      "family": "DejaVu Sans",
+      "units_per_em": 2048
+    },
+    "word_count": 62,
+    "group_count": 15,
+    "event_count": 124,
+    "play_res_x": 1080,
+    "play_res_y": 1920,
+    "text_region": {
+      "left": 96,
+      "right": 984,
+      "top": 1080,
+      "bottom": 1530
+    },
+    "rounding_policy": "Se cuantiza cada FRONTERA en segundos a centesimas con floor(t*100+0.5); nunca la duracion. Dos eventos contiguos comparten el valor de origen, asi que no hay solapes ni deriva.",
+    "collapsed_highlights": [],
+    "preview_mark": "PREVIEW · SIMULACIÓN",
+    "rendered_by": "libass"
+  },
+  "processing": {
+    "pipeline_version": "v1",
+    "tools": {
+      "ffmpeg_version": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers",
+      "ffprobe_version": "ffprobe version 6.1.1-3ubuntu5 Copyright (c) 2007-2023 the FFmpeg developers",
+      "min_tested_version": "6.1",
+      "meets_min_tested_version": true,
+      "libass": true,
+      "encoders_required": [
+        "libx264",
+        "aac"
+      ],
+      "filters_required": [
+        "ass",
+        "scale",
+        "pad",
+        "crop",
+        "fps",
+        "format",
+        "setpts",
+        "atrim",
+        "adelay",
+        "volume",
+        "afade",
+        "amix",
+        "aresample",
+        "loudnorm"
+      ]
+    },
+    "encode_settings": {
+      "video_codec": "libx264",
+      "preset": "veryfast",
+      "crf": 21,
+      "pix_fmt": "yuv420p",
+      "width": 1080,
+      "height": 1920,
+      "fps": "30/1",
+      "sar": "1:1",
+      "video_timescale": 15360,
+      "gop_frames": 60,
+      "closed_gop": true,
+      "scenecut": "disabled",
+      "audio_codec": "aac",
+      "audio_profile": "aac_low",
+      "audio_sample_rate_hz": 48000,
+      "audio_bitrate": "192k",
+      "faststart": true,
+      "note": "CRF no impone tamano: el tamano final se mide sobre el archivo, no se promete a partir del CRF."
+    },
+    "plan_sha256": "e34727f02b3de343961904e103daec979fea8d61a5984aec327fa02ef00477e0",
+    "fingerprint": "88439132f07f94825341ca9ba85c6705c4e847c4d9d0c24dff02a2902f7841d0",
+    "segments": [
+      {
+        "scene_id": "sc_01",
+        "order": 1,
+        "frames": 156,
+        "sha256": "34eead98fe30ca4464e5636d9255a06c418213952e1500e214b70a327660203e",
+        "size_bytes": 202544,
+        "retained": false,
+        "reused": false
+      },
+      {
+        "scene_id": "sc_02",
+        "order": 2,
+        "frames": 161,
+        "sha256": "53e145756ac8b570d62486646cb53a250b394823f86b6c9b3fb7705e54da44f4",
+        "size_bytes": 202546,
+        "retained": false,
+        "reused": false
+      },
+      {
+        "scene_id": "sc_03",
+        "order": 3,
+        "frames": 147,
+        "sha256": "b7914c946df825fe48bb29ba40a4e1ed137b465ce1ba1c40c43032ca8c4e6131",
+        "size_bytes": 219256,
+        "retained": false,
+        "reused": false
+      },
+      {
+        "scene_id": "sc_04",
+        "order": 4,
+        "frames": 148,
+        "sha256": "37034112b625c9a1f14879d523f28a9bac13c6c1bbfad0e6b7c94688046100cc",
+        "size_bytes": 200110,
+        "retained": false,
+        "reused": false
+      },
+      {
+        "scene_id": "sc_05",
+        "order": 5,
+        "frames": 153,
+        "sha256": "c4b447239883ea6eb344c8f8801b4c04c66e05a775e40388660b3a5de2438041",
+        "size_bytes": 216889,
+        "retained": false,
+        "reused": false
+      }
+    ],
+    "concat_mode": "stream_copy"
+  },
+  "resources": {
+    "wall_time_s": 23.005,
+    "peak_work_dir_mib": 12.26,
+    "free_disk_mb_before": 29060.4,
+    "free_disk_mb_after": 29047.9,
+    "renders_new": 8,
+    "renders_total": 8,
+    "segment_cache_hits": 0,
+    "peak_memory_mib": null
+  },
+  "inspection": {
+    "contact_sheet_path": null,
+    "frames": [
+      {
+        "label": "gancho",
+        "frame_index": 1,
+        "time_s": 0.033333,
+        "path": "frames/gancho_00001.jpg",
+        "sha256": "cb4f7239bb3df56dcb805d842677e91cbe729ba269301a5f9177efeae4ad810d"
+      },
+      {
+        "label": "frontera_de_escena",
+        "frame_index": 156,
+        "time_s": 5.2,
+        "path": "frames/frontera_de_escena_00156.jpg",
+        "sha256": "804cd5cf3f28305216e2eb8aab31d0cc5077b4cba854b67550f8605d5d3e6c07"
+      },
+      {
+        "label": "antes_de_la_frontera",
+        "frame_index": 155,
+        "time_s": 5.166667,
+        "path": "frames/antes_de_la_frontera_00155.jpg",
+        "sha256": "edc741b1edb3f9e7f236dfb24f9a8d4b5e1aaa78f9691bfa3c38dc91da9160b4"
+      },
+      {
+        "label": "medio",
+        "frame_index": 382,
+        "time_s": 12.733333,
+        "path": "frames/medio_00382.jpg",
+        "sha256": "68ed92ea5bee9f6003f0f7c47723c8922db34bca3223b455f9985c6e12eade98"
+      },
+      {
+        "label": "cierre",
+        "frame_index": 763,
+        "time_s": 25.433333,
+        "path": "frames/cierre_00763.jpg",
+        "sha256": "97c7cbabeecce426d1b390feae6df96862055c70406825d87c455a632cfe6cac"
+      }
+    ],
+    "checks_performed": [
+      "ffprobe_streams",
+      "frame_count_decoded",
+      "pts_cfr",
+      "full_decode_null",
+      "loudness_ebu_r128",
+      "frame_sampling"
+    ],
+    "note": "Los fotogramas son evidencia de que hay texto integrado y de que la marca de preview aparece. Un detector de pixeles no certifica legibilidad ni correccion semantica."
+  }
+}
