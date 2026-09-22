@@ -183,7 +183,32 @@ SAR 1:1, CFR 30/1, AAC-LC a 48 000 Hz**, con `+faststart`.
 | `audio.measured` | sonoridad medida sobre el audio **ya codificado** |
 | `audio.loudness_compliant` | si cumple los objetivos declarados |
 | `audio.aac_tolerance_samples` | margen técnico: **un frame AAC (1024 muestras)** |
-| `audio.audio_sample_deficit` | `decoded − esperadas`. Negativo = falta audio |
+| `audio.audio_sample_deficit` | `decoded_samples − esperadas`. **Negativo = falta** narración (defecto); **positivo = sobra**, que es el relleno del último frame AAC y es normal |
+| `audio.stream_vs_decoded_samples` | `stream_duration_ts − decoded_samples`. Documenta la brecha entre lo declarado y lo decodificado; no es un defecto por sí sola |
+
+### Cuatro magnitudes de audio que no son la misma
+
+Confundirlas fue un defecto real de esta entrega: `decoded_samples` se
+calculaba como `duración × frecuencia` y se etiquetaba como cuenta de PCM.
+
+| Magnitud | Qué es | De dónde sale |
+| --- | --- | --- |
+| `audio.work_sample_count` | la mezcla PCM que produjo el módulo | calculada a 48 kHz desde la voz |
+| `output.audio.stream_duration_ts` | duración **declarada** por el contenedor | `ffprobe`, en la base de tiempo del stream |
+| `output.audio.decoded_samples` | muestras por canal que hay **al decodificar** | se decodifica el PCM y se cuentan bytes |
+| `output.audio.initial_padding_samples` | priming que expone el decodificador | `ffprobe` |
+
+En un AAC real las dos del medio **difieren**: el contenedor descuenta el
+priming y el codificador rellena el último frame hasta 1024 muestras. En el
+ejemplo de este repositorio son 1 222 512 frente a 1 222 656 — 144 muestras,
+3 ms.
+
+`decoded_samples_source` dice de dónde salió la cuenta: `pcm_decode` o
+`not_measured`. **Nunca de la duración.** Si no se pudo medir, el campo queda
+en `null` y el validador lo rechaza en vez de dar el audio por bueno.
+
+FFmpeg ya aplica el *Skip Samples* del primer paquete al decodificar, así que
+el priming **no se vuelve a descontar**: hacerlo lo contaría dos veces.
 
 Con narración a 24 000 Hz la conversión a 48 000 Hz es exactamente **2×**, así
 que la mezcla tiene `2N` muestras por canal y no hay redondeo que documentar.

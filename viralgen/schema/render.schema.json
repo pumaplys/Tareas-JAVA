@@ -2,7 +2,7 @@
   "$defs": {
     "AudioStreamInfo": {
       "additionalProperties": false,
-      "description": "Propiedades MEDIDAS del stream de audio.",
+      "description": "Propiedades del stream de audio.\n\nTres magnitudes DISTINTAS que no deben confundirse:\n\n* `stream_duration_s` / `stream_duration_ts` - lo que DECLARA el\n  contenedor. El contenedor descuenta el priming del codificador.\n* `decoded_samples` - lo que hay al DECODIFICAR, contado sobre el PCM.\n  El codificador AAC rellena el ultimo frame hasta 1024 muestras.\n* `initial_padding_samples` - el priming que expone el decodificador.\n\nEn un AAC real las dos primeras difieren. En el ejemplo de este\nrepositorio: 1 222 512 declaradas frente a 1 222 656 decodificadas, 144 de\ndiferencia. Etiquetar la primera como si fuese la segunda es un error de\nmedicion, no un matiz.",
       "properties": {
         "codec_name": {
           "maxLength": 200,
@@ -38,7 +38,21 @@
             }
           ],
           "default": null,
+          "description": "Duracion DECLARADA por el contenedor.",
           "title": "Stream Duration S"
+        },
+        "stream_duration_ts": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "La misma duracion declarada, en unidades de la base de tiempo del stream. NO es una cuenta de muestras PCM.",
+          "title": "Stream Duration Ts"
         },
         "decoded_samples": {
           "anyOf": [
@@ -50,8 +64,18 @@
             }
           ],
           "default": null,
-          "description": "Muestras por canal realmente decodificadas.",
+          "description": "Muestras por canal contadas DECODIFICANDO el PCM, no derivadas de la duracion. null si no se pudo medir.",
           "title": "Decoded Samples"
+        },
+        "decoded_samples_source": {
+          "default": "not_measured",
+          "description": "De donde sale `decoded_samples`. Nunca de la duracion.",
+          "enum": [
+            "pcm_decode",
+            "not_measured"
+          ],
+          "title": "Decoded Samples Source",
+          "type": "string"
         },
         "initial_padding_samples": {
           "anyOf": [
@@ -401,9 +425,22 @@
           "type": "integer"
         },
         "audio_sample_deficit": {
-          "description": "decoded_samples - esperadas. Negativo significa que FALTA audio; solo se admite dentro de aac_tolerance_samples.",
+          "description": "`decoded_samples` menos las muestras de trabajo esperadas, ambas a la frecuencia de salida. SIGNO: negativo = FALTA audio respecto de la narracion (voz truncada, que es un defecto); positivo = sobra, que es el relleno del ultimo frame AAC y es normal. Solo se admite dentro de aac_tolerance_samples, y esa tolerancia cubre relleno del codec, nunca una medicion equivocada.",
           "title": "Audio Sample Deficit",
           "type": "integer"
+        },
+        "stream_vs_decoded_samples": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "`stream_duration_ts` menos `decoded_samples`. Documenta la diferencia entre lo que declara el contenedor y lo que hay al decodificar; no es un defecto por si sola.",
+          "title": "Stream Vs Decoded Samples"
         }
       },
       "required": [

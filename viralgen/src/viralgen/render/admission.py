@@ -38,7 +38,13 @@ from ..voice.schemas import VoiceManifest
 from .audio import AAC_FRAME_SAMPLES
 from .captions import PLAY_RES_X, PLAY_RES_Y
 from .ffmpeg import ProcessRunner, probe_capabilities
-from .probe import analyze_cfr, decode_check, probe_file, read_video_pts
+from .probe import (
+    analyze_cfr,
+    decode_audio_pcm_samples,
+    decode_check,
+    probe_file,
+    read_video_pts,
+)
 from .schemas import RenderManifest, RenderMode, RenderStatus
 from .video import VIDEO_TIMESCALE
 
@@ -309,7 +315,19 @@ def check_render_admission(
     problemas_video = _check_video(reporte, render)
     registrar("video_medido", not problemas_video, "; ".join(problemas_video))
 
-    problemas_audio = _check_audio(reporte, render, voz)
+    # Una sola decodificacion del PCM, reutilizada por el chequeo de audio.
+    try:
+        pcm_samples = decode_audio_pcm_samples(
+            ejecutor,
+            ruta_video,
+            channels=reporte.audio.channels if reporte.audio else 0,
+            max_bytes=settings.render_max_duration_s * 48_000 * 2 * 2 * 2,
+            timeout_s=settings.render_stage_timeout_s,
+        )
+    except Exception:
+        pcm_samples = None
+    informe.measured["audio_pcm_samples"] = pcm_samples
+    problemas_audio = _check_audio(reporte, render, voz, pcm_samples)
     registrar("audio_medido", not problemas_audio, "; ".join(problemas_audio))
 
     # PTS y CFR: con B-frames el orden de decodificacion no es el de
@@ -471,7 +489,9 @@ def _check_video(reporte, render: RenderManifest) -> list[str]:
     return problemas
 
 
-def _check_audio(reporte, render: RenderManifest, voz: VoiceManifest) -> list[str]:
+def _check_audio(
+    reporte, render: RenderManifest, voz: VoiceManifest, pcm_samples: int | None
+) -> list[str]:
     """El audio debe contener la NARRACION COMPLETA.
 
     Se separan tres duraciones —video, audio y contenedor— y se admite un
@@ -494,15 +514,37 @@ def _check_audio(reporte, render: RenderManifest, voz: VoiceManifest) -> list[st
     esperadas = round(
         voz.master.sample_count * medido.sample_rate_hz / voz.master.sample_rate_hz
     )
-    if medido.duration_s is not None:
-        medidas = round(medido.duration_s * medido.sample_rate_hz)
-        deficit = medidas - esperadas
-        if deficit < -AAC_FRAME_SAMPLES:
-            faltan_s = -deficit / medido.sample_rate_hz
-            problemas.append(
-                f"al audio le faltan {-deficit} muestras ({faltan_s:.3f} s) respecto "
-                f"de la narracion: eso es voz truncada, no relleno del codec"
-            )
+    # Se DECODIFICA el PCM para contar. La duracion declarada por el contenedor
+    # no vale: en un AAC real difiere de la cuenta, porque el contenedor
+    # descuenta el priming y el codificador rellena el ultimo frame.
+    if pcm_samples is None:
+        problemas.append(
+            "no se pudo contar el PCM del audio; sin esa medida no se puede "
+            "afirmar que la narracion este completa"
+        )
+        return problemas
+
+    deficit = pcm_samples - esperadas
+    if deficit < -AAC_FRAME_SAMPLES:
+        faltan_s = -deficit / medido.sample_rate_hz
+        problemas.append(
+            f"al audio le faltan {-deficit} muestras ({faltan_s:.3f} s) respecto "
+            f"de la narracion: eso es voz truncada, no relleno del codec"
+        )
+
+    # Y lo que declara el manifiesto tiene que ser lo MEDIDO, no la duracion.
+    declaradas = render.output.audio.decoded_samples
+    if declaradas is None:
+        problemas.append("el manifiesto no declara decoded_samples")
+    elif declaradas != pcm_samples:
+        problemas.append(
+            f"el manifiesto declara {declaradas} muestras decodificadas y el PCM "
+            f"tiene {pcm_samples}: la cuenta declarada no sale de decodificar"
+        )
+    if render.output.audio.decoded_samples_source != "pcm_decode":
+        problemas.append(
+            "decoded_samples no se declara medido por decodificacion del PCM"
+        )
     return problemas
 
 

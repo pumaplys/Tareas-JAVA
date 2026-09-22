@@ -76,7 +76,13 @@ from .captions import (
 )
 from .ffmpeg import ProcessRunner, RenderStageError, require_tools
 from .planner import PLAN_VERSION, RenderPlan, build_plan
-from .probe import analyze_cfr, decode_check, probe_file, read_video_pts
+from .probe import (
+    analyze_cfr,
+    decode_audio_pcm_samples,
+    decode_check,
+    probe_file,
+    read_video_pts,
+)
 from .schemas import (
     AudioStreamInfo,
     CueUsage,
@@ -572,7 +578,7 @@ class RenderPipeline:
         )
 
         # --- Validacion del archivo terminado -------------------------------
-        reporte, problemas, muestras = self._validate_output(
+        reporte, problemas, muestras, pcm_samples = self._validate_output(
             salida, plan=plan, voz=voz, ejecutor=ejecutor, directorio=directorio
         )
         for codigo, mensaje in problemas:
@@ -590,7 +596,8 @@ class RenderPipeline:
             media_sha=media_sha, output=salida, report=reporte,
             captions=datos_subtitulos, audio=datos_audio,
             loudness_ok=cumple_sonoridad, segments=info_segmentos,
-            samples=muestras, wall_time=time.monotonic() - started,
+            samples=muestras, pcm_samples=pcm_samples,
+            wall_time=time.monotonic() - started,
             peak_mib=pico_mib, free_before=free_before,
         )
 
@@ -960,11 +967,12 @@ class RenderPipeline:
     ):
         """Mide el archivo terminado. El exito de FFmpeg no basta."""
         problemas: list[tuple[str, str]] = []
+        medidas: int | None = None
         reporte = probe_file(salida, ffprobe_path=self.settings.ffprobe_path)
 
         if reporte.video is None:
             problemas.append(("sin_video", "el archivo exportado no tiene video"))
-            return reporte, problemas, []
+            return reporte, problemas, [], None
         if reporte.video.nb_read_frames != plan.timeline.total_frames:
             problemas.append((
                 "fotogramas_incorrectos",
@@ -979,14 +987,21 @@ class RenderPipeline:
                 * reporte.audio.sample_rate_hz
                 / voz.master.sample_rate_hz
             )
-            if reporte.audio.duration_s is not None:
-                medidas = round(reporte.audio.duration_s * reporte.audio.sample_rate_hz)
-                if medidas - esperadas < -AAC_FRAME_SAMPLES:
-                    problemas.append((
-                        "audio_truncado",
-                        f"al audio le faltan {esperadas - medidas} muestras respecto "
-                        "de la narracion",
-                    ))
+            # Se DECODIFICA para contar. La duracion declarada por el
+            # contenedor no sirve: difiere del PCM en un AAC real.
+            medidas = self._contar_pcm(salida, reporte, ejecutor)
+            if medidas is None:
+                problemas.append((
+                    "audio_no_medido",
+                    "no se pudo contar el PCM del audio: sin esa medida no se "
+                    "puede afirmar que la narracion este completa",
+                ))
+            elif medidas - esperadas < -AAC_FRAME_SAMPLES:
+                problemas.append((
+                    "audio_truncado",
+                    f"al audio le faltan {esperadas - medidas} muestras respecto "
+                    "de la narracion",
+                ))
 
         pts = read_video_pts(salida, ffprobe_path=self.settings.ffprobe_path)
         paso = VIDEO_TIMESCALE // plan.encode.fps
@@ -1014,7 +1029,34 @@ class RenderPipeline:
         )
 
         muestras = self._sample_frames(salida, plan=plan, directorio=directorio)
-        return reporte, problemas, muestras
+        return reporte, problemas, muestras, medidas
+
+    def _contar_pcm(self, salida, reporte, ejecutor) -> int | None:
+        """Muestras PCM por canal, DECODIFICANDO. None si no se pudo medir.
+
+        Se lee por trozos: el audio no se carga entero en memoria. El limite
+        de bytes sale de la duracion maxima admitida, con margen.
+        """
+        if reporte.audio is None or reporte.audio.channels < 1:
+            return None
+        limite_bytes = (
+            self.settings.render_max_duration_s
+            * max(reporte.audio.sample_rate_hz, 48_000)
+            * reporte.audio.channels
+            * 2      # s16le
+            * 2      # margen
+        )
+        try:
+            return decode_audio_pcm_samples(
+                ejecutor,
+                salida,
+                channels=reporte.audio.channels,
+                max_bytes=limite_bytes,
+                timeout_s=self.settings.render_stage_timeout_s,
+            )
+        except Exception as exc:
+            logger.warning("no se pudo contar el PCM del audio: %s", exc)
+            return None
 
     def _sample_frames(
         self, salida: Path, *, plan: RenderPlan, directorio: Path
@@ -1275,9 +1317,9 @@ class RenderPipeline:
         esperadas_audio = round(
             voz.master.sample_count * WORK_SAMPLE_RATE_HZ / voz.master.sample_rate_hz
         )
-        decodificadas = 0
-        if reporte.audio and reporte.audio.duration_s:
-            decodificadas = round(reporte.audio.duration_s * reporte.audio.sample_rate_hz)
+        # La cuenta viene de _validate_output, que ya decodifico el PCM. No se
+        # vuelve a decodificar solo para escribir el manifiesto.
+        decodificadas = kw.get("pcm_samples")
 
         return RenderManifest(
             render_run_id=self.render_run_id,
@@ -1337,7 +1379,11 @@ class RenderPipeline:
                     channels=reporte.audio.channels if reporte.audio else 0,
                     channel_layout=reporte.audio.channel_layout if reporte.audio else "",
                     stream_duration_s=reporte.audio.duration_s if reporte.audio else None,
-                    decoded_samples=decodificadas or None,
+                    stream_duration_ts=reporte.audio.duration_ts if reporte.audio else None,
+                    decoded_samples=decodificadas,
+                    decoded_samples_source=(
+                        "pcm_decode" if decodificadas is not None else "not_measured"
+                    ),
                     initial_padding_samples=(
                         reporte.audio.initial_padding if reporte.audio else None
                     ),
@@ -1379,7 +1425,16 @@ class RenderPipeline:
                 measured=LoudnessInfo(**medida.describe()),
                 loudness_compliant=kw["loudness_ok"],
                 aac_tolerance_samples=AAC_FRAME_SAMPLES,
-                audio_sample_deficit=decodificadas - esperadas_audio,
+                audio_sample_deficit=(
+                    decodificadas - esperadas_audio if decodificadas is not None else 0
+                ),
+                stream_vs_decoded_samples=(
+                    reporte.audio.duration_ts - decodificadas
+                    if reporte.audio is not None
+                    and reporte.audio.duration_ts is not None
+                    and decodificadas is not None
+                    else None
+                ),
             ),
             captions=RenderCaptions(
                 path="captions.ass",

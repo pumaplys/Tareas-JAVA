@@ -76,12 +76,20 @@ class VideoInfo:
 
 @dataclass
 class AudioInfo:
+    """Lo que DECLARA el contenedor sobre la pista de audio.
+
+    `duration_ts` es la duracion declarada en unidades de la base de tiempo del
+    stream. NO es la cuenta de muestras PCM: en un AAC real difieren, porque el
+    contenedor descuenta el priming y el codificador rellena el ultimo frame.
+    Para la cuenta real hay que DECODIFICAR (`decode_audio_pcm_samples`).
+    """
+
     codec_name: str
     sample_rate_hz: int
     channels: int
     channel_layout: str
     duration_s: float | None
-    nb_samples: int | None
+    duration_ts: int | None
     start_pts: int | None
     initial_padding: int | None
 
@@ -92,7 +100,7 @@ class AudioInfo:
             "channels": self.channels,
             "channel_layout": self.channel_layout,
             "stream_duration_s": self.duration_s,
-            "decoded_samples": self.nb_samples,
+            "stream_duration_ts": self.duration_ts,
             "start_pts": self.start_pts,
             "initial_padding_samples": self.initial_padding,
         }
@@ -211,7 +219,9 @@ def _audio_info(stream: dict) -> AudioInfo:
         channels=int(stream.get("channels") or 0),
         channel_layout=str(stream.get("channel_layout", "")),
         duration_s=_float(stream.get("duration")),
-        nb_samples=_int(stream.get("nb_read_samples")),
+        # `nb_read_samples` NO existe en ffprobe: leerlo devolvia siempre None.
+        # La duracion declarada si existe, y es otra magnitud.
+        duration_ts=_int(stream.get("duration_ts")),
         start_pts=_int(stream.get("start_pts")),
         initial_padding=_int(stream.get("initial_padding")),
     )
@@ -310,3 +320,105 @@ def _int(value) -> int | None:
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+#: Ancho de una muestra PCM s16le, en bytes.
+PCM_SAMPLE_WIDTH = 2
+
+#: Trozo de lectura del tubo. Ni el audio entero ni byte a byte.
+_PCM_CHUNK = 256 * 1024
+
+
+def decode_audio_pcm_samples(
+    runner: ProcessRunner,
+    path: Path,
+    *,
+    channels: int,
+    max_bytes: int,
+    timeout_s: int | None = None,
+) -> int:
+    """Cuenta las muestras PCM por canal DECODIFICANDO de verdad.
+
+    Es la unica forma de saber cuanto audio hay. `duration_ts` del contenedor
+    NO sirve: en un AAC real difiere de la cuenta PCM, porque el contenedor
+    descuenta el priming y el codificador rellena el ultimo frame. En el
+    ejemplo de este repositorio la diferencia es de 144 muestras.
+
+    La salida se lee POR TROZOS y solo se cuentan bytes: el audio no se carga
+    entero en memoria en ningun momento. `max_bytes` acota el tubo y el proceso
+    se corta si lo supera; el grupo de procesos se termina igual que en
+    cualquier otra etapa.
+
+    No se descuenta el priming a mano: FFmpeg ya lo procesa al decodificar
+    (en el ejemplo, 1195 paquetes del contenedor dan 1194 frames decodificados).
+    Restarlo otra vez seria contarlo dos veces.
+    """
+    import subprocess
+
+    if channels < 1:
+        raise ProbeError(f"canales no validos: {channels}")
+
+    args = [
+        runner.ffmpeg_path, "-hide_banner", "-nostdin",
+        "-loglevel", "error",
+        "-xerror",
+        "-i", str(path),
+        "-map", "0:a:0",
+        "-c:a", "pcm_s16le",
+        "-f", "s16le",
+        "-",
+    ]
+    limite = timeout_s if timeout_s is not None else runner.stage_timeout_s
+
+    proceso = subprocess.Popen(  # noqa: S603 - lista de argumentos, shell=False
+        args,
+        shell=False,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    import time as _time
+
+    fin = _time.monotonic() + limite
+    total = 0
+    try:
+        assert proceso.stdout is not None
+        while True:
+            trozo = proceso.stdout.read(_PCM_CHUNK)
+            if not trozo:
+                break
+            total += len(trozo)
+            if total > max_bytes:
+                runner._terminate(proceso)
+                raise ProbeError(
+                    f"el audio decodificado supera {max_bytes} bytes",
+                    details={"bytes": total},
+                )
+            if _time.monotonic() > fin:
+                runner._terminate(proceso)
+                raise ProbeError(
+                    f"la decodificacion de audio supero {limite} s",
+                    details={"bytes": total},
+                )
+    finally:
+        if proceso.stdout is not None:
+            proceso.stdout.close()
+        try:
+            proceso.wait(timeout=10)
+        except subprocess.TimeoutExpired:  # pragma: no cover - proceso colgado
+            runner._terminate(proceso)
+
+    if proceso.returncode != 0:
+        raise ProbeError(
+            f"la decodificacion de audio fallo con codigo {proceso.returncode}",
+            details={"returncode": proceso.returncode},
+        )
+
+    ancho = channels * PCM_SAMPLE_WIDTH
+    if total % ancho:
+        raise ProbeError(
+            f"el PCM no es multiplo de {ancho} bytes: {total}",
+            details={"bytes": total, "channels": channels},
+        )
+    return total // ancho

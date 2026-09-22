@@ -168,15 +168,46 @@ class VideoStreamInfo(StrictModel):
 
 
 class AudioStreamInfo(StrictModel):
-    """Propiedades MEDIDAS del stream de audio."""
+    """Propiedades del stream de audio.
+
+    Tres magnitudes DISTINTAS que no deben confundirse:
+
+    * `stream_duration_s` / `stream_duration_ts` - lo que DECLARA el
+      contenedor. El contenedor descuenta el priming del codificador.
+    * `decoded_samples` - lo que hay al DECODIFICAR, contado sobre el PCM.
+      El codificador AAC rellena el ultimo frame hasta 1024 muestras.
+    * `initial_padding_samples` - el priming que expone el decodificador.
+
+    En un AAC real las dos primeras difieren. En el ejemplo de este
+    repositorio: 1 222 512 declaradas frente a 1 222 656 decodificadas, 144 de
+    diferencia. Etiquetar la primera como si fuese la segunda es un error de
+    medicion, no un matiz.
+    """
 
     codec_name: ShortText
     sample_rate_hz: int = Field(ge=8_000, le=192_000)
     channels: int = Field(ge=1, le=8)
     channel_layout: ShortText
-    stream_duration_s: float | None = None
+    stream_duration_s: float | None = Field(
+        default=None, description="Duracion DECLARADA por el contenedor."
+    )
+    stream_duration_ts: int | None = Field(
+        default=None,
+        description=(
+            "La misma duracion declarada, en unidades de la base de tiempo del "
+            "stream. NO es una cuenta de muestras PCM."
+        ),
+    )
     decoded_samples: int | None = Field(
-        default=None, description="Muestras por canal realmente decodificadas."
+        default=None,
+        description=(
+            "Muestras por canal contadas DECODIFICANDO el PCM, no derivadas de "
+            "la duracion. null si no se pudo medir."
+        ),
+    )
+    decoded_samples_source: Literal["pcm_decode", "not_measured"] = Field(
+        default="not_measured",
+        description="De donde sale `decoded_samples`. Nunca de la duracion.",
     )
     initial_padding_samples: int | None = Field(
         default=None,
@@ -327,9 +358,21 @@ class RenderAudio(StrictModel):
     )
     audio_sample_deficit: int = Field(
         description=(
-            "decoded_samples - esperadas. Negativo significa que FALTA audio; "
-            "solo se admite dentro de aac_tolerance_samples."
+            "`decoded_samples` menos las muestras de trabajo esperadas, ambas "
+            "a la frecuencia de salida. SIGNO: negativo = FALTA audio respecto "
+            "de la narracion (voz truncada, que es un defecto); positivo = "
+            "sobra, que es el relleno del ultimo frame AAC y es normal. Solo "
+            "se admite dentro de aac_tolerance_samples, y esa tolerancia cubre "
+            "relleno del codec, nunca una medicion equivocada."
         )
+    )
+    stream_vs_decoded_samples: int | None = Field(
+        default=None,
+        description=(
+            "`stream_duration_ts` menos `decoded_samples`. Documenta la "
+            "diferencia entre lo que declara el contenedor y lo que hay al "
+            "decodificar; no es un defecto por si sola."
+        ),
     )
 
 

@@ -696,9 +696,9 @@ source .venv/bin/activate
 pytest -q
 ```
 
-Resultado de la ejecución en este entorno: **493 pruebas correctas y ninguna
+Resultado de la ejecución en este entorno: **500 pruebas correctas y ninguna
 saltada** (Python 3.12, sin red y sin claves). Con FFmpeg instalado se ejecutan
-también las cinco que antes se saltaban en los módulos 2 y 3, y las **51 de
+también las cinco que antes se saltaban en los módulos 2 y 3, y las **58 de
 integración local** del módulo 4 (marca `ffmpeg`).
 
 Las pruebas se dividen en **cuatro** categorías que este README no mezcla:
@@ -717,11 +717,11 @@ tales.
 ### La integración local es obligatoria, no opcional
 
 ```bash
-pytest -m ffmpeg -rs          # 51:  solo la integracion local real
+pytest -m ffmpeg -rs          # 58:  solo la integracion local real
 pytest -m "not ffmpeg"        # 442: solo lo que no necesita FFmpeg
 ```
 
-Las dos selecciones son una **partición exacta** de las 493: entre ambas se
+Las dos selecciones son una **partición exacta** de las 500: entre ambas se
 ejecuta todo una sola vez, sin solape ni huecos. Es como las ejecuta la CI.
 
 `.github/workflows/viralgen-ffmpeg.yml` instala FFmpeg y la fuente, ejecuta la
@@ -750,7 +750,7 @@ Una suite verde porque todo se saltó no acredita ningún render.
 | | Estado |
 | --- | --- |
 | El guard rechaza una selección vacía, saltada o en `xfail` | **Comprobado localmente**, con informes de pytest reales (`tests/test_verificar_integracion.py`) |
-| El guard rechaza las 51 pruebas del repo cuando FFmpeg no está | **Comprobado localmente**: con FFmpeg oculto del `PATH`, pytest sale con 0 y 51 saltadas, y el guard responde `ejecutadas=0` y falla |
+| El guard rechaza las pruebas del repo cuando FFmpeg no está | **Comprobado localmente**: con FFmpeg oculto del `PATH`, pytest sale con 0 y 51 saltadas, y el guard responde `ejecutadas=0` y falla |
 | El workflow completo en GitHub Actions | **Preparado, no ejecutado**: este entorno no lanza CI. Lo que está verificado es el guard y su integración, no el runner |
 
 Qué se cubre, además de las unidades sueltas:
@@ -1881,9 +1881,13 @@ Que FFmpeg termine con código 0 no basta. Sobre el archivo se comprueba:
   decodificación no es el de presentación: se ordena por PTS);
 - **decodificación completa de ambas pistas** a salida nula — lo único que
   demuestra que el archivo no está truncado;
-- que el audio contenga la narración entera, con un margen técnico de **un frame
-  AAC (1024 muestras)** para el priming y el padding del codec. Ese margen
-  **no tapa voz truncada**;
+- que el audio contenga la narración entera. La cuenta de muestras sale de
+  **decodificar el PCM**, no de la duración que declara el contenedor: en un
+  AAC real difieren (en el ejemplo, 1 222 512 declaradas frente a 1 222 656
+  decodificadas). Se admite un margen técnico de **un frame AAC (1024
+  muestras)** para el relleno del codec; ese margen **no tapa voz truncada ni
+  convierte una medición equivocada en correcta**. El signo importa: déficit
+  negativo = falta narración (defecto); positivo = sobra relleno (normal);
 - que todo evento de subtítulo venga de palabras de la voz, quepa en el reloj y
   use un estilo declarado;
 - fotogramas de muestra en gancho, frontera de escena (y el anterior), medio y
