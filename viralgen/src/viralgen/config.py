@@ -214,6 +214,99 @@ class Settings(BaseSettings):
     #: Limpieza de intermedios tras consolidar y validar.
     render_keep_segments: bool = False
 
+    # --- Modulo 5: publicacion -------------------------------------------
+    # Ninguna credencial es obligatoria para `plan` ni para `mock`: la
+    # demostracion completa del modulo funciona sin cuentas.
+    #
+    # IMPORTANTE: todos los limites de esta seccion son decisiones DEL
+    # PRODUCTO. No son cuotas de YouTube, de Meta ni del proveedor de
+    # almacenamiento, y no se deben presentar como tales.
+    publish_workers: int = Field(default=1, ge=1, le=1)
+    #: Entregas REALES nuevas por cuenta y dia natural (UTC).
+    publish_max_new_real_per_account_per_day: int = Field(default=1, ge=0, le=50)
+    #: Solicitudes por destino, persistidas. Incluye sondeos y reintentos.
+    publish_max_requests_per_destination: int = Field(default=200, ge=1, le=10_000)
+    #: Intentos por operacion recuperable.
+    publish_max_attempts_per_operation: int = Field(default=3, ge=1, le=10)
+    #: Sondeo remoto: intervalo inicial, tope del backoff y ventana total.
+    publish_poll_interval_s: float = Field(default=30.0, ge=5.0, le=600.0)
+    publish_poll_max_interval_s: float = Field(default=300.0, ge=5.0, le=3600.0)
+    publish_remote_window_s: int = Field(default=3600, ge=60, le=86_400)
+    #: Margen para INICIAR una entrega atrasada. Pasado, exige revision.
+    publish_late_start_window_s: int = Field(default=900, ge=0, le=86_400)
+    #: Concesion del trabajador sobre una tarea. Vence y se recupera.
+    publish_lease_seconds: int = Field(default=300, ge=30, le=7200)
+    publish_http_timeout_s: int = Field(default=60, ge=1, le=600)
+
+    #: Limites de tamano propios del publicador.
+    publish_max_video_mib: int = Field(default=200, ge=1, le=2048)
+    publish_max_temp_mib: int = Field(default=256, ge=16, le=10_240)
+    publish_log_max_mib: int = Field(default=5, ge=1, le=512)
+
+    #: Directorio privado de secretos (0700, con archivos 0600). Fuera del
+    #: repositorio y de los paquetes de ejemplo. Sin el, el modo real no
+    #: arranca; `plan` y `mock` no lo necesitan.
+    publish_secrets_dir: Path | None = None
+
+    #: YouTube. El ID del canal es obligatorio en modo real: sin el no se
+    #: puede comprobar que se publica donde se autorizo.
+    youtube_client_id: str | None = Field(default=None, alias="YOUTUBE_CLIENT_ID")
+    youtube_client_secret: SecretStr | None = Field(
+        default=None, alias="YOUTUBE_CLIENT_SECRET"
+    )
+    youtube_channel_id: str | None = Field(default=None, alias="YOUTUBE_CHANNEL_ID")
+    youtube_api_base_url: str = Field(
+        default="https://www.googleapis.com", alias="YOUTUBE_API_BASE_URL"
+    )
+    youtube_upload_base_url: str = Field(
+        default="https://www.googleapis.com", alias="YOUTUBE_UPLOAD_BASE_URL"
+    )
+    youtube_oauth_auth_url: str = Field(
+        default="https://accounts.google.com/o/oauth2/v2/auth",
+        alias="YOUTUBE_OAUTH_AUTH_URL",
+    )
+    youtube_oauth_token_url: str = Field(
+        default="https://oauth2.googleapis.com/token", alias="YOUTUBE_OAUTH_TOKEN_URL"
+    )
+    #: Tamano de bloque de la subida reanudable. Decision inicial: 8 MiB.
+    youtube_chunk_mib: int = Field(default=8, ge=1, le=64)
+
+    #: Instagram (Facebook Login). La version de Graph es OBLIGATORIA y
+    #: explicita en modo real: nada de `latest` ni de saltos automaticos.
+    meta_graph_api_version: str | None = Field(
+        default=None, alias="META_GRAPH_API_VERSION"
+    )
+    meta_graph_base_url: str = Field(
+        default="https://graph.facebook.com", alias="META_GRAPH_BASE_URL"
+    )
+    instagram_user_id: str | None = Field(default=None, alias="INSTAGRAM_USER_ID")
+    instagram_page_id: str | None = Field(default=None, alias="INSTAGRAM_PAGE_ID")
+
+    #: Staging S3 compatible. Sin proveedor elegido ni servicio presupuesto.
+    publish_staging_endpoint_url: str | None = Field(
+        default=None, alias="PUBLISH_STAGING_ENDPOINT_URL"
+    )
+    publish_staging_region: str | None = Field(
+        default=None, alias="PUBLISH_STAGING_REGION"
+    )
+    publish_staging_bucket: str | None = Field(
+        default=None, alias="PUBLISH_STAGING_BUCKET"
+    )
+    publish_staging_prefix: str = Field(default="viralgen/staging")
+    publish_staging_access_key_id: str | None = Field(
+        default=None, alias="PUBLISH_STAGING_ACCESS_KEY_ID"
+    )
+    publish_staging_secret_access_key: SecretStr | None = Field(
+        default=None, alias="PUBLISH_STAGING_SECRET_ACCESS_KEY"
+    )
+    #: Caducidad de la URL firmada (2 h) y retencion del objeto tras un
+    #: resultado terminal confirmado (24 h).
+    publish_staging_url_ttl_s: int = Field(default=7200, ge=300, le=604_800)
+    publish_staging_retention_s: int = Field(default=86_400, ge=3600, le=2_592_000)
+    #: Topes del staging propio, por si el proveedor no los impone.
+    publish_staging_max_objects: int = Field(default=20, ge=1, le=1000)
+    publish_staging_max_mib: int = Field(default=4096, ge=1, le=1_048_576)
+
     @field_validator("log_level")
     @classmethod
     def _upper_level(cls, value: str) -> str:

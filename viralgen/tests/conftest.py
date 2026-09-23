@@ -16,8 +16,21 @@ FIXTURES = Path(__file__).parent / "fixtures"
 @pytest.fixture(autouse=True)
 def _clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Aisla las pruebas de la configuracion de la maquina."""
+    prefijos = (
+        "VIRALGEN_",
+        "OPENAI_",
+        # Modulo 5: si la maquina tiene credenciales de publicacion, las
+        # pruebas NO deben verlas. El modo simulado no las usa, y que una
+        # prueba pase por tenerlas seria justo el fallo que se quiere evitar.
+        "YOUTUBE_",
+        "META_",
+        "INSTAGRAM_",
+        "PUBLISH_",
+        "ELEVENLABS_",
+        "RUNWAY",
+    )
     for name in list(os.environ):
-        if name.startswith("VIRALGEN_") or name.startswith("OPENAI_"):
+        if name.startswith(prefijos):
             monkeypatch.delenv(name, raising=False)
 
 
@@ -330,3 +343,165 @@ def run_render(render_settings):
         return RenderPipeline(render_settings, peticion, **kwargs).run()
 
     return _run
+
+
+# ---------------------------------------------------------------------------
+# Modulo 5: fabricas de planes y recibos
+# ---------------------------------------------------------------------------
+#
+# Son FIXTURES AISLADAS con forma de datos de produccion, para poder probar
+# contratos e identidad sin montar un video ni tocar los ejemplos del
+# repositorio. No son ejemplos publicables ni reclasifican nada: el preview de
+# `examples/` sigue siendo un preview.
+
+_HASH_A = "a" * 64
+_HASH_B = "b" * 64
+_UUID = "00000000-0000-4000-8000-00000000000"
+
+
+def publish_sources(**cambios):
+    """Un `SourceBundle` de prueba, de produccion salvo que se diga otra cosa."""
+    from datetime import datetime, timezone
+
+    from viralgen.publish.schemas import DocumentRef, SourceBundle, VideoRef
+
+    def documento(letra: str, simulation: bool = False) -> DocumentRef:
+        return DocumentRef(
+            path=f"/paquete/{letra}.json",
+            sha256=letra * 64,
+            size_bytes=1024,
+            schema_version="1.0",
+            simulation=simulation,
+        )
+
+    base = dict(
+        job_id=_UUID + "1",
+        render_run_id=_UUID + "2",
+        voice_run_id=_UUID + "3",
+        media_run_id=_UUID + "4",
+        channel="curiosidades",
+        profile_id="curiosidades_es",
+        language="es-ES",
+        render_mode="production",
+        render_simulation=False,
+        script=documento("c"),
+        voice=documento("d"),
+        media=documento("e"),
+        render=documento("f"),
+        video=VideoRef(
+            path="/paquete/video.mp4",
+            sha256=_HASH_A,
+            size_bytes=5_000_000,
+            container_duration_s=25.5,
+            width=1080,
+            height=1920,
+            fps=30.0,
+            verified_at=datetime(2026, 9, 20, 10, 0, tzinfo=timezone.utc),
+        ),
+        admissible_for_publisher_declared=True,
+        admissible_for_publisher_recomputed=True,
+    )
+    base.update(cambios)
+    return SourceBundle(**base)
+
+
+def publish_destination(**cambios):
+    """Un destino de YouTube listo para autorizar."""
+    from datetime import datetime, timezone
+
+    from viralgen.publish.schemas import (
+        AccountRef,
+        AudienceDecision,
+        DestinationMetadata,
+        DestinationOptions,
+        DestinationState,
+        PlanDestination,
+        ScheduleSpec,
+        SyntheticDisclosure,
+        TextSource,
+        Visibility,
+    )
+    from viralgen.schemas.common import Platform
+
+    metadata = cambios.pop(
+        "metadata",
+        DestinationMetadata(
+            title="Por que el cielo cambia de color",
+            description="Un repaso corto a la dispersion de la luz.",
+            tags=["ciencia", "luz"],
+            hashtags=["ciencia"],
+            language="es-ES",
+            audience=AudienceDecision.NOT_MADE_FOR_KIDS,
+            synthetic_disclosure=SyntheticDisclosure.NO_REALISTIC_SYNTHETIC_MEDIA,
+            text_source=TextSource.SCRIPT_PUBLISHING_PLAN,
+            within_local_limits=True,
+        ),
+    )
+    horario = cambios.pop(
+        "schedule",
+        ScheduleSpec(
+            scheduled_at_utc=datetime(2026, 9, 24, 16, 30, tzinfo=timezone.utc),
+            timezone="Europe/Madrid",
+            local_time="2026-09-24T18:30:00",
+            fold=0,
+            late_start_window_s=900,
+        ),
+    )
+    base = dict(
+        destination_id="yt_principal",
+        platform=Platform.YOUTUBE_SHORTS,
+        account=AccountRef(
+            platform=Platform.YOUTUBE_SHORTS,
+            alias="canal_curiosidades",
+            expected_account_id="UC_canal_de_pruebas",
+            account_id_kind="youtube_channel_id",
+        ),
+        metadata=metadata,
+        requested_visibility=Visibility.PRIVATE,
+        schedule=horario,
+        options=DestinationOptions(notify_subscribers=False),
+        state=DestinationState.DRAFT,
+    )
+    base.update(cambios)
+    return PlanDestination(**base)
+
+
+def publish_plan(**cambios):
+    """Un `PublicationPlan` coherente, con su fingerprint recalculado."""
+    from datetime import datetime, timezone
+
+    from viralgen.publish.schemas import (
+        AdmissionSummary,
+        PublicationPlan,
+        PublishMode,
+        VerificationSummary,
+    )
+
+    base = dict(
+        plan_id=_UUID + "5",
+        revision=1,
+        created_at=datetime(2026, 9, 21, 9, 0, tzinfo=timezone.utc),
+        mode=PublishMode.MOCK,
+        publish_key="demo-001",
+        intent_fingerprint=_HASH_B,
+        sources=publish_sources(),
+        destinations=[publish_destination()],
+        admission=AdmissionSummary(
+            contract_valid=True,
+            admissible_for_simulation=True,
+            admissible_for_real_dispatch=False,
+        ),
+        verification=VerificationSummary(
+            reason="fixture de prueba",
+            checks=[],
+            blocked_targets=[],
+            note="fixture",
+        ),
+    )
+    base.update(cambios)
+    plan = PublicationPlan(**base)
+    if "intent_fingerprint" not in cambios:
+        plan = plan.model_copy(
+            update={"intent_fingerprint": plan.compute_intent_fingerprint()}
+        )
+    return plan

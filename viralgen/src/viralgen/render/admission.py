@@ -102,8 +102,12 @@ class RenderAdmissionReport:
         }
 
 
-def _inside(base: Path, relativa: str) -> Path | None:
-    """Resuelve una ruta del paquete rechazando escapes, tambien por symlink."""
+def resolve_inside(base: Path, relativa: str) -> Path | None:
+    """Resuelve una ruta del paquete rechazando escapes, tambien por symlink.
+
+    Publica a proposito: el modulo 5 resuelve el MP4 con ESTA regla, no con
+    una copia suya que pueda divergir.
+    """
     candidato = base / relativa
     try:
         resuelto = candidato.resolve(strict=True)
@@ -255,14 +259,14 @@ def check_render_admission(
 
     # --- Archivos del paquete ----------------------------------------------
     base = manifest_path.parent
-    ruta_video = _inside(base, render.output.path)
+    ruta_video = resolve_inside(base, render.output.path)
     if ruta_video is None:
         registrar(
             "archivos_integros", False,
             f"el video {render.output.path} no existe o queda fuera del paquete",
         )
         return informe
-    ruta_ass = _inside(base, render.captions.path)
+    ruta_ass = resolve_inside(base, render.captions.path)
     problemas_archivo: list[str] = []
     if sha256_file(ruta_video) != render.output.sha256:
         problemas_archivo.append("el hash del video no coincide")
@@ -275,7 +279,7 @@ def check_render_admission(
     elif sha256_file(ruta_ass) != render.captions.sha256:
         problemas_archivo.append("el hash de captions.ass no coincide")
     for muestra in render.inspection.frames:
-        ruta_muestra = _inside(base, muestra.path)
+        ruta_muestra = resolve_inside(base, muestra.path)
         if ruta_muestra is None:
             problemas_archivo.append(f"el fotograma {muestra.path} no existe o escapa")
         elif sha256_file(ruta_muestra) != muestra.sha256:
