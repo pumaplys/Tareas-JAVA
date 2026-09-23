@@ -25,6 +25,11 @@ dependencies = [
 dev = [
     "pytest>=9.1,<10",
 ]
+# Solo hace falta para el almacenamiento temporal de Instagram (modulo 5). Sin
+# ese destino, el publicador funciona sin esta dependencia.
+publish-staging = [
+    "boto3>=1.35,<2",
+]
 
 [project.scripts]
 viralgen = "viralgen.cli:main"

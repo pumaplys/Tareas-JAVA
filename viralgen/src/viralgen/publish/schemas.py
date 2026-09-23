@@ -562,6 +562,20 @@ class DestinationMetadata(StrictModel):
         return _clean(value, field_name="el texto de publicacion")
 
 
+def compose_caption(metadata: "DestinationMetadata") -> str:
+    """Texto final de un destino con pie: descripcion + hashtags aprobados.
+
+    Es una union MECANICA de dos campos que el operador ya reviso, no una
+    redaccion: no se resume, no se recorta y no se anade nada que no estuviera
+    en el plan. Se hace aqui, en un solo sitio, para que la vista legible y lo
+    que se envia digan exactamente lo mismo.
+    """
+    partes = [metadata.description or ""]
+    if metadata.hashtags:
+        partes.append(" ".join(f"#{etiqueta}" for etiqueta in metadata.hashtags))
+    return "\n\n".join(parte for parte in partes if parte).strip()
+
+
 class PendingRequirement(StrictModel):
     """Algo que falta. Dice a quien bloquea y que hay que hacer."""
 

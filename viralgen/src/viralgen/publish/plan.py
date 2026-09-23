@@ -49,6 +49,7 @@ from .schemas import (
     SyntheticDisclosure,
     TextSource,
     Visibility,
+    compose_caption,
 )
 
 
@@ -384,7 +385,14 @@ def readable_lines(plan: PublicationPlan) -> list[str]:
         texto = destino.metadata.description or "(pendiente)"
         lineas.append(f"  Texto: {texto[:160]}{'...' if len(texto) > 160 else ''}")
         if destino.metadata.hashtags:
-            lineas.append("  Hashtags: " + " ".join(f"#{h}" for h in destino.metadata.hashtags))
+            lineas.append(
+                "  Hashtags: " + " ".join(f"#{h}" for h in destino.metadata.hashtags)
+            )
+            pie = compose_caption(destino.metadata)
+            lineas.append(
+                f"  Texto final publicado (descripcion + hashtags): "
+                f"{pie[:200]}{'...' if len(pie) > 200 else ''}"
+            )
         lineas.append(f"  Visibilidad solicitada: {destino.requested_visibility.value}")
         lineas.append(
             f"  Hora: {destino.schedule.local_time} ({destino.schedule.timezone}) "

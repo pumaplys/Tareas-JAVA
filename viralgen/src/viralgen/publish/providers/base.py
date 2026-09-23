@@ -26,6 +26,7 @@ from ..schemas import (
     DestinationState,
     EvidenceRecord,
     PublishMode,
+    StagingRef,
     StructuredError,
     TransferPhase,
     Visibility,
@@ -95,6 +96,9 @@ class StepResult:
     permalink: str | None = None
     evidence: EvidenceRecord | None = None
     error: StructuredError | None = None
+    #: Referencia al objeto temporal, SIN la URL firmada. La persiste el
+    #: trabajador; la URL vive solo en el almacen privado.
+    staging: StagingRef | None = None
     next_poll_in_s: float | None = None
     bytes_sent: int = 0
     requests_used: int = 0
