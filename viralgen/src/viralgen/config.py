@@ -274,6 +274,12 @@ class Settings(BaseSettings):
     )
     #: Tamano de bloque de la subida reanudable. Decision inicial: 8 MiB.
     youtube_chunk_mib: int = Field(default=8, ge=1, le=64)
+    #: Nombre de la propiedad de `status` con la que YouTube recoge la
+    #: divulgacion de contenido sintetico realista. Vacio por defecto A
+    #: PROPOSITO: no se inventa un identificador de API sin comprobarlo en la
+    #: documentacion. Mientras este vacio, la decision viaja en el plan y en el
+    #: recibo, pero no se envia.
+    youtube_synthetic_disclosure_property: str | None = None
 
     #: Instagram (Facebook Login). La version de Graph es OBLIGATORIA y
     #: explicita en modo real: nada de `latest` ni de saltos automaticos.
