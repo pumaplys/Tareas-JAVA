@@ -25,6 +25,7 @@ from ..schemas import (
     DestinationOptions,
     DestinationState,
     EvidenceRecord,
+    ManualExportRef,
     PublishMode,
     StagingRef,
     StructuredError,
@@ -99,6 +100,8 @@ class StepResult:
     #: Referencia al objeto temporal, SIN la URL firmada. La persiste el
     #: trabajador; la URL vive solo en el almacen privado.
     staging: StagingRef | None = None
+    #: Paquete preparado para publicar a mano (TikTok).
+    manual_export: ManualExportRef | None = None
     next_poll_in_s: float | None = None
     bytes_sent: int = 0
     requests_used: int = 0
