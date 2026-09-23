@@ -248,6 +248,10 @@ class Settings(BaseSettings):
     #: arranca; `plan` y `mock` no lo necesitan.
     publish_secrets_dir: Path | None = None
 
+    #: Catalogo de cuentas de destino (alias -> ID exacto). No lleva secretos:
+    #: un ID de canal o de usuario no autoriza nada por si solo.
+    publish_accounts_path: Path | None = None
+
     #: YouTube. El ID del canal es obligatorio en modo real: sin el no se
     #: puede comprobar que se publica donde se autorizo.
     youtube_client_id: str | None = Field(default=None, alias="YOUTUBE_CLIENT_ID")
