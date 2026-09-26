@@ -1,0 +1,1327 @@
+{
+  "$defs": {
+    "AuthorizationRecord": {
+      "additionalProperties": false,
+      "description": "Registro de que el operador de ESTA instalacion autorizo una revision.\n\nNo es una firma criptografica ni certifica que el contenido sea veraz:\ndice quien, cuando y sobre que intencion exacta se dio el permiso.\n\nQueda atada a tres cosas a la vez -intencion, video y cuentas- para que\ncambiar cualquiera de ellas la invalide. Renovar un token de la misma\ncuenta o reemitir una URL temporal del mismo objeto no toca ninguna.",
+      "properties": {
+        "authorization_id": {
+          "pattern": "^[0-9a-f\\-]{36}$",
+          "title": "Authorization Id",
+          "type": "string"
+        },
+        "authorized_at": {
+          "format": "date-time",
+          "title": "Authorized At",
+          "type": "string"
+        },
+        "operator_identity": {
+          "description": "Identidad LOCAL del operador (usuario del sistema o alias).",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Operator Identity",
+          "type": "string"
+        },
+        "mode": {
+          "$ref": "#/$defs/PublishMode"
+        },
+        "intent_fingerprint": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Intent Fingerprint",
+          "type": "string"
+        },
+        "plan_sha256": {
+          "description": "Hash del archivo del plan autorizado.",
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Plan Sha256",
+          "type": "string"
+        },
+        "plan_revision": {
+          "minimum": 1,
+          "title": "Plan Revision",
+          "type": "integer"
+        },
+        "video_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Video Sha256",
+          "type": "string"
+        },
+        "account_ids": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "destination_id -> ID de cuenta esperado en el momento de autorizar.",
+          "title": "Account Ids",
+          "type": "object"
+        },
+        "staging_authorized": {
+          "default": false,
+          "description": "Autoriza subir ESE MP4 al staging configurado. Va incluido en la autorizacion de la publicacion, no se pide aparte.",
+          "title": "Staging Authorized",
+          "type": "boolean"
+        },
+        "revoked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revoked At"
+        },
+        "note": {
+          "const": "Registro del operador de esta instalacion. No certifica la veracidad del contenido ni sustituye la revision editorial.",
+          "default": "Registro del operador de esta instalacion. No certifica la veracidad del contenido ni sustituye la revision editorial.",
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "authorization_id",
+        "authorized_at",
+        "operator_identity",
+        "mode",
+        "intent_fingerprint",
+        "plan_sha256",
+        "plan_revision",
+        "video_sha256"
+      ],
+      "title": "AuthorizationRecord",
+      "type": "object"
+    },
+    "BudgetUsage": {
+      "additionalProperties": false,
+      "description": "Gasto PERSISTIDO. Abrir otro proceso no lo reinicia.",
+      "properties": {
+        "requests_used": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Requests Used",
+          "type": "integer"
+        },
+        "request_limit": {
+          "minimum": 1,
+          "title": "Request Limit",
+          "type": "integer"
+        },
+        "bytes_transferred": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Bytes Transferred",
+          "type": "integer"
+        },
+        "attempts": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Attempts",
+          "type": "integer"
+        },
+        "attempt_limit": {
+          "minimum": 1,
+          "title": "Attempt Limit",
+          "type": "integer"
+        },
+        "note": {
+          "const": "Limites LOCALES del producto (incluyen OAuth, staging y adaptadores). No son las cuotas de las plataformas.",
+          "default": "Limites LOCALES del producto (incluyen OAuth, staging y adaptadores). No son las cuotas de las plataformas.",
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "request_limit",
+        "attempt_limit"
+      ],
+      "title": "BudgetUsage",
+      "type": "object"
+    },
+    "DestinationState": {
+      "description": "Estado de UN destino. El resumen global se deriva de estos, no al reves.",
+      "enum": [
+        "draft",
+        "blocked",
+        "scheduled_local",
+        "dispatching",
+        "waiting_remote",
+        "delivered",
+        "needs_reconciliation",
+        "needs_review",
+        "failed",
+        "awaiting_manual",
+        "manually_reported",
+        "cancelled"
+      ],
+      "title": "DestinationState",
+      "type": "string"
+    },
+    "DocumentRef": {
+      "additionalProperties": false,
+      "description": "Un documento de origen, por sus BYTES.",
+      "properties": {
+        "path": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size_bytes": {
+          "minimum": 1,
+          "title": "Size Bytes",
+          "type": "integer"
+        },
+        "schema_version": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "simulation": {
+          "title": "Simulation",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "path",
+        "sha256",
+        "size_bytes",
+        "schema_version",
+        "simulation"
+      ],
+      "title": "DocumentRef",
+      "type": "object"
+    },
+    "ErrorClass": {
+      "description": "Familias de fallo remoto, que exigen respuestas distintas.",
+      "enum": [
+        "auth",
+        "permission",
+        "quota",
+        "invalid_payload",
+        "transient",
+        "ambiguous",
+        "local"
+      ],
+      "title": "ErrorClass",
+      "type": "string"
+    },
+    "EvidenceRecord": {
+      "additionalProperties": false,
+      "description": "De donde sale lo que creemos saber del estado remoto.",
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/EvidenceSource"
+        },
+        "checked_at": {
+          "format": "date-time",
+          "title": "Checked At",
+          "type": "string"
+        },
+        "summary": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        },
+        "remote_status": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Remote Status"
+        },
+        "request_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Request Id"
+        }
+      },
+      "required": [
+        "source",
+        "checked_at",
+        "summary"
+      ],
+      "title": "EvidenceRecord",
+      "type": "object"
+    },
+    "EvidenceSource": {
+      "description": "Origen de una evidencia. Se conserva siempre.",
+      "enum": [
+        "api_query",
+        "operator_reported",
+        "simulated",
+        "local_package"
+      ],
+      "title": "EvidenceSource",
+      "type": "string"
+    },
+    "ManualExportRef": {
+      "additionalProperties": false,
+      "description": "Paquete preparado para publicar a mano. Exportar no es publicar.",
+      "properties": {
+        "package_path": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Package Path",
+          "type": "string"
+        },
+        "video_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Video Sha256",
+          "type": "string"
+        },
+        "text_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Text Sha256",
+          "type": "string"
+        },
+        "sheet_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sheet Sha256",
+          "type": "string"
+        },
+        "exported_at": {
+          "format": "date-time",
+          "title": "Exported At",
+          "type": "string"
+        },
+        "simulation": {
+          "title": "Simulation",
+          "type": "boolean"
+        },
+        "publishable_by_this_module": {
+          "const": false,
+          "default": false,
+          "title": "Publishable By This Module",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "package_path",
+        "video_sha256",
+        "text_sha256",
+        "sheet_sha256",
+        "exported_at",
+        "simulation"
+      ],
+      "title": "ManualExportRef",
+      "type": "object"
+    },
+    "ManualReport": {
+      "additionalProperties": false,
+      "description": "Lo que el operador dice haber publicado. Sin confirmacion por API.",
+      "properties": {
+        "reported_url": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 8,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reported Url"
+        },
+        "reported_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reported Id"
+        },
+        "reported_at": {
+          "format": "date-time",
+          "title": "Reported At",
+          "type": "string"
+        },
+        "recorded_at": {
+          "format": "date-time",
+          "title": "Recorded At",
+          "type": "string"
+        },
+        "evidence_source": {
+          "const": "operator_reported",
+          "default": "operator_reported",
+          "title": "Evidence Source",
+          "type": "string"
+        },
+        "note": {
+          "const": "Dato aportado por una persona. No esta verificado mediante API y no se convierte en confirmacion remota.",
+          "default": "Dato aportado por una persona. No esta verificado mediante API y no se convierte en confirmacion remota.",
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reported_at",
+        "recorded_at"
+      ],
+      "title": "ManualReport",
+      "type": "object"
+    },
+    "OverallOutcome": {
+      "description": "Resumen del trabajo, CALCULADO a partir de los destinos.",
+      "enum": [
+        "draft",
+        "scheduled",
+        "in_progress",
+        "delivered",
+        "partial",
+        "needs_attention",
+        "failed",
+        "cancelled"
+      ],
+      "title": "OverallOutcome",
+      "type": "string"
+    },
+    "Platform": {
+      "description": "Plataformas de destino previstas para el modulo 5.",
+      "enum": [
+        "youtube_shorts",
+        "instagram_reels",
+        "tiktok"
+      ],
+      "title": "Platform",
+      "type": "string"
+    },
+    "PublishMode": {
+      "description": "Los tres modos. Elegir uno NO cambia lo que es admisible.\n\n* ``plan`` - comprobacion local y borrador. Sin red, OAuth, staging ni envios.\n* ``mock`` - publicador simulado completo, en su propio espacio de identidad.\n  Jamas usa un cliente de red real, aunque haya credenciales en el entorno.\n* ``real`` - solo fuentes admitidas para produccion y destinos autorizados.",
+      "enum": [
+        "plan",
+        "mock",
+        "real"
+      ],
+      "title": "PublishMode",
+      "type": "string"
+    },
+    "ReceiptDestination": {
+      "additionalProperties": false,
+      "description": "Estado observado de un destino. Distingue local, enviado y visible.",
+      "properties": {
+        "destination_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Destination Id",
+          "type": "string"
+        },
+        "platform": {
+          "$ref": "#/$defs/Platform"
+        },
+        "account_alias": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Account Alias",
+          "type": "string"
+        },
+        "expected_account_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected Account Id"
+        },
+        "observed_account_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Lo que respondio la plataforma.",
+          "title": "Observed Account Id"
+        },
+        "state": {
+          "$ref": "#/$defs/DestinationState"
+        },
+        "phase": {
+          "$ref": "#/$defs/TransferPhase",
+          "default": "not_started"
+        },
+        "simulation": {
+          "title": "Simulation",
+          "type": "boolean"
+        },
+        "requested_visibility": {
+          "$ref": "#/$defs/Visibility"
+        },
+        "observed_visibility": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Visibility"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "publicly_visible": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Solo true con evidencia de que la plataforma lo muestra publicamente. Una entrega privada puede estar entregada y no ser visible.",
+          "title": "Publicly Visible"
+        },
+        "real_remote_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Real Remote Id"
+        },
+        "mock_remote_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Identificador del espacio SIMULADO. No existe en remoto.",
+          "title": "Mock Remote Id"
+        },
+        "remote_refs": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "IDs intermedios no secretos (p. ej. container_id).",
+          "title": "Remote Refs",
+          "type": "object"
+        },
+        "permalink": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "minLength": 8,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Permalink"
+        },
+        "scheduled_at_utc": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scheduled At Utc"
+        },
+        "timezone": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timezone"
+        },
+        "dispatch_started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dispatch Started At"
+        },
+        "delivered_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Delivered At"
+        },
+        "next_attempt_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Attempt At"
+        },
+        "next_poll_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Poll At"
+        },
+        "budget": {
+          "$ref": "#/$defs/BudgetUsage"
+        },
+        "last_error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StructuredError"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "last_evidence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EvidenceRecord"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "staging": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StagingRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "manual_export": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ManualExportRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "manual_report": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ManualReport"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "cancel_requested_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cancel Requested At"
+        },
+        "cancel_note": {
+          "anyOf": [
+            {
+              "maxLength": 600,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cancel Note"
+        }
+      },
+      "required": [
+        "destination_id",
+        "platform",
+        "account_alias",
+        "state",
+        "simulation",
+        "requested_visibility",
+        "budget"
+      ],
+      "title": "ReceiptDestination",
+      "type": "object"
+    },
+    "ReceiptSummary": {
+      "additionalProperties": false,
+      "description": "Resumen CALCULADO. Un exito parcial se dice, no se redondea.",
+      "properties": {
+        "overall": {
+          "$ref": "#/$defs/OverallOutcome"
+        },
+        "total": {
+          "minimum": 1,
+          "title": "Total",
+          "type": "integer"
+        },
+        "delivered": {
+          "minimum": 0,
+          "title": "Delivered",
+          "type": "integer"
+        },
+        "pending": {
+          "minimum": 0,
+          "title": "Pending",
+          "type": "integer"
+        },
+        "needs_attention": {
+          "minimum": 0,
+          "title": "Needs Attention",
+          "type": "integer"
+        },
+        "failed": {
+          "minimum": 0,
+          "title": "Failed",
+          "type": "integer"
+        },
+        "cancelled": {
+          "minimum": 0,
+          "title": "Cancelled",
+          "type": "integer"
+        },
+        "publicly_visible": {
+          "minimum": 0,
+          "title": "Publicly Visible",
+          "type": "integer"
+        },
+        "note": {
+          "const": "El codigo de salida indica el resultado del comando. Solo el estado y la evidencia dicen si hubo una entrega real.",
+          "default": "El codigo de salida indica el resultado del comando. Solo el estado y la evidencia dicen si hubo una entrega real.",
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "overall",
+        "total",
+        "delivered",
+        "pending",
+        "needs_attention",
+        "failed",
+        "cancelled",
+        "publicly_visible"
+      ],
+      "title": "ReceiptSummary",
+      "type": "object"
+    },
+    "SourceBundle": {
+      "additionalProperties": false,
+      "description": "Identidad y procedencia del paquete que se va a publicar.",
+      "properties": {
+        "job_id": {
+          "pattern": "^[0-9a-f\\-]{36}$",
+          "title": "Job Id",
+          "type": "string"
+        },
+        "render_run_id": {
+          "pattern": "^[0-9a-f\\-]{36}$",
+          "title": "Render Run Id",
+          "type": "string"
+        },
+        "voice_run_id": {
+          "pattern": "^[0-9a-f\\-]{36}$",
+          "title": "Voice Run Id",
+          "type": "string"
+        },
+        "media_run_id": {
+          "pattern": "^[0-9a-f\\-]{36}$",
+          "title": "Media Run Id",
+          "type": "string"
+        },
+        "channel": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Channel",
+          "type": "string"
+        },
+        "profile_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "language": {
+          "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+          "title": "Language",
+          "type": "string"
+        },
+        "render_mode": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Render Mode",
+          "type": "string"
+        },
+        "render_simulation": {
+          "title": "Render Simulation",
+          "type": "boolean"
+        },
+        "script": {
+          "$ref": "#/$defs/DocumentRef"
+        },
+        "voice": {
+          "$ref": "#/$defs/DocumentRef"
+        },
+        "media": {
+          "$ref": "#/$defs/DocumentRef"
+        },
+        "render": {
+          "$ref": "#/$defs/DocumentRef"
+        },
+        "video": {
+          "$ref": "#/$defs/VideoRef"
+        },
+        "admissible_for_publisher_declared": {
+          "description": "Lo que DECIA el manifiesto de render. Es informativo.",
+          "title": "Admissible For Publisher Declared",
+          "type": "boolean"
+        },
+        "admissible_for_publisher_recomputed": {
+          "description": "Lo que se acaba de comprobar sobre los archivos reales. Es el unico valor con efecto: el booleano guardado no autoriza nada.",
+          "title": "Admissible For Publisher Recomputed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "job_id",
+        "render_run_id",
+        "voice_run_id",
+        "media_run_id",
+        "channel",
+        "profile_id",
+        "language",
+        "render_mode",
+        "render_simulation",
+        "script",
+        "voice",
+        "media",
+        "render",
+        "video",
+        "admissible_for_publisher_declared",
+        "admissible_for_publisher_recomputed"
+      ],
+      "title": "SourceBundle",
+      "type": "object"
+    },
+    "StagingRef": {
+      "additionalProperties": false,
+      "description": "Referencia al objeto temporal. La URL firmada NO se guarda.\n\nDe la URL solo queda su huella y su caducidad: sirve para saber si la que\ntiene la plataforma sigue viva y si es la misma que se emitio, sin que el\nrecibo permita descargar el video a quien lo lea.",
+      "properties": {
+        "provider": {
+          "default": "s3_compatible",
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Provider",
+          "type": "string"
+        },
+        "bucket_alias": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Bucket Alias",
+          "type": "string"
+        },
+        "object_key": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Object Key",
+          "type": "string"
+        },
+        "object_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Object Sha256",
+          "type": "string"
+        },
+        "hash_source": {
+          "const": "local_file",
+          "default": "local_file",
+          "description": "El SHA-256 es del archivo local. Un ETag no lo demuestra.",
+          "title": "Hash Source",
+          "type": "string"
+        },
+        "etag": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Lo que devolvio el proveedor. Informativo.",
+          "title": "Etag"
+        },
+        "size_bytes": {
+          "minimum": 1,
+          "title": "Size Bytes",
+          "type": "integer"
+        },
+        "uploaded_at": {
+          "format": "date-time",
+          "title": "Uploaded At",
+          "type": "string"
+        },
+        "url_issued_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url Issued At"
+        },
+        "url_expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url Expires At"
+        },
+        "url_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Huella de la URL emitida. La URL no se guarda.",
+          "title": "Url Sha256"
+        },
+        "retain_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Antes de esta fecha no se borra aunque el estado sea terminal.",
+          "title": "Retain Until"
+        },
+        "deleted_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Deleted At"
+        }
+      },
+      "required": [
+        "bucket_alias",
+        "object_key",
+        "object_sha256",
+        "size_bytes",
+        "uploaded_at"
+      ],
+      "title": "StagingRef",
+      "type": "object"
+    },
+    "StructuredError": {
+      "additionalProperties": false,
+      "description": "Fallo clasificado. La clase decide la respuesta, no el codigo HTTP.",
+      "properties": {
+        "code": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Code",
+          "type": "string"
+        },
+        "error_class": {
+          "$ref": "#/$defs/ErrorClass"
+        },
+        "message": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "retryable": {
+          "title": "Retryable",
+          "type": "boolean"
+        },
+        "http_status": {
+          "anyOf": [
+            {
+              "maximum": 599,
+              "minimum": 100,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Http Status"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "title": "Occurred At",
+          "type": "string"
+        },
+        "request_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Request Id"
+        }
+      },
+      "required": [
+        "code",
+        "error_class",
+        "message",
+        "retryable",
+        "occurred_at"
+      ],
+      "title": "StructuredError",
+      "type": "object"
+    },
+    "TransferPhase": {
+      "description": "Fase INTERNA de la operacion. Nunca es el resultado.\n\nQue los bytes se hayan aceptado no significa que exista una publicacion, y\nque un contenedor este `FINISHED` no significa que se haya publicado.",
+      "enum": [
+        "not_started",
+        "session_open",
+        "uploading",
+        "bytes_accepted",
+        "remote_processing",
+        "publish_requested",
+        "verified"
+      ],
+      "title": "TransferPhase",
+      "type": "string"
+    },
+    "VideoRef": {
+      "additionalProperties": false,
+      "description": "El MP4 autorizado. Se resuelve desde el manifiesto, no se adivina.",
+      "properties": {
+        "path": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size_bytes": {
+          "minimum": 1,
+          "title": "Size Bytes",
+          "type": "integer"
+        },
+        "container_duration_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Container Duration S"
+        },
+        "width": {
+          "minimum": 1,
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "minimum": 1,
+          "title": "Height",
+          "type": "integer"
+        },
+        "fps": {
+          "exclusiveMinimum": 0,
+          "title": "Fps",
+          "type": "number"
+        },
+        "verified_at": {
+          "format": "date-time",
+          "title": "Verified At",
+          "type": "string"
+        },
+        "verification": {
+          "const": "bytes_rehashed",
+          "default": "bytes_rehashed",
+          "description": "El hash se recalculo leyendo el archivo, no se copio del JSON.",
+          "title": "Verification",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "sha256",
+        "size_bytes",
+        "width",
+        "height",
+        "fps",
+        "verified_at"
+      ],
+      "title": "VideoRef",
+      "type": "object"
+    },
+    "Visibility": {
+      "enum": [
+        "public",
+        "private",
+        "unlisted"
+      ],
+      "title": "Visibility",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "``publication.json``: exportacion del estado persistido.\n\nNo concede permisos. Editarlo no autoriza nada, no cambia lo que hay en\nSQLite y no demuestra que ninguna plataforma haya recibido nada: la\nautorizacion se comprueba contra el registro, y el estado remoto contra la\nplataforma.",
+  "properties": {
+    "document_type": {
+      "const": "publication_receipt",
+      "default": "publication_receipt",
+      "title": "Document Type",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "receipt_id": {
+      "pattern": "^[0-9a-f\\-]{36}$",
+      "title": "Receipt Id",
+      "type": "string"
+    },
+    "publish_key": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Publish Key",
+      "type": "string"
+    },
+    "intent_fingerprint": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Intent Fingerprint",
+      "type": "string"
+    },
+    "plan_revision": {
+      "minimum": 1,
+      "title": "Plan Revision",
+      "type": "integer"
+    },
+    "plan_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Plan Sha256",
+      "type": "string"
+    },
+    "publisher_version": {
+      "default": "v1",
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+      "title": "Publisher Version",
+      "type": "string"
+    },
+    "mode": {
+      "$ref": "#/$defs/PublishMode"
+    },
+    "simulation": {
+      "title": "Simulation",
+      "type": "boolean"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "updated_at": {
+      "format": "date-time",
+      "title": "Updated At",
+      "type": "string"
+    },
+    "sources": {
+      "$ref": "#/$defs/SourceBundle"
+    },
+    "authorization": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AuthorizationRecord"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "destinations": {
+      "items": {
+        "$ref": "#/$defs/ReceiptDestination"
+      },
+      "maxItems": 3,
+      "minItems": 1,
+      "title": "Destinations",
+      "type": "array"
+    },
+    "summary": {
+      "$ref": "#/$defs/ReceiptSummary"
+    },
+    "note": {
+      "const": "Exportacion del estado persistido. No es una fuente de permisos ni prueba de exito remoto por si misma.",
+      "default": "Exportacion del estado persistido. No es una fuente de permisos ni prueba de exito remoto por si misma.",
+      "title": "Note",
+      "type": "string"
+    }
+  },
+  "required": [
+    "receipt_id",
+    "publish_key",
+    "intent_fingerprint",
+    "plan_revision",
+    "plan_sha256",
+    "mode",
+    "simulation",
+    "created_at",
+    "updated_at",
+    "sources",
+    "destinations",
+    "summary"
+  ],
+  "title": "PublicationReceipt",
+  "type": "object"
+}

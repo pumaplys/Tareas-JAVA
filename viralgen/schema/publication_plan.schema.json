@@ -1,0 +1,1006 @@
+{
+  "$defs": {
+    "AccountRef": {
+      "additionalProperties": false,
+      "description": "La cuenta PREVISTA. El ID observado vive en el recibo, no aqui.",
+      "properties": {
+        "platform": {
+          "$ref": "#/$defs/Platform"
+        },
+        "alias": {
+          "description": "Nombre local de la cuenta en la configuracion.",
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Alias",
+          "type": "string"
+        },
+        "expected_account_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "ID exacto que debe responder la plataforma (canal de YouTube, IG User ID). Sin el, un envio real no se autoriza: publicar en la cuenta equivocada no se deshace.",
+          "title": "Expected Account Id"
+        },
+        "account_id_kind": {
+          "description": "'youtube_channel_id', 'instagram_user_id' o 'manual_handle'.",
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Account Id Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "platform",
+        "alias",
+        "account_id_kind"
+      ],
+      "title": "AccountRef",
+      "type": "object"
+    },
+    "AdmissionSummary": {
+      "additionalProperties": false,
+      "description": "Los TRES veredictos, siempre juntos y siempre independientes.",
+      "properties": {
+        "contract_valid": {
+          "title": "Contract Valid",
+          "type": "boolean"
+        },
+        "admissible_for_simulation": {
+          "title": "Admissible For Simulation",
+          "type": "boolean"
+        },
+        "admissible_for_real_dispatch": {
+          "title": "Admissible For Real Dispatch",
+          "type": "boolean"
+        },
+        "checks": {
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "title": "Checks",
+          "type": "object"
+        },
+        "real_only_checks": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+            "type": "string"
+          },
+          "maxItems": 40,
+          "title": "Real Only Checks",
+          "type": "array"
+        },
+        "reasons": {
+          "items": {
+            "maxLength": 600,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 60,
+          "title": "Reasons",
+          "type": "array"
+        },
+        "simulation_reasons": {
+          "items": {
+            "maxLength": 600,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 60,
+          "title": "Simulation Reasons",
+          "type": "array"
+        },
+        "unverified": {
+          "items": {
+            "maxLength": 600,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 60,
+          "title": "Unverified",
+          "type": "array"
+        },
+        "note": {
+          "const": "Elegir un modo no cambia estos veredictos. Un plan localmente correcto puede tener comprobaciones remotas pendientes; pendientes no es aprobado.",
+          "default": "Elegir un modo no cambia estos veredictos. Un plan localmente correcto puede tener comprobaciones remotas pendientes; pendientes no es aprobado.",
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_valid",
+        "admissible_for_simulation",
+        "admissible_for_real_dispatch"
+      ],
+      "title": "AdmissionSummary",
+      "type": "object"
+    },
+    "AudienceDecision": {
+      "description": "Audiencia declarada. `undecided` bloquea el envio real a proposito.",
+      "enum": [
+        "made_for_kids",
+        "not_made_for_kids",
+        "undecided"
+      ],
+      "title": "AudienceDecision",
+      "type": "string"
+    },
+    "ChecklistItem": {
+      "additionalProperties": false,
+      "description": "Una casilla de la revision editorial. No se marca sola.",
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/ChecklistState",
+          "default": "pending"
+        },
+        "decided_by": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Decided By"
+        },
+        "decided_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Decided At"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 600,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        }
+      },
+      "title": "ChecklistItem",
+      "type": "object"
+    },
+    "ChecklistState": {
+      "enum": [
+        "pending",
+        "resolved_by_operator",
+        "not_applicable"
+      ],
+      "title": "ChecklistState",
+      "type": "string"
+    },
+    "DestinationMetadata": {
+      "additionalProperties": false,
+      "description": "Texto final del destino. Sale del guion o del operador; de nadie mas.\n\nEste modulo NO genera contenido: no resume, no anade ganchos, no inventa\nhashtags ni promesas. Si falta un dato obligatorio, el destino queda en\nrevision y el operador lo completa.",
+      "properties": {
+        "title": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "tags": {
+          "items": {
+            "maxLength": 48,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 30,
+          "title": "Tags",
+          "type": "array"
+        },
+        "hashtags": {
+          "items": {
+            "maxLength": 48,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 12,
+          "title": "Hashtags",
+          "type": "array"
+        },
+        "language": {
+          "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+          "title": "Language",
+          "type": "string"
+        },
+        "audience": {
+          "$ref": "#/$defs/AudienceDecision"
+        },
+        "synthetic_disclosure": {
+          "$ref": "#/$defs/SyntheticDisclosure"
+        },
+        "text_source": {
+          "$ref": "#/$defs/TextSource"
+        },
+        "edited_fields": {
+          "description": "Campos que el operador cambio respecto del guion.",
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Edited Fields",
+          "type": "array"
+        },
+        "within_local_limits": {
+          "description": "Los topes de LOCAL_TEXT_LIMITS son decisiones del producto, no limites verificados de las plataformas. Superarlos no recorta nada.",
+          "title": "Within Local Limits",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "language",
+        "audience",
+        "synthetic_disclosure",
+        "text_source",
+        "within_local_limits"
+      ],
+      "title": "DestinationMetadata",
+      "type": "object"
+    },
+    "DestinationOptions": {
+      "additionalProperties": false,
+      "description": "Opciones aplicables al destino. Las que no apliquen van en null.",
+      "properties": {
+        "notify_subscribers": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "YouTube. Se envia explicito, nunca por omision.",
+          "title": "Notify Subscribers"
+        },
+        "share_to_feed": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Instagram Reels.",
+          "title": "Share To Feed"
+        },
+        "requires_staging": {
+          "default": false,
+          "description": "El destino necesita que el MP4 sea descargable por la plataforma. Subir al staging esta cubierto por la misma autorizacion.",
+          "title": "Requires Staging",
+          "type": "boolean"
+        },
+        "manual_delivery": {
+          "default": false,
+          "description": "La entrega la hace una persona con las herramientas oficiales.",
+          "title": "Manual Delivery",
+          "type": "boolean"
+        }
+      },
+      "title": "DestinationOptions",
+      "type": "object"
+    },
+    "DestinationState": {
+      "description": "Estado de UN destino. El resumen global se deriva de estos, no al reves.",
+      "enum": [
+        "draft",
+        "blocked",
+        "scheduled_local",
+        "dispatching",
+        "waiting_remote",
+        "delivered",
+        "needs_reconciliation",
+        "needs_review",
+        "failed",
+        "awaiting_manual",
+        "manually_reported",
+        "cancelled"
+      ],
+      "title": "DestinationState",
+      "type": "string"
+    },
+    "DocumentRef": {
+      "additionalProperties": false,
+      "description": "Un documento de origen, por sus BYTES.",
+      "properties": {
+        "path": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size_bytes": {
+          "minimum": 1,
+          "title": "Size Bytes",
+          "type": "integer"
+        },
+        "schema_version": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "simulation": {
+          "title": "Simulation",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "path",
+        "sha256",
+        "size_bytes",
+        "schema_version",
+        "simulation"
+      ],
+      "title": "DocumentRef",
+      "type": "object"
+    },
+    "PendingRequirement": {
+      "additionalProperties": false,
+      "description": "Algo que falta. Dice a quien bloquea y que hay que hacer.",
+      "properties": {
+        "code": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "blocks": {
+          "description": "'real': impide el envio real. 'all': impide incluso simular.",
+          "enum": [
+            "real",
+            "all"
+          ],
+          "title": "Blocks",
+          "type": "string"
+        },
+        "resolution": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Resolution",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "blocks",
+        "resolution"
+      ],
+      "title": "PendingRequirement",
+      "type": "object"
+    },
+    "PlanDestination": {
+      "additionalProperties": false,
+      "description": "Un destino del borrador. Aun no esta en cola ni autorizado.",
+      "properties": {
+        "destination_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Destination Id",
+          "type": "string"
+        },
+        "platform": {
+          "$ref": "#/$defs/Platform"
+        },
+        "account": {
+          "$ref": "#/$defs/AccountRef"
+        },
+        "metadata": {
+          "$ref": "#/$defs/DestinationMetadata"
+        },
+        "requested_visibility": {
+          "$ref": "#/$defs/Visibility"
+        },
+        "schedule": {
+          "$ref": "#/$defs/ScheduleSpec"
+        },
+        "options": {
+          "$ref": "#/$defs/DestinationOptions"
+        },
+        "state": {
+          "$ref": "#/$defs/DestinationState",
+          "description": "Solo 'draft' o 'blocked': un plan no programa por si solo."
+        },
+        "pending_requirements": {
+          "items": {
+            "$ref": "#/$defs/PendingRequirement"
+          },
+          "maxItems": 40,
+          "title": "Pending Requirements",
+          "type": "array"
+        }
+      },
+      "required": [
+        "destination_id",
+        "platform",
+        "account",
+        "metadata",
+        "requested_visibility",
+        "schedule",
+        "options",
+        "state"
+      ],
+      "title": "PlanDestination",
+      "type": "object"
+    },
+    "Platform": {
+      "description": "Plataformas de destino previstas para el modulo 5.",
+      "enum": [
+        "youtube_shorts",
+        "instagram_reels",
+        "tiktok"
+      ],
+      "title": "Platform",
+      "type": "string"
+    },
+    "PublishMode": {
+      "description": "Los tres modos. Elegir uno NO cambia lo que es admisible.\n\n* ``plan`` - comprobacion local y borrador. Sin red, OAuth, staging ni envios.\n* ``mock`` - publicador simulado completo, en su propio espacio de identidad.\n  Jamas usa un cliente de red real, aunque haya credenciales en el entorno.\n* ``real`` - solo fuentes admitidas para produccion y destinos autorizados.",
+      "enum": [
+        "plan",
+        "mock",
+        "real"
+      ],
+      "title": "PublishMode",
+      "type": "string"
+    },
+    "ReviewChecklist": {
+      "additionalProperties": false,
+      "description": "Lo que una persona debe resolver antes de autorizar.",
+      "properties": {
+        "childrens_audience": {
+          "$ref": "#/$defs/ChecklistItem"
+        },
+        "synthetic_media_disclosure": {
+          "$ref": "#/$defs/ChecklistItem"
+        },
+        "claim_sources": {
+          "$ref": "#/$defs/ChecklistItem"
+        },
+        "media_rights": {
+          "$ref": "#/$defs/ChecklistItem"
+        },
+        "note": {
+          "const": "verification_level=source_pack_only significa que las afirmaciones enlazan con el catalogo aportado. No es verificacion semantica de los hechos ni sustituye esta revision.",
+          "default": "verification_level=source_pack_only significa que las afirmaciones enlazan con el catalogo aportado. No es verificacion semantica de los hechos ni sustituye esta revision.",
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "title": "ReviewChecklist",
+      "type": "object"
+    },
+    "ScheduleSpec": {
+      "additionalProperties": false,
+      "description": "Instante UTC + zona del operador + hora de pared, los tres a la vez.\n\nGuardar solo el UTC perderia la intencion (\"las 18:30 de Madrid\"); guardar\nsolo la hora local seria ambiguo dos veces al ano. El validador rehace la\nconversion: un recibo editado a mano con horas incoherentes no pasa.",
+      "properties": {
+        "scheduled_at_utc": {
+          "format": "date-time",
+          "title": "Scheduled At Utc",
+          "type": "string"
+        },
+        "timezone": {
+          "description": "Zona IANA, p. ej. 'Europe/Madrid'.",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Timezone",
+          "type": "string"
+        },
+        "local_time": {
+          "description": "Hora de pared, formato %Y-%m-%dT%H:%M:%S.",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Local Time",
+          "type": "string"
+        },
+        "fold": {
+          "default": 0,
+          "description": "Desambigua una hora repetida por el cambio de horario: 0 la primera vez que ocurre, 1 la segunda. Irrelevante el resto del ano.",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Fold",
+          "type": "integer"
+        },
+        "late_start_window_s": {
+          "description": "Margen para INICIAR un envio nuevo tras la hora prevista. Pasado ese margen la tarea pide revision: no se publica lo acumulado de golpe.",
+          "maximum": 86400,
+          "minimum": 0,
+          "title": "Late Start Window S",
+          "type": "integer"
+        },
+        "note": {
+          "const": "La hora autorizada es cuando EMPIEZA la entrega local. No es una promesa de visibilidad publica en ese segundo.",
+          "default": "La hora autorizada es cuando EMPIEZA la entrega local. No es una promesa de visibilidad publica en ese segundo.",
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scheduled_at_utc",
+        "timezone",
+        "local_time",
+        "late_start_window_s"
+      ],
+      "title": "ScheduleSpec",
+      "type": "object"
+    },
+    "SourceBundle": {
+      "additionalProperties": false,
+      "description": "Identidad y procedencia del paquete que se va a publicar.",
+      "properties": {
+        "job_id": {
+          "pattern": "^[0-9a-f\\-]{36}$",
+          "title": "Job Id",
+          "type": "string"
+        },
+        "render_run_id": {
+          "pattern": "^[0-9a-f\\-]{36}$",
+          "title": "Render Run Id",
+          "type": "string"
+        },
+        "voice_run_id": {
+          "pattern": "^[0-9a-f\\-]{36}$",
+          "title": "Voice Run Id",
+          "type": "string"
+        },
+        "media_run_id": {
+          "pattern": "^[0-9a-f\\-]{36}$",
+          "title": "Media Run Id",
+          "type": "string"
+        },
+        "channel": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Channel",
+          "type": "string"
+        },
+        "profile_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "language": {
+          "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+          "title": "Language",
+          "type": "string"
+        },
+        "render_mode": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Render Mode",
+          "type": "string"
+        },
+        "render_simulation": {
+          "title": "Render Simulation",
+          "type": "boolean"
+        },
+        "script": {
+          "$ref": "#/$defs/DocumentRef"
+        },
+        "voice": {
+          "$ref": "#/$defs/DocumentRef"
+        },
+        "media": {
+          "$ref": "#/$defs/DocumentRef"
+        },
+        "render": {
+          "$ref": "#/$defs/DocumentRef"
+        },
+        "video": {
+          "$ref": "#/$defs/VideoRef"
+        },
+        "admissible_for_publisher_declared": {
+          "description": "Lo que DECIA el manifiesto de render. Es informativo.",
+          "title": "Admissible For Publisher Declared",
+          "type": "boolean"
+        },
+        "admissible_for_publisher_recomputed": {
+          "description": "Lo que se acaba de comprobar sobre los archivos reales. Es el unico valor con efecto: el booleano guardado no autoriza nada.",
+          "title": "Admissible For Publisher Recomputed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "job_id",
+        "render_run_id",
+        "voice_run_id",
+        "media_run_id",
+        "channel",
+        "profile_id",
+        "language",
+        "render_mode",
+        "render_simulation",
+        "script",
+        "voice",
+        "media",
+        "render",
+        "video",
+        "admissible_for_publisher_declared",
+        "admissible_for_publisher_recomputed"
+      ],
+      "title": "SourceBundle",
+      "type": "object"
+    },
+    "SyntheticDisclosure": {
+      "description": "Divulgacion de contenido sintetico realista.\n\nEs una decision DISTINTA de `simulation`: un video real de produccion puede\ncontener medios generados con IA, y un preview simulado puede no contener\nnada realista. No se deriva una de la otra.",
+      "enum": [
+        "not_reviewed",
+        "no_realistic_synthetic_media",
+        "contains_realistic_synthetic_media"
+      ],
+      "title": "SyntheticDisclosure",
+      "type": "string"
+    },
+    "TextSource": {
+      "description": "De donde salio el texto final. Nunca de un LLM en este modulo.",
+      "enum": [
+        "script_publishing_plan",
+        "operator_edited"
+      ],
+      "title": "TextSource",
+      "type": "string"
+    },
+    "VerificationNotice": {
+      "additionalProperties": false,
+      "description": "Un parametro de protocolo sin contrastar con su fuente.",
+      "properties": {
+        "check_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Check Id",
+          "type": "string"
+        },
+        "target": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Target",
+          "type": "string"
+        },
+        "source": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        },
+        "source_url": {
+          "maxLength": 2048,
+          "minLength": 8,
+          "title": "Source Url",
+          "type": "string"
+        },
+        "what": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "What",
+          "type": "string"
+        },
+        "blocks_real_dispatch": {
+          "title": "Blocks Real Dispatch",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "check_id",
+        "target",
+        "source",
+        "source_url",
+        "what",
+        "blocks_real_dispatch"
+      ],
+      "title": "VerificationNotice",
+      "type": "object"
+    },
+    "VerificationSummary": {
+      "additionalProperties": false,
+      "description": "Que quedo sin verificar y a quien bloquea. Viaja con el plan.",
+      "properties": {
+        "reason": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/VerificationNotice"
+          },
+          "maxItems": 60,
+          "title": "Checks",
+          "type": "array"
+        },
+        "blocked_targets": {
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Blocked Targets",
+          "type": "array"
+        },
+        "note": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason",
+        "note"
+      ],
+      "title": "VerificationSummary",
+      "type": "object"
+    },
+    "VideoRef": {
+      "additionalProperties": false,
+      "description": "El MP4 autorizado. Se resuelve desde el manifiesto, no se adivina.",
+      "properties": {
+        "path": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "size_bytes": {
+          "minimum": 1,
+          "title": "Size Bytes",
+          "type": "integer"
+        },
+        "container_duration_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Container Duration S"
+        },
+        "width": {
+          "minimum": 1,
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "minimum": 1,
+          "title": "Height",
+          "type": "integer"
+        },
+        "fps": {
+          "exclusiveMinimum": 0,
+          "title": "Fps",
+          "type": "number"
+        },
+        "verified_at": {
+          "format": "date-time",
+          "title": "Verified At",
+          "type": "string"
+        },
+        "verification": {
+          "const": "bytes_rehashed",
+          "default": "bytes_rehashed",
+          "description": "El hash se recalculo leyendo el archivo, no se copio del JSON.",
+          "title": "Verification",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "sha256",
+        "size_bytes",
+        "width",
+        "height",
+        "fps",
+        "verified_at"
+      ],
+      "title": "VideoRef",
+      "type": "object"
+    },
+    "Visibility": {
+      "enum": [
+        "public",
+        "private",
+        "unlisted"
+      ],
+      "title": "Visibility",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Borrador editorial versionado. No tiene efectos externos.",
+  "properties": {
+    "document_type": {
+      "const": "publication_plan",
+      "default": "publication_plan",
+      "title": "Document Type",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "plan_id": {
+      "pattern": "^[0-9a-f\\-]{36}$",
+      "title": "Plan Id",
+      "type": "string"
+    },
+    "revision": {
+      "description": "Sube cuando cambia la intencion.",
+      "minimum": 1,
+      "title": "Revision",
+      "type": "integer"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "publisher_version": {
+      "default": "v1",
+      "maxLength": 64,
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+      "title": "Publisher Version",
+      "type": "string"
+    },
+    "mode": {
+      "$ref": "#/$defs/PublishMode"
+    },
+    "publish_key": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Publish Key",
+      "type": "string"
+    },
+    "intent_fingerprint": {
+      "description": "SHA-256 de la INTENCION (ver `compute_intent_fingerprint`).",
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Intent Fingerprint",
+      "type": "string"
+    },
+    "sources": {
+      "$ref": "#/$defs/SourceBundle"
+    },
+    "destinations": {
+      "items": {
+        "$ref": "#/$defs/PlanDestination"
+      },
+      "maxItems": 3,
+      "minItems": 1,
+      "title": "Destinations",
+      "type": "array"
+    },
+    "review": {
+      "$ref": "#/$defs/ReviewChecklist"
+    },
+    "admission": {
+      "$ref": "#/$defs/AdmissionSummary"
+    },
+    "verification": {
+      "$ref": "#/$defs/VerificationSummary"
+    },
+    "readable_view": {
+      "description": "Vista legible para la revision humana. Sin secretos.",
+      "items": {
+        "maxLength": 600,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 200,
+      "title": "Readable View",
+      "type": "array"
+    },
+    "notes": {
+      "items": {
+        "maxLength": 600,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 40,
+      "title": "Notes",
+      "type": "array"
+    }
+  },
+  "required": [
+    "plan_id",
+    "revision",
+    "created_at",
+    "mode",
+    "publish_key",
+    "intent_fingerprint",
+    "sources",
+    "destinations",
+    "admission",
+    "verification"
+  ],
+  "title": "PublicationPlan",
+  "type": "object"
+}

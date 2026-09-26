@@ -1,0 +1,29 @@
+# Unidad PREPARADA, NO INSTALADA. Ver la nota del .service.
+#
+# `publish worker --once` procesa lo vencido y termina, asi que el timer es
+# suficiente: no hace falta un servicio residente durmiendo entre sondeos.
+#
+# Cada 5 minutos es un compromiso: la hora autorizada tiene una ventana de
+# inicio de 15 minutos (VIRALGEN_PUBLISH_LATE_START_WINDOW_S), asi que una
+# pasada cada 5 minutos deja margen de sobra sin convertir la cola en un bucle
+# ocupado. El sondeo remoto tiene su propio intervalo, guardado por tarea en
+# `next_poll_at`.
+
+[Unit]
+Description=Pasadas periodicas del trabajador de publicacion de viralgen
+Documentation=file:///opt/viralgen/docs/modulo_5_publicacion.md
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+# Reparte el arranque para no coincidir con otros timers al minuto exacto.
+RandomizedDelaySec=30
+# Si la maquina estuvo apagada, NO se disparan todas las pasadas perdidas de
+# golpe: una basta, y la ventana de inicio decide si algo vencido se envia o
+# pasa a revision.
+Persistent=false
+AccuracySec=30s
+Unit=viralgen-publish-worker.service
+
+[Install]
+WantedBy=timers.target

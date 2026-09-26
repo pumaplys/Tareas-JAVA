@@ -30,3 +30,15 @@ sniffio==1.3.1
 truststore==0.10.4
 typing-inspection==0.4.4
 typing_extensions==4.16.0
+#
+# OPCIONAL: solo para el almacenamiento temporal de Instagram (modulo 5).
+# Se instala con `pip install -e ".[publish-staging]"`. Sin ese destino, el
+# publicador funciona sin estos paquetes, y las pruebas usan un doble del SDK.
+# Versiones tomadas de `pip freeze` en el venv de esta entrega.
+boto3==1.43.100
+botocore==1.43.100
+jmespath==1.1.0
+python-dateutil==2.9.0.post0
+s3transfer==0.19.2
+six==1.17.0
+urllib3==2.8.0

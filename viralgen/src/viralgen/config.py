@@ -333,6 +333,21 @@ class Settings(BaseSettings):
         "elevenlabs_voice_id",
         "openai_image_model",
         "runway_model",
+        # Modulo 5: una variable declarada y vacia en .env significa "sin
+        # configurar", no una ruta o un identificador vacio. Asi el error que
+        # se ve es "falta META_GRAPH_API_VERSION" y no algo incomprensible.
+        "publish_secrets_dir",
+        "publish_accounts_path",
+        "youtube_client_id",
+        "youtube_channel_id",
+        "youtube_synthetic_disclosure_property",
+        "meta_graph_api_version",
+        "instagram_user_id",
+        "instagram_page_id",
+        "publish_staging_endpoint_url",
+        "publish_staging_region",
+        "publish_staging_bucket",
+        "publish_staging_access_key_id",
         mode="before",
     )
     @classmethod

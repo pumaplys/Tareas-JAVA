@@ -630,9 +630,14 @@ viralgen/
 ├── schema/voice.schema.json    # contrato del manifiesto de voz
 ├── schema/media.schema.json    # contrato del manifiesto de medios
 ├── schema/render.schema.json   # contrato del manifiesto de montaje
+├── schema/publication_plan.schema.json     # contrato del plan de publicacion
+├── schema/publication_receipt.schema.json  # contrato del recibo de publicacion
 ├── docs/contrato_modulo_2_voz.md       # contrato modulo 1 -> modulo 2 (voz)
 ├── docs/contrato_modulo_3_visuales.md  # contrato modulo 3 -> modulo 4 (montaje)
 ├── docs/contrato_modulo_4_montaje.md   # contrato modulo 4 -> modulo 5 (publicacion)
+├── docs/modulo_5_publicacion.md        # modulo 5: modos, estados, secretos, pendientes
+├── deploy/systemd/                     # unidades PREPARADAS, no instaladas
+├── tools/demo_publicacion.sh           # recorrido completo simulado del modulo 5
 ├── .github/workflows/viralgen-ffmpeg.yml  # CI con FFmpeg real (en la raiz del repo)
 ├── examples/                   # salidas simuladas completas y un preview.mp4 real
 ├── src/viralgen/
@@ -684,6 +689,23 @@ viralgen/
 │       ├── storage.py          # etapas, checkpoints e intentos persistidos
 │       ├── admission.py        # puerta de entrada del modulo 5
 │       └── pipeline.py
+│   └── publish/                # MODULO 5
+│       ├── verification.py     # lo que NO se pudo contrastar con su fuente
+│       ├── schemas.py          # contratos del plan y del recibo
+│       ├── clock.py            # reloj inyectable, zonas IANA y cambios de hora
+│       ├── admission.py        # tres veredictos, independientes del modo
+│       ├── accounts.py         # catalogo alias -> ID exacto de cuenta
+│       ├── plan.py             # borrador editorial (sin generar texto)
+│       ├── authorize.py        # autorizacion atada a la intencion
+│       ├── storage.py          # cola, concesiones, gasto y antiduplicados
+│       ├── queue.py            # encolado, ventana de inicio y cancelacion
+│       ├── secrets.py          # archivos 0600 en directorio 0700
+│       ├── transport.py        # HTTP clasificado, sin reintentos ciegos
+│       ├── staging.py          # S3 compatible: un MP4, URL firmada, limpieza
+│       ├── worker.py           # un paso por destino y por invocacion
+│       ├── receipt.py cli.py
+│       └── providers/          # base, google_oauth, youtube, instagram,
+│                               # tiktok (manual) y mock
 └── tests/
 ```
 
@@ -2078,3 +2100,156 @@ viralgen render validate --script <real/script.json> --voice <real/voice.json> \
 Solo entonces `admissible_for_publisher` puede ser `true`. Hasta ese momento,
 **ningún archivo de este repositorio es publicable**, y el módulo 4 lo dice en
 cada resumen.
+
+---
+
+## 18. Módulo 5: publicación y programación
+
+Toma un paquete de montaje **ya admitido** y lo entrega a los destinos que el
+operador **haya autorizado**. Documentación completa del módulo:
+[`docs/modulo_5_publicacion.md`](docs/modulo_5_publicacion.md).
+
+**No genera contenido, no monta y no edita los documentos de origen.** Y no
+publica nada sin una autorización explícita atada a esa intención exacta.
+
+### Tres permisos distintos
+
+| Concepto | Quién decide | Qué significa |
+| --- | --- | --- |
+| Admisión técnica | el código, sobre los archivos | el paquete cumple sus contratos |
+| Autorización del operador | una persona de esta instalación | esto, a esta cuenta, con este texto, a esta hora |
+| Estado remoto | la plataforma | qué ha pasado de verdad |
+
+Un `ready` del módulo 4 no da permiso para subir nada. Un `exit 0` de `plan`, de
+la simulación o de la exportación **no significa que se haya publicado**.
+
+### Tres modos y tres veredictos
+
+| Modo | Red | Envíos | Exige |
+| --- | --- | --- | --- |
+| `plan` | no | no | nada: su trabajo es decir qué falta |
+| `mock` | **no** | simulados | `admissible_for_simulation` |
+| `real` | sí | reales | `admissible_for_real_dispatch` |
+
+Elegir un modo **no cambia** lo que es admisible: la admisión no recibe el modo.
+El modo solo decide **qué veredicto se exige**, y por eso un preview se puede
+simular y nunca enviar.
+
+### Capacidades por plataforma
+
+| | YouTube Shorts | Instagram Reels | TikTok |
+| --- | --- | --- | --- |
+| Transporte | Data API v3, subida reanudable de 8 MiB | Graph con Facebook Login, `video_url` | exportación manual |
+| Almacenamiento temporal | no | **sí** (bucket privado, URL firmada 2 h) | no |
+| Programación remota | no (`publishAt` no se envía) | no | no |
+| Verificación | `videos.list` | consulta del medio | **ninguna** |
+| Estado típico | `delivered` | `delivered` | `awaiting_manual` → `manually_reported` |
+
+TikTok no tiene integración remota porque sus directrices de Direct Post
+**excluyen** las utilidades privadas para cuentas propias o del equipo. No hay
+interruptor que lo eluda, y las capacidades del adaptador lo declaran.
+
+### Uso
+
+```bash
+# 1) Borrador editorial. Sin red, sin OAuth, sin staging, sin envíos.
+viralgen publish plan \
+  --script <script.json> --voice <voice.json> \
+  --media <media.json> --render <render.json> \
+  --accounts <accounts.json> --mode mock --publish-key demo-001 \
+  --destination "id=yt,platform=youtube_shorts,account=canal_demo,at=2026-09-24T18:30:00,tz=Europe/Madrid,visibility=private,notify=false"
+
+# 2) El operador edita el borrador si falta algo (el plan dice exactamente qué).
+
+# 3) Autorización de ESA revisión. Cubre también subir el MP4 al staging.
+viralgen publish approve --plan <publication_plan.json> --operator <identidad>
+
+# 4) Cola con el horario autorizado.
+viralgen publish enqueue --plan <publication_plan.json>
+
+# 5) Trabajador: procesa lo vencido y termina (suficiente para un timer).
+viralgen publish worker --once --publish-key demo-001
+
+# 6) Estado local; --refresh consulta en remoto de forma explícita.
+viralgen publish status --publish-key demo-001 --out publication.json
+
+# TikTok: exportar NO es publicar.
+viralgen publish export-manual --publish-key demo-001 --destination tk
+viralgen publish record-manual --publish-key demo-001 --destination tk --url <url>
+
+# Contratos, comprobación de cuenta y limpieza.
+viralgen publish validate --plan <publication_plan.json>
+viralgen publish schema --out schema/
+viralgen publish accounts check --plan <publication_plan.json>
+viralgen publish gc            # enumera; con --apply borra lo propio
+```
+
+Ni `plan` ni `mock` necesitan credenciales. Para el modo real:
+`viralgen auth youtube` (loopback + PKCE, desde un equipo con navegador) y
+`viralgen auth instagram --from-file <token.json>` (ningún token se acepta como
+argumento: quedaría en el historial).
+
+### Demostración completa, entera en simulación
+
+```bash
+tools/demo_publicacion.sh              # crea su propio directorio temporal
+tools/demo_publicacion.sh /ruta/datos  # o uno concreto
+```
+
+Recorre plan → edición del operador → autorización → cola con reloj de ensayo →
+envío simulado de YouTube e Instagram → espera remota y continuación → estado
+final → repetición sin duplicar → exportación de TikTok en `awaiting_manual` →
+registro manual, y termina comprobando que **el mismo paquete en modo real se
+rechaza antes de cualquier llamada**, staging incluido.
+
+Resultado de la demostración (cifras reales de esta entrega):
+
+| Destino | Estado | Identificador | Visible públicamente |
+| --- | --- | --- | --- |
+| `yt` (privado) | `delivered` | `mock_…` | `false` |
+| `ig` (público) | `delivered` | `mock_…` | `true` |
+| `tk` | `manually_reported` | el que aportó el operador | — |
+
+`real_remote_id` es `null` en los tres: **nada de esto existe en ninguna
+plataforma**, y el recibo no finge lo contrario.
+
+### Lo que impide publicar de más
+
+* La autorización queda atada a la **intención**, al MP4 y a los IDs de cuenta.
+  Cambiar cuenta, vídeo, texto, privacidad, horario o destino crea una revisión
+  nueva. Renovar un token de la misma cuenta o reemitir una URL temporal del
+  mismo objeto **no** la invalida.
+* Antes del primer byte se **rehashea el MP4**: los bytes, no un booleano.
+* **Ventana de inicio de 15 minutos**: tras una caída larga, lo vencido pasa a
+  `needs_review` en vez de publicarse de golpe.
+* El mismo MP4 no se cuela en la misma plataforma y cuenta con otra clave. La
+  identidad **no es el título**.
+* Una operación mutante **no se reintenta a ciegas**: un timeout tras enviar
+  bytes o pedir la publicación se resuelve **consultando** la sesión o el
+  contenedor. Si no se puede resolver, `needs_reconciliation` y se dejan de crear
+  cosas para ese destino.
+* Las URLs firmadas, las URIs de sesión y los tokens viven en un directorio
+  privado (0700, archivos 0600) **fuera del repositorio**, y los contratos
+  rechazan en validación cualquier texto que las contenga.
+
+### Límites locales ≠ cuotas de las plataformas
+
+Un trabajador, 1 entrega real nueva por cuenta y día, 200 solicitudes por destino
+(persistidas, incluyendo sondeos), 3 intentos por operación, sondeo cada 30 s con
+backoff hasta 300 s, ventana remota de 3600 s, MP4 de hasta 200 MiB. **Son
+decisiones del producto**; las cuotas reales de cada plataforma no están aquí y
+no se deducen de memoria.
+
+### Pendiente antes de operar en una VPS
+
+El modo real está **bloqueado a propósito**: ninguna de las referencias de
+protocolo citadas era alcanzable desde este entorno (403 del proxy de egreso), y
+esa limitación vive en el código (`viralgen.publish.verification`), aparece en
+`publish plan` y bloquea el destino afectado. Levantar un bloqueo exige
+comprobar el parámetro contra su fuente, no que "parezca correcto".
+
+Faltan además cuentas, permisos, credenciales y un paquete de producción; los
+mocks **no los sustituyen**. Las unidades de systemd están **preparadas y no
+instaladas** en [`deploy/systemd/`](deploy/systemd/), y el procedimiento para
+probar después YouTube en privado e Instagram (que **tiene efecto real**) está en
+[`docs/modulo_5_publicacion.md`](docs/modulo_5_publicacion.md).

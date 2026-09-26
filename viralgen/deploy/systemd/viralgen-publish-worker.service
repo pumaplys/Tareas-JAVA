@@ -1,0 +1,59 @@
+# Unidad PREPARADA, NO INSTALADA.
+#
+# Esta entrega no instala, habilita ni arranca nada en ninguna maquina: el
+# encargo lo excluye expresamente. El archivo esta aqui para que la instalacion
+# sea una decision explicita de operacion, con su revision previa.
+#
+# Instalacion (cuando alguien decida hacerla, en la VPS):
+#   sudo install -m 0644 deploy/systemd/viralgen-publish-worker.service /etc/systemd/system/
+#   sudo install -m 0644 deploy/systemd/viralgen-publish-worker.timer  /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now viralgen-publish-worker.timer
+#
+# Antes de habilitarlo, comprueba que el modo real esta desbloqueado: mientras
+# haya parametros de protocolo sin contrastar (`publish plan` los lista), el
+# trabajador no enviara nada real, y eso es lo correcto.
+
+[Unit]
+Description=Trabajador de publicacion de viralgen (una pasada)
+Documentation=file:///opt/viralgen/docs/modulo_5_publicacion.md
+# Sin red no hay nada que hacer; con `--mode mock` da igual, pero la unidad
+# esta pensada para el modo real.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Un solo trabajador, por diseno: dos procesos competirian por la misma cola.
+# El bloqueo de archivo lo impide de todas formas, pero esto evita el ruido.
+User=viralgen
+Group=viralgen
+WorkingDirectory=/opt/viralgen
+Environment=PYTHONUNBUFFERED=1
+# El archivo de entorno NO lleva secretos de publicacion: los tokens viven en
+# VIRALGEN_PUBLISH_SECRETS_DIR con permisos 0600.
+EnvironmentFile=/etc/viralgen/publish.env
+ExecStart=/opt/viralgen/.venv/bin/viralgen publish worker --once --mode real
+
+# Limites acordes a un unico trabajador secuencial.
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+TimeoutStartSec=3600
+
+# Endurecimiento razonable para un proceso que solo lee su paquete y habla con
+# dos APIs. Los directorios de datos y de secretos se declaran escribibles de
+# forma explicita.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/viralgen /etc/viralgen/secretos
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryMax=1G
+
+[Install]
+WantedBy=multi-user.target
