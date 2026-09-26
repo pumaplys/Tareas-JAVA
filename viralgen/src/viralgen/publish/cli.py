@@ -35,7 +35,7 @@ from ..schemas.common import Platform
 from ..storage import ProcessLock, Storage, iso
 from .accounts import load_accounts
 from .admission import check_publication_admission, require_mode
-from .authorize import build_authorization, find_authorization, identity_space, store_authorization
+from .authorize import build_authorization, identity_space, store_authorization
 from .clock import ManualClock, SystemClock, ensure_zone
 from .plan import (
     DestinationRequest,
