@@ -22,6 +22,7 @@ from .errors import ConfigError, ExitCode, ViralgenError
 from .logging_setup import configure_logging, get_logger
 from .pipeline import JobRequest, Pipeline
 from .profiles import get_profile, load_profiles
+from .publish.cli import add_auth_parser, add_publish_parser, run_auth, run_publish
 from .schemas.document import ScriptDocument
 from .validation import check_admission, validate_document
 
@@ -78,6 +79,8 @@ def build_parser() -> argparse.ArgumentParser:
     _add_voice_parser(subparsers)
     _add_media_parser(subparsers)
     _add_render_parser(subparsers)
+    add_publish_parser(subparsers)
+    add_auth_parser(subparsers)
     return parser
 
 
@@ -665,6 +668,10 @@ def main(argv: list[str] | None = None) -> int:
             return _run_media(args, settings)
         if args.command == "render":
             return _run_render(args, settings)
+        if args.command == "publish":
+            return run_publish(args, settings)
+        if args.command == "auth":
+            return run_auth(args, settings)
         parser.error(f"Comando desconocido: {args.command}")
         return int(ExitCode.USAGE)
     except ViralgenError as exc:

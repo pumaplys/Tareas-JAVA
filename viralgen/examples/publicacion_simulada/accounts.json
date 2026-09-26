@@ -1,0 +1,24 @@
+{
+  "_nota": "Catalogo de cuentas de DEMOSTRACION. Los identificadores son ficticios y no corresponden a ninguna cuenta real. Un ID de canal o de usuario no es un secreto: no autoriza nada por si solo.",
+  "accounts": [
+    {
+      "alias": "canal_demo",
+      "platform": "youtube_shorts",
+      "account_id": "UCdemostracion0000000000",
+      "label": "Canal de demostracion (no existe)"
+    },
+    {
+      "alias": "reels_demo",
+      "platform": "instagram_reels",
+      "account_id": "17841400000000000",
+      "page_id": "100000000000000",
+      "label": "Cuenta profesional de demostracion (no existe)"
+    },
+    {
+      "alias": "tiktok_demo",
+      "platform": "tiktok",
+      "account_id": "@cuenta_demo",
+      "label": "Cuenta de demostracion (no existe)"
+    }
+  ]
+}

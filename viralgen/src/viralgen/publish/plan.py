@@ -115,43 +115,40 @@ def _requisitos(
     entrada: PublishingPlan | None,
     admision: PublishAdmissionReport,
 ) -> list[PendingRequirement]:
-    """Todo lo que impide autorizar este destino, con su remedio."""
-    requisitos: list[PendingRequirement] = []
+    """Todo lo que impide autorizar este destino, con su remedio.
 
-    if entrada is None:
+    Mira el texto ACTUAL del plan, no el del guion: despues de que el operador
+    edite el borrador, lo que importa es lo que se va a publicar.
+    """
+    requisitos: list[PendingRequirement] = []
+    sin_origen = (
+        f" El guion no trae plan de publicacion para {plataforma.value}, asi que "
+        "este texto lo escribes tu."
+        if entrada is None
+        else ""
+    )
+
+    if not metadata.title:
         requisitos.append(
             PendingRequirement(
-                code="sin_plan_editorial",
-                message=(
-                    f"El guion no trae plan de publicacion para {plataforma.value}: "
-                    "no hay titulo ni texto de origen."
-                ),
+                code="sin_titulo",
+                message="Falta el titulo final." + sin_origen,
                 blocks="all",
                 resolution=(
-                    "Completa title y description en el plan antes de autorizar. "
-                    "Este modulo no redacta el texto por ti."
+                    "Escribe `metadata.title` en el plan. Este modulo no redacta "
+                    "el texto por ti."
                 ),
             )
         )
-    else:
-        if not metadata.title:
-            requisitos.append(
-                PendingRequirement(
-                    code="sin_titulo",
-                    message="Falta el titulo final.",
-                    blocks="all",
-                    resolution="Escribe `metadata.title` en el plan.",
-                )
+    if not metadata.description:
+        requisitos.append(
+            PendingRequirement(
+                code="sin_texto",
+                message="Falta el texto final (descripcion o caption)." + sin_origen,
+                blocks="all",
+                resolution="Escribe `metadata.description` en el plan.",
             )
-        if not metadata.description:
-            requisitos.append(
-                PendingRequirement(
-                    code="sin_texto",
-                    message="Falta el texto final (descripcion o caption).",
-                    blocks="all",
-                    resolution="Escribe `metadata.description` en el plan.",
-                )
-            )
+        )
 
     if metadata.audience is AudienceDecision.UNDECIDED:
         requisitos.append(
@@ -500,6 +497,101 @@ def _revalidar(plan: PublicationPlan) -> PublicationPlan:
     dice cumplir.
     """
     return PublicationPlan.model_validate(plan.model_dump(mode="python"))
+
+
+def refresh_plan(
+    plan: PublicationPlan, admision: PublishAdmissionReport
+) -> PublicationPlan:
+    """Recalcula requisitos, procedencia del texto y estado de cada destino.
+
+    Editar el borrador es parte del flujo, asi que los requisitos que trae el
+    archivo son una foto vieja en cuanto alguien lo toca. Esto los rehace
+    desde el texto actual y desde una admision recien calculada, y marca como
+    `operator_edited` lo que ya no coincide con el guion.
+    """
+    guion = ScriptDocument.model_validate(
+        json.loads(Path(plan.sources.script.path).read_text(encoding="utf-8"))
+    )
+    destinos = []
+    for destino in plan.destinations:
+        entrada = _entrada_del_guion(guion, destino.platform)
+        editados = _campos_editados(destino.metadata, entrada)
+        metadata = destino.metadata.model_copy(
+            update={
+                "edited_fields": editados,
+                "text_source": (
+                    TextSource.OPERATOR_EDITED
+                    if editados
+                    else TextSource.SCRIPT_PUBLISHING_PLAN
+                ),
+                "within_local_limits": _dentro_de_limites(
+                    destino.metadata.title,
+                    destino.metadata.description,
+                    list(destino.metadata.tags),
+                    list(destino.metadata.hashtags),
+                ),
+            }
+        )
+        cuenta = Account(
+            alias=destino.account.alias,
+            platform=destino.platform,
+            account_id=destino.account.expected_account_id,
+        )
+        requisitos = _requisitos(
+            plataforma=destino.platform,
+            cuenta=cuenta,
+            metadata=metadata,
+            entrada=entrada,
+            admision=admision,
+        )
+        bloqueado = any(requisito.blocks == "all" for requisito in requisitos)
+        destinos.append(
+            destino.model_copy(
+                update={
+                    "metadata": metadata,
+                    "pending_requirements": requisitos,
+                    "state": (
+                        DestinationState.BLOCKED
+                        if bloqueado
+                        else DestinationState.DRAFT
+                    ),
+                }
+            )
+        )
+    actualizado = plan.model_copy(
+        update={
+            "destinations": destinos,
+            "admission": admision.to_summary(),
+            "verification": admision.verification_summary(),
+        }
+    )
+    return _revalidar(
+        actualizado.model_copy(update={"readable_view": readable_lines(actualizado)})
+    )
+
+
+def _campos_editados(
+    metadata: DestinationMetadata, entrada: PublishingPlan | None
+) -> list[str]:
+    """Que campos ya no dicen lo que decia el guion."""
+    if entrada is None:
+        return sorted(
+            campo
+            for campo, valor in (
+                ("title", metadata.title),
+                ("description", metadata.description),
+                ("hashtags", metadata.hashtags),
+            )
+            if valor
+        )
+    editados = []
+    if metadata.title != entrada.title:
+        editados.append("title")
+    if metadata.description != entrada.caption:
+        editados.append("description")
+    if list(metadata.hashtags) != list(entrada.hashtags):
+        editados.append("hashtags")
+    return editados
 
 
 def normalize_plan(plan: PublicationPlan) -> tuple[PublicationPlan, bool]:

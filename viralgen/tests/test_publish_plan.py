@@ -125,7 +125,11 @@ def test_sin_plan_editorial_el_destino_queda_bloqueado(settings: Settings) -> No
     assert destino.state is DestinationState.BLOCKED
     assert destino.metadata.title is None
     codigos = {requisito.code for requisito in destino.pending_requirements}
-    assert "sin_plan_editorial" in codigos
+    assert {"sin_titulo", "sin_texto"} <= codigos
+    assert any(
+        "no trae plan de publicacion" in requisito.message
+        for requisito in destino.pending_requirements
+    )
     assert all(
         requisito.resolution for requisito in destino.pending_requirements
     ), "cada requisito dice como resolverlo"
