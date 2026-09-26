@@ -718,7 +718,7 @@ source .venv/bin/activate
 pytest -q
 ```
 
-Resultado de la ejecución en este entorno: **669 pruebas correctas y ninguna
+Resultado de la ejecución en este entorno: **705 pruebas correctas y ninguna
 saltada** (Python 3.12, sin red y sin claves). Con FFmpeg instalado se ejecutan
 también las cinco que antes se saltaban en los módulos 2 y 3, y las **63 de
 integración local** de los módulos 4 y 5 (marca `ffmpeg`).
@@ -740,20 +740,25 @@ tales.
 
 ```bash
 pytest -m ffmpeg -rs          #  63: solo la integracion local real
-pytest -m "not ffmpeg"        # 606: solo lo que no necesita FFmpeg
+pytest -m "not ffmpeg"        # 642: solo lo que no necesita FFmpeg
 ```
 
-Las dos selecciones son una **partición exacta** de las 669: entre ambas se
+Las dos selecciones son una **partición exacta** de las 705: entre ambas se
 ejecuta todo una sola vez, sin solape ni huecos. Es como las ejecuta la CI.
 
-Última ejecución de aceptación, sobre el árbol `e2271fa`:
+Última ejecución de aceptación, sobre el árbol `163a5fe`:
 
 ```
-pytest -m ffmpeg        -> 63 passed, 606 deselected en 948 s   (codigo 0)
+pytest -m ffmpeg        -> 63 passed, 642 deselected en 930 s   (codigo 0)
 tools/verificar_integracion.py --minimo 40
                         -> 63 recogidas, 63 ejecutadas, 0 saltadas, 0 fallidas
-pytest -m "not ffmpeg"  -> 606 passed, 63 deselected en 154 s   (codigo 0)
+pytest -m "not ffmpeg"  -> 642 passed, 63 deselected en 146 s   (codigo 0)
+tools/demo_publicacion.sh
+                        -> recorrido simulado completo, resumen "delivered"
+viralgen publish schema -> identico a los esquemas del repositorio
 ```
+
+Del total, **205 pruebas son del módulo 5**, repartidas en once archivos.
 
 `.github/workflows/viralgen-ffmpeg.yml` instala FFmpeg y la fuente, ejecuta la
 selección obligatoria y pasa su informe **JUnit XML** por
