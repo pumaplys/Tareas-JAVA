@@ -368,6 +368,68 @@ En simulación: `simulation: true`, `real_remote_id: null` y, si hacen falta
 identificadores internos, `mock_remote_id` con prefijo `mock_` en un espacio
 separado. **No se inventan URLs que funcionen ni fechas de publicación real.**
 
+### Dos destinos de la demostración, tal como salen
+
+Extractos reales del `publication.json` que genera
+`tools/demo_publicacion.sh`, con la ruta local acortada y los campos nulos
+omitidos.
+
+**YouTube, entregado en privado.** Entregado no es lo mismo que visible:
+
+```json
+{
+  "destination_id": "yt",
+  "state": "delivered",
+  "phase": "verified",
+  "simulation": true,
+  "requested_visibility": "private",
+  "observed_visibility": "private",
+  "publicly_visible": false,
+  "mock_remote_id": "mock_16d6988e975c573d",
+  "scheduled_at_utc": "2026-09-24T16:30:00Z",
+  "timezone": "Europe/Madrid",
+  "dispatch_started_at": "2026-09-24T16:35:00Z",
+  "delivered_at": "2026-09-24T16:46:00Z",
+  "last_evidence": {
+    "source": "simulated",
+    "summary": "publicador simulado: recurso verificado con la visibilidad solicitada. No existe en ninguna plataforma."
+  }
+}
+```
+
+`real_remote_id` no aparece porque es `null`: en simulación el identificador
+vive en `mock_remote_id`, con prefijo, y la evidencia dice `simulated`. El
+contrato **rechaza** un recibo que mezcle las dos cosas.
+
+**TikTok, publicado a mano.** El estado es `manually_reported`, no `delivered`:
+
+```json
+{
+  "destination_id": "tk",
+  "state": "manually_reported",
+  "phase": "not_started",
+  "manual_export": {
+    "package_path": "<datos>/publicaciones/tiktok/<publicacion>/tk",
+    "video_sha256": "fe314fa77bc4501595a392d79527d83d1a4aa998cd6e9a14ecb9bd802b3a9cdf",
+    "exported_at": "2026-09-26T14:36:07Z",
+    "simulation": true,
+    "publishable_by_this_module": false
+  },
+  "manual_report": {
+    "reported_url": "https://www.tiktok.com/@cuenta_demo/video/0000000000000000000",
+    "reported_at": "2026-09-24T17:20:00Z",
+    "evidence_source": "operator_reported",
+    "note": "Dato aportado por una persona. No esta verificado mediante API y no se convierte en confirmacion remota."
+  }
+}
+```
+
+El `video_sha256` del paquete es el del **preview del repositorio**: la copia es
+binaria, con su marca incrustada incluida.
+
+En los dos casos `budget.requests_used` y `bytes_transferred` son `0`, y es lo
+honesto: en simulación no se hizo ninguna petición ni se transfirió ningún byte.
+
 ---
 
 ## 9. Secretos

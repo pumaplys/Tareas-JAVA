@@ -718,10 +718,10 @@ source .venv/bin/activate
 pytest -q
 ```
 
-Resultado de la ejecución en este entorno: **500 pruebas correctas y ninguna
+Resultado de la ejecución en este entorno: **669 pruebas correctas y ninguna
 saltada** (Python 3.12, sin red y sin claves). Con FFmpeg instalado se ejecutan
-también las cinco que antes se saltaban en los módulos 2 y 3, y las **58 de
-integración local** del módulo 4 (marca `ffmpeg`).
+también las cinco que antes se saltaban en los módulos 2 y 3, y las **63 de
+integración local** de los módulos 4 y 5 (marca `ffmpeg`).
 
 Las pruebas se dividen en **cuatro** categorías que este README no mezcla:
 
@@ -729,8 +729,8 @@ Las pruebas se dividen en **cuatro** categorías que este README no mezcla:
 | --- | --- | --- |
 | **Local** | Lógica, esquemas, aritmética, validadores, proveedor simulado, Pillow. | Ejecutadas. |
 | **Transporte simulado** | El cliente HTTP real (SDK de `openai`, `httpx2` con `MockTransport`) contra un transporte de prueba: se captura la solicitud y se comprueban ruta, cabeceras y cuerpo. **No hay red.** | Ejecutadas. |
-| **Integración local** (marca `ffmpeg`) | FFmpeg y `ffprobe` **reales**: se codifican MP4 de verdad y se miden fotograma a fotograma. Sin red y sin credenciales. | **Ejecutadas**: 51 pruebas. |
-| **Integración externa** | Las APIs reales de OpenAI y ElevenLabs, y Runway **solo si el guion pide clips**. | **Pendiente**: sin credenciales ni red en este entorno. Ver §13 (texto y voz) y §16.1 (imagen y vídeo). |
+| **Integración local** (marca `ffmpeg`) | FFmpeg y `ffprobe` **reales**: se codifican MP4 de verdad y se miden fotograma a fotograma. Sin red y sin credenciales. | **Ejecutadas**: 63 pruebas. |
+| **Integración externa** | Las APIs reales de OpenAI y ElevenLabs, Runway **solo si el guion pide clips**, y las de publicación (YouTube, Meta y el almacenamiento temporal). | **Pendiente**: sin credenciales ni red en este entorno. Ver §13 (texto y voz), §16.1 (imagen y vídeo) y §18 (publicación). |
 
 Una prueba de transporte simulado **no es** integración externa, y una
 integración **local** con FFmpeg tampoco: este proyecto no las presenta como
@@ -739,12 +739,21 @@ tales.
 ### La integración local es obligatoria, no opcional
 
 ```bash
-pytest -m ffmpeg -rs          # 58:  solo la integracion local real
-pytest -m "not ffmpeg"        # 442: solo lo que no necesita FFmpeg
+pytest -m ffmpeg -rs          #  63: solo la integracion local real
+pytest -m "not ffmpeg"        # 606: solo lo que no necesita FFmpeg
 ```
 
-Las dos selecciones son una **partición exacta** de las 500: entre ambas se
+Las dos selecciones son una **partición exacta** de las 669: entre ambas se
 ejecuta todo una sola vez, sin solape ni huecos. Es como las ejecuta la CI.
+
+Última ejecución de aceptación, sobre el árbol `e2271fa`:
+
+```
+pytest -m ffmpeg        -> 63 passed, 606 deselected en 948 s   (codigo 0)
+tools/verificar_integracion.py --minimo 40
+                        -> 63 recogidas, 63 ejecutadas, 0 saltadas, 0 fallidas
+pytest -m "not ffmpeg"  -> 606 passed, 63 deselected en 154 s   (codigo 0)
+```
 
 `.github/workflows/viralgen-ffmpeg.yml` instala FFmpeg y la fuente, ejecuta la
 selección obligatoria y pasa su informe **JUnit XML** por

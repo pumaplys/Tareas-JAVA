@@ -147,3 +147,55 @@ jobs:
           viralgen render validate --script $E/script.json --voice $E/voz/voice.json \
             --media $E/medios/media.json \
             --manifest examples/montaje_preview/render.json --allow-simulation
+
+      - name: Demostracion del modulo 5, entera en simulacion
+        # Sin red, sin credenciales y sin publicar nada: el publicador simulado
+        # no tiene cliente HTTP. El propio script falla si el modo real llegara
+        # a autorizarse.
+        run: |
+          set -euo pipefail
+          PYTHON=python tools/demo_publicacion.sh "${{ runner.temp }}/viralgen-publish"
+          python - <<'PY'
+          import json, os, pathlib, sys
+
+          datos = pathlib.Path(os.environ["RUNNER_TEMP"]) / "viralgen-publish"
+          recibo = json.loads((datos / "publication.json").read_text(encoding="utf-8"))
+
+          assert recibo["simulation"] is True, recibo["simulation"]
+          assert recibo["summary"]["overall"] == "delivered", recibo["summary"]
+          estados = {d["destination_id"]: d for d in recibo["destinations"]}
+          assert estados["yt"]["state"] == "delivered"
+          assert estados["ig"]["state"] == "delivered"
+          assert estados["tk"]["state"] == "manually_reported"
+          # Se pidio privado en YouTube: entregado, pero NO publicamente visible.
+          assert estados["yt"]["publicly_visible"] is False
+          assert estados["ig"]["publicly_visible"] is True
+          # Nada de esto existe en ninguna plataforma.
+          for destino in recibo["destinations"]:
+              assert destino["real_remote_id"] is None, destino["destination_id"]
+
+          # El recibo exportable no lleva material sensible.
+          texto = (datos / "publication.json").read_text(encoding="utf-8")
+          for marca in ("X-Amz-Signature", "access_token", "Authorization", "Bearer "):
+              assert marca not in texto, marca
+
+          # El paquete de TikTok sale rotulado como no publicable.
+          paquete = json.loads(
+              (datos / "08_export_manual.json").read_text(encoding="utf-8")
+          )
+          assert paquete["published"] is False
+          assert pathlib.Path(paquete["package"]["package_path"], "NO_PUBLICABLE.txt").is_file()
+
+          print("demostracion simulada correcta:", recibo["summary"]["overall"])
+          PY
+
+      - name: Contratos del modulo 5 exportables y estables
+        run: |
+          set -euo pipefail
+          viralgen publish schema --out "${{ runner.temp }}/schema-publish"
+          # Los esquemas del repositorio deben coincidir con los que genera el
+          # codigo: un contrato documentado que no es el vigente no sirve.
+          diff -u schema/publication_plan.schema.json \
+            "${{ runner.temp }}/schema-publish/publication_plan.schema.json"
+          diff -u schema/publication_receipt.schema.json \
+            "${{ runner.temp }}/schema-publish/publication_receipt.schema.json"
