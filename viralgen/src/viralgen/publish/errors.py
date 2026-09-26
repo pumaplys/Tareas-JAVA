@@ -40,6 +40,19 @@ class ModeViolationError(ViralgenError):
     code = "mode_violation"
 
 
+class DisclosureNotTransmittableError(ViralgenError):
+    """Un metadato aprobado no se puede transmitir tal cual.
+
+    Casos: la divulgacion de contenido sintetico sigue sin resolver, o la
+    decision de audiencia infantil no esta tomada. En los dos, el envio se
+    bloquea con el motivo escrito: enviar el video sin declarar lo que hay que
+    declarar seria peor que no enviarlo.
+    """
+
+    exit_code = ExitCode.NEEDS_REVIEW
+    code = "disclosure_not_transmittable"
+
+
 class AuthRequiredError(ProviderPermanentError):
     """La plataforma exige un consentimiento nuevo: renovar no basta."""
 

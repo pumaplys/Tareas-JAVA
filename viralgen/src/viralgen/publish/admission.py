@@ -128,6 +128,7 @@ class PublishAdmissionReport:
         return VerificationSummary(
             reason=datos["reason"],
             checks=[VerificationNotice(**entrada) for entrada in datos["checks"]],
+            totals=dict(datos["totals"]),
             blocked_targets=list(datos["blocked_targets"]),
             note=datos["note"],
         )

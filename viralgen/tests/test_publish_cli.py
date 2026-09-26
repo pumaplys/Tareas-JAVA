@@ -14,9 +14,7 @@ import pytest
 
 from viralgen.cli import main
 from viralgen.errors import ExitCode
-from viralgen.publish.admission import PublishAdmissionReport
 from viralgen.render.ffmpeg import probe_capabilities
-from viralgen.schemas.common import Platform
 
 RAIZ = Path(__file__).parent.parent
 EJEMPLOS = RAIZ / "examples"

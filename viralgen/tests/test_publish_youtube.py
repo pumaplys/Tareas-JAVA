@@ -16,10 +16,18 @@ import httpx2
 import pytest
 
 from viralgen.config import Settings
-from viralgen.publish.errors import AuthRequiredError, ReconciliationRequiredError
+from viralgen.publish.errors import (
+    AuthRequiredError,
+    DisclosureNotTransmittableError,
+    ReconciliationRequiredError,
+)
 from viralgen.publish.providers.base import DispatchContext
 from viralgen.publish.providers.google_oauth import TOKEN_FILE, TokenBundle, ensure_token
-from viralgen.publish.providers.youtube import YouTubeAdapter
+from viralgen.publish.providers.youtube import (
+    SYNTHETIC_MEDIA_PROPERTY,
+    SYNTHETIC_MEDIA_VALUE,
+    YouTubeAdapter,
+)
 from viralgen.publish.schemas import (
     AudienceDecision,
     DestinationMetadata,
@@ -207,6 +215,33 @@ def test_la_cuenta_correcta_se_acepta(tmp_path: Path) -> None:
     assert all(peticion.method == "GET" for peticion in capturadas)
 
 
+def _handler_subida(estado: dict):
+    """Simula una sesion reanudable que confirma bloque a bloque."""
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        if request.url.path.endswith("/upload/youtube/v3/videos"):
+            estado["sesion"] = True
+            return httpx2.Response(
+                200, headers={"Location": "https://www.googleapis.com/session/abc123"}
+            )
+        if "/session/" in request.url.path:
+            rango = request.headers.get("Content-Range", "")
+            if rango.startswith("bytes */"):
+                return httpx2.Response(
+                    308, headers={"Range": f"bytes=0-{estado['offset'] - 1}"}
+                )
+            fin = int(rango.split("-")[1].split("/")[0])
+            total = int(rango.split("/")[1])
+            estado["offset"] = fin + 1
+            estado["peticiones"] = estado.get("peticiones", 0) + 1
+            if estado["offset"] >= total:
+                return httpx2.Response(200, json=_recurso(uploadStatus="uploaded"))
+            return httpx2.Response(308, headers={"Range": f"bytes=0-{fin}"})
+        return httpx2.Response(404)
+
+    return handler
+
+
 # ---------------------------------------------------------------------------
 # Payload
 # ---------------------------------------------------------------------------
@@ -233,61 +268,104 @@ def test_sin_decidir_la_audiencia_no_se_construye_payload(tmp_path: Path) -> Non
     ctx = _contexto(
         tmp_path, ajustes, metadata=_metadata(audience=AudienceDecision.UNDECIDED)
     )
-    with pytest.raises(ValueError, match="audiencia"):
+    with pytest.raises(DisclosureNotTransmittableError, match="audiencia"):
         adaptador.build_body(ctx)
 
 
-def test_la_divulgacion_sintetica_no_inventa_un_campo_de_api(tmp_path: Path) -> None:
-    """Sin nombre de propiedad verificado, no se envia nada inventado."""
+@pytest.mark.parametrize(
+    ("decision", "esperado"),
+    [
+        (SyntheticDisclosure.CONTAINS_REALISTIC_SYNTHETIC_MEDIA, True),
+        (SyntheticDisclosure.NO_REALISTIC_SYNTHETIC_MEDIA, False),
+    ],
+)
+def test_la_divulgacion_aprobada_viaja_en_el_cuerpo_http(
+    tmp_path: Path, decision: SyntheticDisclosure, esperado: bool
+) -> None:
+    """Con el nombre OFICIAL, y tambien cuando el valor aprobado es `false`.
+
+    Regresion de un defecto real: la version anterior solo enviaba la propiedad
+    cuando la decision era afirmativa, asi que un `false` explicitamente
+    aprobado se omitia. Un `false` es una declaracion, no la ausencia de una.
+    """
     ajustes = _ajustes(tmp_path)
-    adaptador, _ = _adaptador(ajustes, lambda r: httpx2.Response(200))
+    estado = {"offset": 0}
+    adaptador, capturadas = _adaptador(ajustes, _handler_subida(estado))
+    ctx = _contexto(tmp_path, ajustes, metadata=_metadata(synthetic_disclosure=decision))
+
+    adaptador.start(ctx)
+
+    posts = [p for p in capturadas if p.method == "POST"]
+    assert len(posts) == 1
+    cuerpo = json.loads(posts[0].content)
+    assert cuerpo["status"]["containsSyntheticMedia"] is esperado
+    assert SYNTHETIC_MEDIA_PROPERTY == "containsSyntheticMedia"
+
+
+def test_una_divulgacion_sin_resolver_bloquea_el_envio(tmp_path: Path) -> None:
+    """Sin decision no se sube: no se manda `false` por omision."""
+    ajustes = _ajustes(tmp_path)
+    estado = {"offset": 0}
+    adaptador, capturadas = _adaptador(ajustes, _handler_subida(estado))
     ctx = _contexto(
         tmp_path,
         ajustes,
-        metadata=_metadata(
-            synthetic_disclosure=SyntheticDisclosure.CONTAINS_REALISTIC_SYNTHETIC_MEDIA
-        ),
+        metadata=_metadata(synthetic_disclosure=SyntheticDisclosure.NOT_REVIEWED),
     )
-    assert len(adaptador.build_body(ctx)["status"]) == 2
 
-    con_propiedad = _ajustes(
-        tmp_path, youtube_synthetic_disclosure_property="containsSyntheticMediaX"
+    resultado = adaptador.start(ctx)
+
+    assert resultado.state is DestinationState.NEEDS_REVIEW
+    assert resultado.error.code == "disclosure_not_transmittable"
+    assert "decision editorial" in resultado.error.message
+    assert capturadas == [], "no se abre sesion ni se envia un solo byte"
+
+    with pytest.raises(DisclosureNotTransmittableError, match="no esta resuelta"):
+        adaptador.build_body(ctx)
+
+
+def test_la_divulgacion_no_depende_de_simulation_ni_del_uso_de_ia(
+    tmp_path: Path,
+) -> None:
+    """Son decisiones distintas y el adaptador no las mezcla.
+
+    El cuerpo que se enviaria es el MISMO en modo simulado y en modo real con
+    los mismos metadatos: el valor sale de la decision editorial, no de como se
+    produjo el paquete. Y un paquete de fuentes simuladas cuya decision diga
+    "no contiene medios sinteticos realistas" transmite `false`, no `true`.
+    """
+    ajustes = _ajustes(tmp_path)
+    adaptador, _ = _adaptador(ajustes, lambda r: httpx2.Response(200))
+    metadata = _metadata(
+        synthetic_disclosure=SyntheticDisclosure.NO_REALISTIC_SYNTHETIC_MEDIA
     )
-    otro, _ = _adaptador(con_propiedad, lambda r: httpx2.Response(200))
-    ctx.settings = con_propiedad
-    assert otro.build_body(ctx)["status"]["containsSyntheticMediaX"] is True
+
+    simulado = _contexto(tmp_path, ajustes, metadata=metadata)
+    simulado.mode = PublishMode.MOCK
+    real = _contexto(tmp_path, ajustes, metadata=metadata)
+
+    assert adaptador.build_body(simulado) == adaptador.build_body(real)
+    assert adaptador.build_body(real)["status"]["containsSyntheticMedia"] is False
+    # Y el mapeo tipado no tiene entrada para "sin revisar": no hay valor por
+    # omision que se pueda colar.
+    assert SyntheticDisclosure.NOT_REVIEWED not in SYNTHETIC_MEDIA_VALUE
+
+
+def test_la_audiencia_sin_decidir_bloquea_el_envio(tmp_path: Path) -> None:
+    ajustes = _ajustes(tmp_path)
+    adaptador, capturadas = _adaptador(ajustes, _handler_subida({"offset": 0}))
+    ctx = _contexto(
+        tmp_path, ajustes, metadata=_metadata(audience=AudienceDecision.UNDECIDED)
+    )
+    resultado = adaptador.start(ctx)
+    assert resultado.state is DestinationState.NEEDS_REVIEW
+    assert "selfDeclaredMadeForKids" in resultado.error.message
+    assert capturadas == []
 
 
 # ---------------------------------------------------------------------------
 # Subida reanudable
 # ---------------------------------------------------------------------------
-
-
-def _handler_subida(estado: dict):
-    """Simula una sesion reanudable que confirma bloque a bloque."""
-
-    def handler(request: httpx2.Request) -> httpx2.Response:
-        if request.url.path.endswith("/upload/youtube/v3/videos"):
-            estado["sesion"] = True
-            return httpx2.Response(
-                200, headers={"Location": "https://www.googleapis.com/session/abc123"}
-            )
-        if "/session/" in request.url.path:
-            rango = request.headers.get("Content-Range", "")
-            if rango.startswith("bytes */"):
-                return httpx2.Response(
-                    308, headers={"Range": f"bytes=0-{estado['offset'] - 1}"}
-                )
-            fin = int(rango.split("-")[1].split("/")[0])
-            total = int(rango.split("/")[1])
-            estado["offset"] = fin + 1
-            estado["peticiones"] = estado.get("peticiones", 0) + 1
-            if estado["offset"] >= total:
-                return httpx2.Response(200, json=_recurso(uploadStatus="uploaded"))
-            return httpx2.Response(308, headers={"Range": f"bytes=0-{fin}"})
-        return httpx2.Response(404)
-
-    return handler
 
 
 def test_la_subida_se_hace_por_bloques_y_reanuda_desde_el_rango_confirmado(

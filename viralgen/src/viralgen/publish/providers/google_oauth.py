@@ -280,6 +280,93 @@ def ensure_token(
     return renovado
 
 
+class LoopbackReceiver:
+    """Servidor local efimero que recibe la respuesta del navegador.
+
+    Se separa del flujo a proposito: asi la logica local -PKCE, `state`,
+    validacion del callback- se puede probar con un receptor doble, y este
+    receptor se puede probar por si mismo contra 127.0.0.1 sin salir de la
+    maquina. Lo unico que sigue necesitando a una persona es aceptar el
+    consentimiento en la pantalla de Google.
+    """
+
+    def __init__(self, host: str = "127.0.0.1", port: int = 0) -> None:
+        import http.server
+
+        recibido: dict[str, str] = {}
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self) -> None:  # noqa: N802 - nombre de la libreria
+                consulta = urllib.parse.urlparse(self.path).query
+                parametros = urllib.parse.parse_qs(consulta)
+                recibido.update({k: v[0] for k, v in parametros.items()})
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(
+                    "Autorizacion recibida. Puedes cerrar esta pestana.".encode("utf-8")
+                )
+
+            def log_message(self, *_args: Any) -> None:
+                """Silencio: la URL de vuelta lleva el codigo de autorizacion."""
+
+        self._recibido = recibido
+        self._servidor = http.server.HTTPServer((host, port), Handler)
+        self.port = self._servidor.server_address[1]
+
+    @property
+    def redirect_uri(self) -> str:
+        return f"http://127.0.0.1:{self.port}/"
+
+    def wait(self, timeout_s: float) -> dict[str, str]:
+        """Espera una peticion. Devuelve los parametros, o {} si se agota."""
+        import threading
+
+        hilo = threading.Thread(target=self._servidor.handle_request, daemon=True)
+        hilo.start()
+        limite = time.monotonic() + timeout_s
+        while hilo.is_alive() and time.monotonic() < limite:
+            hilo.join(timeout=0.2)
+        return dict(self._recibido)
+
+    def close(self) -> None:
+        self._servidor.server_close()
+
+
+def validate_callback(params: dict[str, str], *, expected_state: str) -> str:
+    """Comprueba la respuesta del navegador ANTES de canjear nada.
+
+    Tres rechazos, y ninguno llega al endpoint de token:
+
+    * sin parametros: se agoto la espera;
+    * `state` distinto: la respuesta no corresponde a esta solicitud;
+    * sin `code`: hubo denegacion o error.
+
+    El `state` se compara con `compare_digest` para no filtrar por tiempos.
+    """
+    if not params:
+        raise AuthRequiredError(
+            "No llego ninguna respuesta del navegador: se agoto la espera. No se "
+            "ha canjeado ni guardado nada."
+        )
+    recibido = params.get("state", "")
+    if not secretsmod.compare_digest(recibido, expected_state):
+        raise AuthRequiredError(
+            "La respuesta del navegador no corresponde a esta solicitud "
+            "(`state` distinto). No se ha canjeado ni guardado nada.",
+            details={"state_present": bool(recibido)},
+        )
+    codigo = params.get("code")
+    if not codigo:
+        motivo = params.get("error") or "sin `code` y sin `error`"
+        raise AuthRequiredError(
+            f"No llego ningun codigo de autorizacion: {motivo}. No se ha "
+            "canjeado ni guardado nada.",
+            details={"error": params.get("error")},
+        )
+    return codigo
+
+
 def run_loopback_flow(
     client: PublishHttpClient,
     store: SecretStore,
@@ -289,15 +376,16 @@ def run_loopback_flow(
     open_browser: bool = False,
     timeout_s: float = 300.0,
     announce=None,
+    receiver: Any = None,
 ) -> TokenBundle:
-    """Flujo interactivo completo. Necesita un navegador en ESTA maquina.
+    """Flujo interactivo completo. Necesita un navegador con una persona detras.
 
-    No se cubre con pruebas automaticas a proposito: requiere una persona
-    aceptando un consentimiento real. Lo que si esta probado es todo lo que
-    viene despues (renovacion, caducidad, `invalid_grant`).
+    El consentimiento no se puede automatizar y queda como prueba EXTERNA
+    pendiente. Todo lo demas -reto PKCE, correspondencia de `state`, rechazo de
+    un callback invalido antes del canje, denegacion, tiempo agotado y el
+    contenido exacto de la peticion de token- se prueba con transporte y
+    receptor simulados.
     """
-    import http.server
-    import threading
     import webbrowser
 
     if not settings.youtube_client_id:
@@ -306,28 +394,10 @@ def run_loopback_flow(
             "instalada en tu proyecto de Google Cloud."
         )
 
-    recibido: dict[str, str] = {}
     estado = secretsmod.token_urlsafe(16)
     pkce = new_pkce()
-
-    class Handler(http.server.BaseHTTPRequestHandler):
-        def do_GET(self) -> None:  # noqa: N802 - nombre de la libreria
-            consulta = urllib.parse.urlparse(self.path).query
-            parametros = urllib.parse.parse_qs(consulta)
-            recibido.update({k: v[0] for k, v in parametros.items()})
-            self.send_response(200)
-            self.send_header("Content-Type", "text/plain; charset=utf-8")
-            self.end_headers()
-            self.wfile.write(
-                "Autorizacion recibida. Puedes cerrar esta pestana.".encode("utf-8")
-            )
-
-        def log_message(self, *_args: Any) -> None:
-            """Silencio: la URL de vuelta lleva el codigo de autorizacion."""
-
-    servidor = http.server.HTTPServer(("127.0.0.1", 0), Handler)
-    puerto = servidor.server_address[1]
-    redirect_uri = f"http://127.0.0.1:{puerto}/"
+    receptor = receiver if receiver is not None else LoopbackReceiver()
+    redirect_uri = receptor.redirect_uri
     url = authorization_url(
         auth_endpoint=str(settings.youtube_oauth_auth_url),
         client_id=str(settings.youtube_client_id),
@@ -340,23 +410,14 @@ def run_loopback_flow(
     if open_browser:
         webbrowser.open(url)
 
-    hilo = threading.Thread(target=servidor.handle_request, daemon=True)
-    hilo.start()
-    limite = time.monotonic() + timeout_s
-    while hilo.is_alive() and time.monotonic() < limite:
-        hilo.join(timeout=0.5)
-    servidor.server_close()
+    try:
+        recibido = receptor.wait(timeout_s)
+    finally:
+        cerrar = getattr(receptor, "close", None)
+        if callable(cerrar):
+            cerrar()
 
-    if recibido.get("state") != estado:
-        raise AuthRequiredError(
-            "La respuesta del navegador no corresponde a esta solicitud "
-            "(`state` distinto). No se ha guardado nada."
-        )
-    if "code" not in recibido:
-        raise AuthRequiredError(
-            "No llego ningun codigo de autorizacion: "
-            + str(recibido.get("error", "tiempo de espera agotado"))
-        )
+    codigo = validate_callback(recibido, expected_state=estado)
 
     secreto = getattr(settings, "youtube_client_secret", None)
     bundle = exchange_code(
@@ -364,7 +425,7 @@ def run_loopback_flow(
         token_endpoint=str(settings.youtube_oauth_token_url),
         client_id=str(settings.youtube_client_id),
         client_secret=secreto.get_secret_value() if secreto else None,
-        code=recibido["code"],
+        code=codigo,
         redirect_uri=redirect_uri,
         verifier=pkce.verifier,
         now=now,

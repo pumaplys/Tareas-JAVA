@@ -708,22 +708,52 @@ class ReviewChecklist(StrictModel):
         ]
 
 
+class VerificationEvidenceNotice(StrictModel):
+    """Quien leyo la fuente, cuando y que confirmo.
+
+    Que exista evidencia no dice que la haya leido este programa: `confirmed_by`
+    lo declara. Una evidencia aportada por el revisor se registra como tal.
+    """
+
+    confirmed_by: ShortText
+    confirmed_on: ShortText
+    states: MediumText
+    scope: MediumText
+
+
 class VerificationNotice(StrictModel):
-    """Un parametro de protocolo sin contrastar con su fuente."""
+    """Un parametro de protocolo, con el supuesto usado y su estado."""
 
     check_id: Identifier
     target: Identifier
     source: ShortText
     source_url: HttpUrlStr
     what: MediumText
+    #: Lo que el codigo hace HOY con este parametro.
+    assumption: LongText
+    #: Condicion concreta para darlo por verificado.
+    verified_when: LongText
+    status: Literal["pending", "verified"]
     blocks_real_dispatch: bool
+    evidence: VerificationEvidenceNotice | None = None
+
+    @model_validator(mode="after")
+    def _coherente(self) -> VerificationNotice:
+        if (self.status == "verified") != (self.evidence is not None):
+            raise ValueError(
+                "una entrada verificada lleva evidencia, y una pendiente no la lleva"
+            )
+        if self.status == "verified" and self.blocks_real_dispatch:
+            raise ValueError("una entrada verificada ya no bloquea el envio real")
+        return self
 
 
 class VerificationSummary(StrictModel):
-    """Que quedo sin verificar y a quien bloquea. Viaja con el plan."""
+    """Estado de la verificacion documental. Viaja con el plan."""
 
     reason: LongText
     checks: list[VerificationNotice] = Field(default_factory=list, max_length=60)
+    totals: dict[str, int] = Field(default_factory=dict)
     blocked_targets: list[Identifier] = Field(default_factory=list, max_length=10)
     note: MediumText
 
@@ -1012,7 +1042,18 @@ class BudgetUsage(StrictModel):
     requests_used: int = Field(default=0, ge=0)
     request_limit: int = Field(ge=1)
     bytes_transferred: int = Field(default=0, ge=0)
-    attempts: int = Field(default=0, ge=0)
+    attempts: int = Field(
+        default=0, ge=0, description="Pasos dados sobre el destino, consultas incluidas."
+    )
+    operation_attempts: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Intentos de la operacion que CREA algo en remoto. Es el contador "
+            "que gobierna `attempt_limit`: consultar no gasta intentos, repetir "
+            "un envio si."
+        ),
+    )
     attempt_limit: int = Field(ge=1)
     note: Literal[
         "Limites LOCALES del producto (incluyen OAuth, staging y adaptadores). "

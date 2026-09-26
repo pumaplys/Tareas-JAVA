@@ -51,6 +51,7 @@ from .receipt import build_receipt, write_receipt
 from .schemas import DestinationState, PublishMode, Visibility, schema_documents
 from .secrets import SecretStore, require_secret_store
 from .storage import PublishStorage
+from . import verification
 from .verification import describe_all
 from .worker import PublishWorker
 
@@ -160,6 +161,20 @@ def add_publish_parser(subparsers: argparse._SubParsersAction) -> None:
 
     gc = sub.add_parser("gc", help="Limpieza de temporales y objetos propios.")
     gc.add_argument("--apply", action="store_true", help="Sin esto, solo enumera.")
+
+    verificacion = sub.add_parser(
+        "verification",
+        help="Estado de la verificacion documental de cada parametro de protocolo.",
+    )
+    verificacion.add_argument(
+        "--target",
+        default=None,
+        choices=["youtube", "instagram", "staging", "tiktok"],
+        help="Solo las entradas que afectan a ese destino.",
+    )
+    verificacion.add_argument(
+        "--pending-only", action="store_true", help="Oculta las ya verificadas."
+    )
 
 
 def add_auth_parser(subparsers: argparse._SubParsersAction) -> None:
@@ -833,6 +848,43 @@ def _cmd_gc(args: argparse.Namespace, settings: Any) -> int:
     return int(ExitCode.OK)
 
 
+def _cmd_verification(args: argparse.Namespace) -> int:
+    """Que parametro esta verificado, con que supuesto y quien lo confirmo.
+
+    Es la misma informacion que viaja en el plan. Se expone como comando para
+    que se pueda auditar sin generar un plan, y para que el informe de una
+    revision no dependa de que alguien copie la tabla a mano.
+    """
+    entradas = (
+        verification.checks_for(args.target) if args.target else list(verification.CHECKS)
+    )
+    if args.pending_only:
+        entradas = [entrada for entrada in entradas if not entrada.verified]
+    datos = [entrada.describe() for entrada in entradas]
+    bloqueantes = [fila["check_id"] for fila in datos if fila["blocks_real_dispatch"]]
+    _emit(
+        {
+            "command": "publish verification",
+            "target": args.target,
+            "reason": verification.UNREACHABLE_REASON,
+            "totals": {
+                "entries": len(datos),
+                "pending": sum(1 for fila in datos if fila["status"] == "pending"),
+                "verified": sum(1 for fila in datos if fila["status"] == "verified"),
+                "blocking": len(bloqueantes),
+            },
+            "blocking": bloqueantes,
+            "checks": datos,
+            "note": (
+                "Una entrada verificada declara QUIEN aporto la evidencia. Las "
+                "pendientes que bloquean impiden el envio real de su destino."
+            ),
+            "exit_code": int(ExitCode.OK),
+        }
+    )
+    return int(ExitCode.OK)
+
+
 # ---------------------------------------------------------------------------
 # auth
 # ---------------------------------------------------------------------------
@@ -946,6 +998,8 @@ def run_publish(args: argparse.Namespace, settings: Any) -> int:
         return _cmd_accounts_check(args, settings)
     if comando == "gc":
         return _cmd_gc(args, settings)
+    if comando == "verification":
+        return _cmd_verification(args)
     raise ConfigError(f"Subcomando de publish desconocido: {comando}")
 
 

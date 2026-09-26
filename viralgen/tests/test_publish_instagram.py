@@ -580,3 +580,277 @@ def test_la_limpieza_respeta_referencias_y_estados_ambiguos(tmp_path: Path) -> N
     almacenamiento.update_destination("pub1", "ig", state=DestinationState.DELIVERED)
     candidatos, _ = plan_cleanup(almacenamiento, now=AHORA)
     assert [c.object_key for c in candidatos] == ["viralgen/pub1/ig/abc.mp4"]
+
+
+# ---------------------------------------------------------------------------
+# La excepcion del contenedor perdido, con limite
+# ---------------------------------------------------------------------------
+#
+# Crear un contenedor no publica nada: sin `media_publish` no hay nada visible y
+# el contenedor caduca solo. Por eso perder esa respuesta SI admite otro intento,
+# al contrario que perder la respuesta de la publicacion. Pero la excepcion tiene
+# tres limites, y son estas pruebas:
+#
+#   1. los intentos se persisten y se agotan;
+#   2. un contenedor cuya identidad no llego nunca se publica;
+#   3. solo se continua con un identificador recibido Y guardado.
+
+
+def _plan_instagram(tmp_path: Path, video: Path):
+    """Un plan real con un unico destino de Instagram, ya autorizado."""
+    from conftest import publish_destination, publish_plan, publish_sources
+    from viralgen.diskutil import sha256_file
+    from viralgen.publish.schemas import AccountRef, DestinationOptions, PublishMode
+
+    fuentes = publish_sources(
+        video=publish_sources().video.model_copy(
+            update={
+                "path": str(video),
+                "sha256": sha256_file(video),
+                "size_bytes": video.stat().st_size,
+            }
+        )
+    )
+    destino = publish_destination(
+        destination_id="ig",
+        platform=Platform.INSTAGRAM_REELS,
+        account=AccountRef(
+            platform=Platform.INSTAGRAM_REELS,
+            alias="reels_demo",
+            expected_account_id=IG_USER,
+            account_id_kind="instagram_user_id",
+        ),
+        requested_visibility=Visibility.PUBLIC,
+        options=DestinationOptions(share_to_feed=True, requires_staging=True),
+    )
+    return publish_plan(
+        mode=PublishMode.REAL, sources=fuentes, destinations=[destino]
+    )
+
+
+def _worker_instagram(tmp_path: Path, handler, *, ajustes=None):
+    """Trabajador con el adaptador REAL de Instagram y transporte simulado."""
+    from viralgen.publish.authorize import build_authorization, store_authorization
+    from viralgen.publish.clock import ManualClock
+    from viralgen.publish.queue import enqueue_plan, publication_id_for
+    from viralgen.publish.schemas import PublishMode
+    from viralgen.publish.storage import PublishStorage
+    from viralgen.publish.worker import PublishWorker
+    from viralgen.storage import Storage
+
+    ajustes = ajustes or _ajustes(tmp_path)
+    video = tmp_path / "video.mp4"
+    video.write_bytes(b"\x01" * 1_500_000)
+    plan = _plan_instagram(tmp_path, video)
+    identificador = publication_id_for(plan.publish_key, mode=PublishMode.REAL)
+
+    almacenamiento = PublishStorage(Storage(tmp_path / "datos"))
+    almacenamiento.migrate()
+    inicio = datetime(2026, 9, 24, 14, 0, tzinfo=UTC)
+    store_authorization(
+        almacenamiento,
+        publication_id=identificador,
+        registro=build_authorization(
+            plan, plan_sha256="e" * 64, operator_identity="operador",
+            clock=ManualClock(inicio),
+        ),
+    )
+    enqueue_plan(
+        almacenamiento, plan=plan, plan_sha256="e" * 64,
+        publication_id=identificador, settings=ajustes, clock=ManualClock(inicio),
+    )
+
+    staging, cliente_s3 = _staging(tmp_path)
+    adaptador, capturadas = _adaptador(ajustes, handler, staging)
+    trabajador = PublishWorker(
+        storage=almacenamiento,
+        settings=ajustes,
+        clock=ManualClock(datetime(2026, 9, 24, 16, 35, tzinfo=UTC)),
+        secrets=_almacen(tmp_path),
+        adapter_factory=lambda *a, **k: adaptador,
+    )
+    return trabajador, almacenamiento, identificador, capturadas, cliente_s3
+
+
+def _avanzar(trabajador, minutos: int) -> None:
+    from viralgen.publish.clock import ManualClock
+
+    trabajador.clock = ManualClock(trabajador.clock.now() + timedelta(minutes=minutos))
+
+
+def test_los_intentos_de_crear_contenedor_se_persisten_y_se_agotan(
+    tmp_path: Path,
+) -> None:
+    """Si la respuesta se pierde siempre, el destino acaba en revision."""
+    estado = {"creaciones": 0, "publicaciones": 0}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        if request.url.path.endswith("/media"):
+            estado["creaciones"] += 1
+            raise httpx2.ReadTimeout("respuesta perdida", request=request)
+        if request.url.path.endswith("/media_publish"):  # pragma: no cover
+            estado["publicaciones"] += 1
+            return httpx2.Response(200, json={"id": MEDIO})
+        return httpx2.Response(404, json={"error": {"message": request.url.path}})
+
+    trabajador, almacenamiento, pub, _capturadas, cliente_s3 = _worker_instagram(
+        tmp_path, handler
+    )
+
+    for _ in range(6):
+        trabajador.run_once()
+        _avanzar(trabajador, 2)
+
+    # El video se sube al almacenamiento temporal UNA vez: los reintentos
+    # reutilizan el objeto y su URL firmada mientras siga viva.
+    assert len(cliente_s3.subidas) == 1
+
+    fila = almacenamiento.get_destination(pub, "ig")
+    limite = trabajador.settings.publish_max_attempts_per_operation
+    assert estado["creaciones"] == limite, "no se intenta mas veces que el tope"
+    assert fila["operation_attempts"] == limite
+    assert fila["state"] == DestinationState.NEEDS_REVIEW.value
+    assert "operation_attempts_exhausted" in fila["last_error_json"]
+    # Y nunca se publico nada: sin identificador no hay publicacion.
+    assert estado["publicaciones"] == 0
+    assert json.loads(fila["remote_refs_json"]) == {}
+    assert fila["real_remote_id"] is None
+
+
+def test_el_contador_sobrevive_al_reinicio_del_proceso(tmp_path: Path) -> None:
+    """Abrir otro proceso no devuelve intentos."""
+    from viralgen.publish.storage import PublishStorage
+    from viralgen.storage import Storage
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        if request.url.path.endswith("/media"):
+            raise httpx2.ReadTimeout("respuesta perdida", request=request)
+        return httpx2.Response(404)
+
+    trabajador, almacenamiento, pub, _c, _s = _worker_instagram(tmp_path, handler)
+    trabajador.run_once()
+    _avanzar(trabajador, 2)
+    trabajador.run_once()
+    almacenamiento.storage.close()
+
+    otra = PublishStorage(Storage(tmp_path / "datos"))
+    fila = otra.get_destination(pub, "ig")
+    assert fila["operation_attempts"] == 2
+    assert fila["state"] == DestinationState.DISPATCHING.value
+
+
+def test_tras_una_respuesta_perdida_se_reanuda_con_el_id_recibido(
+    tmp_path: Path,
+) -> None:
+    """Segundo intento correcto: se guarda el id y desde ahi solo se consulta."""
+    estado = {"creaciones": 0, "publicaciones": 0, "status": "FINISHED"}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        ruta = request.url.path
+        if ruta.endswith("/media"):
+            estado["creaciones"] += 1
+            if estado["creaciones"] == 1:
+                raise httpx2.ReadTimeout("respuesta perdida", request=request)
+            return httpx2.Response(200, json={"id": CONTENEDOR})
+        if ruta.endswith("/media_publish"):
+            estado["publicaciones"] += 1
+            assert request.url.params["creation_id"] == CONTENEDOR
+            return httpx2.Response(200, json={"id": MEDIO})
+        if ruta.endswith(f"/{CONTENEDOR}"):
+            return httpx2.Response(
+                200, json={"id": CONTENEDOR, "status_code": estado["status"]}
+            )
+        if ruta.endswith(f"/{MEDIO}"):
+            return httpx2.Response(
+                200,
+                json={"id": MEDIO, "permalink": "https://www.instagram.com/reel/ABC/"},
+            )
+        return httpx2.Response(404, json={"error": {"message": ruta}})
+
+    trabajador, almacenamiento, pub, _c, _s = _worker_instagram(tmp_path, handler)
+
+    trabajador.run_once()  # 1: creacion perdida
+    fila = almacenamiento.get_destination(pub, "ig")
+    assert json.loads(fila["remote_refs_json"]) == {}, "no se guarda lo que no llego"
+
+    _avanzar(trabajador, 2)
+    trabajador.run_once()  # 2: creacion correcta, id guardado
+    fila = almacenamiento.get_destination(pub, "ig")
+    assert json.loads(fila["remote_refs_json"])["container_id"] == CONTENEDOR
+    assert fila["state"] == DestinationState.WAITING_REMOTE.value
+    assert estado["publicaciones"] == 0, "FINISHED todavia no se ha consultado"
+
+    _avanzar(trabajador, 2)
+    trabajador.run_once()  # 3: consulta, publicacion y verificacion
+    fila = almacenamiento.get_destination(pub, "ig")
+    assert fila["state"] == DestinationState.DELIVERED.value
+    assert fila["real_remote_id"] == MEDIO
+    assert estado["creaciones"] == 2, "no se crea un tercer contenedor"
+    assert estado["publicaciones"] == 1
+    # Consultar no gasta intentos de operacion: solo hubo dos envios.
+    assert fila["operation_attempts"] == 2
+    assert fila["attempts"] > fila["operation_attempts"]
+
+
+def test_perder_la_publicacion_no_crea_otro_contenedor_en_las_pasadas_siguientes(
+    tmp_path: Path,
+) -> None:
+    """La incertidumbre va a reconciliacion y ahi se queda hasta que alguien mire."""
+    estado = {"creaciones": 0, "publicaciones": 0, "status": "FINISHED"}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        ruta = request.url.path
+        if ruta.endswith("/media"):
+            estado["creaciones"] += 1
+            return httpx2.Response(200, json={"id": CONTENEDOR})
+        if ruta.endswith("/media_publish"):
+            estado["publicaciones"] += 1
+            estado["status"] = "PUBLISHED"
+            raise httpx2.ReadTimeout("respuesta perdida", request=request)
+        if ruta.endswith(f"/{CONTENEDOR}"):
+            return httpx2.Response(
+                200, json={"id": CONTENEDOR, "status_code": estado["status"]}
+            )
+        return httpx2.Response(404, json={"error": {"message": ruta}})
+
+    trabajador, almacenamiento, pub, _c, _s = _worker_instagram(tmp_path, handler)
+
+    trabajador.run_once()  # crea el contenedor
+    _avanzar(trabajador, 2)
+    trabajador.run_once()  # FINISHED -> publica -> se pierde la respuesta
+
+    fila = almacenamiento.get_destination(pub, "ig")
+    assert fila["state"] == DestinationState.NEEDS_RECONCILIATION.value
+    assert "published_without_media_id" in fila["last_error_json"]
+
+    # Tres pasadas mas: el trabajador no toca un destino en reconciliacion.
+    for _ in range(3):
+        _avanzar(trabajador, 5)
+        informe = trabajador.run_once()
+        assert informe.outcomes == []
+
+    assert estado["creaciones"] == 1, "no se crea otro contenedor"
+    assert estado["publicaciones"] == 1, "no se repite la publicacion"
+    assert almacenamiento.get_destination(pub, "ig")["real_remote_id"] is None
+
+
+def test_un_contenedor_sin_identificador_no_se_publica(tmp_path: Path) -> None:
+    """Si la creacion responde sin `id`, no hay nada que publicar."""
+    estado = {"publicaciones": 0}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        if request.url.path.endswith("/media"):
+            return httpx2.Response(200, json={"kind": "container"})
+        if request.url.path.endswith("/media_publish"):  # pragma: no cover
+            estado["publicaciones"] += 1
+            return httpx2.Response(200, json={"id": MEDIO})
+        return httpx2.Response(404)
+
+    trabajador, almacenamiento, pub, _c, _s = _worker_instagram(tmp_path, handler)
+    trabajador.run_once()
+
+    fila = almacenamiento.get_destination(pub, "ig")
+    assert fila["state"] == DestinationState.NEEDS_REVIEW.value
+    assert "container_without_id" in fila["last_error_json"]
+    assert estado["publicaciones"] == 0
+    assert json.loads(fila["remote_refs_json"]) == {}

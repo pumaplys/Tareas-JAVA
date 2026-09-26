@@ -715,9 +715,47 @@
       "title": "TextSource",
       "type": "string"
     },
+    "VerificationEvidenceNotice": {
+      "additionalProperties": false,
+      "description": "Quien leyo la fuente, cuando y que confirmo.\n\nQue exista evidencia no dice que la haya leido este programa: `confirmed_by`\nlo declara. Una evidencia aportada por el revisor se registra como tal.",
+      "properties": {
+        "confirmed_by": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Confirmed By",
+          "type": "string"
+        },
+        "confirmed_on": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Confirmed On",
+          "type": "string"
+        },
+        "states": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "States",
+          "type": "string"
+        },
+        "scope": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Scope",
+          "type": "string"
+        }
+      },
+      "required": [
+        "confirmed_by",
+        "confirmed_on",
+        "states",
+        "scope"
+      ],
+      "title": "VerificationEvidenceNotice",
+      "type": "object"
+    },
     "VerificationNotice": {
       "additionalProperties": false,
-      "description": "Un parametro de protocolo sin contrastar con su fuente.",
+      "description": "Un parametro de protocolo, con el supuesto usado y su estado.",
       "properties": {
         "check_id": {
           "maxLength": 64,
@@ -751,9 +789,40 @@
           "title": "What",
           "type": "string"
         },
+        "assumption": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Assumption",
+          "type": "string"
+        },
+        "verified_when": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Verified When",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "verified"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
         "blocks_real_dispatch": {
           "title": "Blocks Real Dispatch",
           "type": "boolean"
+        },
+        "evidence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VerificationEvidenceNotice"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -762,6 +831,9 @@
         "source",
         "source_url",
         "what",
+        "assumption",
+        "verified_when",
+        "status",
         "blocks_real_dispatch"
       ],
       "title": "VerificationNotice",
@@ -769,7 +841,7 @@
     },
     "VerificationSummary": {
       "additionalProperties": false,
-      "description": "Que quedo sin verificar y a quien bloquea. Viaja con el plan.",
+      "description": "Estado de la verificacion documental. Viaja con el plan.",
       "properties": {
         "reason": {
           "maxLength": 4000,
@@ -784,6 +856,13 @@
           "maxItems": 60,
           "title": "Checks",
           "type": "array"
+        },
+        "totals": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Totals",
+          "type": "object"
         },
         "blocked_targets": {
           "items": {

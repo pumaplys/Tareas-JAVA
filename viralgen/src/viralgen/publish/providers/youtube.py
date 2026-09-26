@@ -36,7 +36,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from ...schemas.common import Platform
-from ..errors import ReconciliationRequiredError
+from ..errors import DisclosureNotTransmittableError, ReconciliationRequiredError
 from ..schemas import (
     AudienceDecision,
     DestinationState,
@@ -55,6 +55,47 @@ from .google_oauth import SCOPES, ensure_token
 
 #: Decision inicial del bloque de subida. Multiplo de 256 KiB.
 CHUNK_UNIT = 256 * 1024
+
+#: Nombre OFICIAL de la propiedad de `status` con la que YouTube recoge la
+#: divulgacion de contenido sintetico realista.
+#:
+#: Ya no se lee de configuracion: el revisor consulto la documentacion oficial
+#: y confirmo que `status.containsSyntheticMedia` existe, es booleano y lo
+#: admite `videos.insert`. Esa evidencia consta en
+#: `verification.yt_synthetic_media_property`, con quien la aporto: este modulo
+#: no pudo abrir la URL y no dice lo contrario.
+SYNTHETIC_MEDIA_PROPERTY = "containsSyntheticMedia"
+
+#: Mapeo TIPADO de la decision editorial al valor que se transmite.
+#:
+#: `NOT_REVIEWED` no aparece a proposito: una decision sin tomar no se manda
+#: como `false`, porque eso seria declarar algo que nadie ha declarado. Y el
+#: valor `false` SI se transmite: se busca con `.get()` y se compara con `None`,
+#: nunca por veracidad, que es justo el error que omitiria los `false`.
+SYNTHETIC_MEDIA_VALUE: dict[SyntheticDisclosure, bool] = {
+    SyntheticDisclosure.CONTAINS_REALISTIC_SYNTHETIC_MEDIA: True,
+    SyntheticDisclosure.NO_REALISTIC_SYNTHETIC_MEDIA: False,
+}
+
+# Lo que la divulgacion NO es, escrito donde se decide:
+#
+# * No es `simulation`: eso dice de donde salio el paquete. Un video real de
+#   produccion puede llevar medios sinteticos realistas.
+# * No es "se uso IA": un guion escrito con ayuda de un modelo, o una voz
+#   sintetizada, no implican por si mismos contenido REALISTA que se pueda
+#   confundir con algo grabado.
+#
+# La decision la toma una persona en el plan; aqui solo se transmite.
+
+#: Motivo legible cuando la divulgacion no se puede transmitir.
+_MOTIVO_DIVULGACION = {
+    SyntheticDisclosure.NOT_REVIEWED: (
+        "la divulgacion de contenido sintetico realista no esta resuelta en el "
+        "plan. Es una decision editorial de una persona: no se deduce de "
+        "`simulation` ni de haber usado IA, y no se envia como `false` por "
+        "omision. Resuelvela y vuelve a autorizar."
+    ),
+}
 
 #: Mapa de privacidad del contrato a lo que espera la API.
 PRIVACY = {
@@ -260,8 +301,10 @@ class YouTubeAdapter(PublisherAdapter):
     def build_body(self, ctx: DispatchContext) -> dict[str, Any]:
         """Solo metadatos aprobados. Nada que el operador no haya visto."""
         if ctx.metadata.audience is AudienceDecision.UNDECIDED:
-            raise ValueError(
-                "la audiencia infantil debe estar decidida antes de enviar nada"
+            raise DisclosureNotTransmittableError(
+                "la audiencia infantil no esta decidida: `selfDeclaredMadeForKids` "
+                "no se puede rellenar por nadie mas, asi que no se envia nada",
+                details={"audience": ctx.metadata.audience.value},
             )
         snippet: dict[str, Any] = {
             "title": ctx.metadata.title,
@@ -277,22 +320,54 @@ class YouTubeAdapter(PublisherAdapter):
                 ctx.metadata.audience is AudienceDecision.MADE_FOR_KIDS
             ),
         }
-        propiedad = getattr(
-            self.settings, "youtube_synthetic_disclosure_property", None
-        )
-        if (
-            propiedad
-            and ctx.metadata.synthetic_disclosure
-            is SyntheticDisclosure.CONTAINS_REALISTIC_SYNTHETIC_MEDIA
-        ):
-            # El nombre de esta propiedad es configurable a proposito: no se
-            # inventa un identificador de API que no se ha podido verificar.
-            estado[str(propiedad)] = True
+        # `.get()` + comparacion con None: un `false` aprobado se transmite
+        # igual que un `true`. Comprobar veracidad omitiria el `false`, que es
+        # una declaracion tan explicita como la otra.
+        sintetico = SYNTHETIC_MEDIA_VALUE.get(ctx.metadata.synthetic_disclosure)
+        if sintetico is None:
+            raise DisclosureNotTransmittableError(
+                _MOTIVO_DIVULGACION[ctx.metadata.synthetic_disclosure]
+                if ctx.metadata.synthetic_disclosure in _MOTIVO_DIVULGACION
+                else (
+                    "no hay forma de transmitir la divulgacion "
+                    f"{ctx.metadata.synthetic_disclosure.value!r}: no se envia el "
+                    "video en vez de enviarlo sin declararla"
+                ),
+                details={
+                    "synthetic_disclosure": ctx.metadata.synthetic_disclosure.value,
+                    "property": SYNTHETIC_MEDIA_PROPERTY,
+                },
+            )
+        estado[SYNTHETIC_MEDIA_PROPERTY] = sintetico
         return {"snippet": snippet, "status": estado}
 
     # -- Envio -------------------------------------------------------------
 
     def start(self, ctx: DispatchContext) -> StepResult:
+        # Antes de tocar nada: si una decision aprobada no se puede transmitir,
+        # el envio se bloquea con su motivo. No se sube "y ya se vera".
+        try:
+            self.build_body(ctx)
+        except DisclosureNotTransmittableError as exc:
+            return StepResult(
+                state=DestinationState.NEEDS_REVIEW,
+                phase=TransferPhase.NOT_STARTED,
+                error=StructuredError(
+                    code=exc.code,
+                    error_class=ErrorClass.LOCAL,
+                    message=exc.message[:400],
+                    retryable=False,
+                    occurred_at=ctx.now,
+                ),
+                evidence=EvidenceRecord(
+                    source=EvidenceSource.LOCAL_PACKAGE,
+                    checked_at=ctx.now,
+                    summary=(
+                        "comprobacion local: los metadatos aprobados no se pueden "
+                        "transmitir tal cual, asi que no se envia nada"
+                    ),
+                ),
+            )
         sesion = self._load_session(ctx)
         cabeceras = self._token_headers(ctx)
         if sesion is None:

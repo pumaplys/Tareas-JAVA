@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS publication_destinations (
     requests_used        INTEGER NOT NULL DEFAULT 0,
     bytes_transferred    INTEGER NOT NULL DEFAULT 0,
     attempts             INTEGER NOT NULL DEFAULT 0,
+    operation_attempts   INTEGER NOT NULL DEFAULT 0,
     lease_owner          TEXT,
     lease_expires_at     TEXT,
     last_error_json      TEXT,
@@ -156,6 +157,18 @@ CREATE TABLE IF NOT EXISTS publication_staging_objects (
 """
 
 
+#: Columnas anadidas despues de la primera version. La migracion las anade con
+#: ALTER TABLE si faltan, porque `CREATE TABLE IF NOT EXISTS` no toca una tabla
+#: que ya existe: una base creada antes se quedaria sin ellas.
+COLUMNAS_ANADIDAS: tuple[tuple[str, str, str], ...] = (
+    (
+        "publication_destinations",
+        "operation_attempts",
+        "INTEGER NOT NULL DEFAULT 0",
+    ),
+)
+
+
 def _fila(row) -> dict | None:
     return dict(row) if row is not None else None
 
@@ -177,6 +190,15 @@ class PublishStorage:
             return
         conexion = self.storage.connect()
         conexion.executescript(PUBLISH_SCHEMA_SQL)
+        for tabla, columna, definicion in COLUMNAS_ANADIDAS:
+            existentes = {
+                fila["name"]
+                for fila in conexion.execute(f"PRAGMA table_info({tabla})")
+            }
+            if columna not in existentes:
+                conexion.execute(
+                    f"ALTER TABLE {tabla} ADD COLUMN {columna} {definicion}"
+                )
         self._migrated = True
 
     # -- Trabajos ----------------------------------------------------------
@@ -307,6 +329,7 @@ class PublishStorage:
         requests_delta: int = 0,
         bytes_delta: int = 0,
         attempts_delta: int = 0,
+        operation_attempts_delta: int = 0,
         **campos: Any,
     ) -> dict:
         """Actualiza un destino en una transaccion corta.
@@ -336,6 +359,9 @@ class PublishStorage:
             asignaciones["requests_used"] = fila["requests_used"] + requests_delta
             asignaciones["bytes_transferred"] = fila["bytes_transferred"] + bytes_delta
             asignaciones["attempts"] = fila["attempts"] + attempts_delta
+            asignaciones["operation_attempts"] = (
+                fila["operation_attempts"] + operation_attempts_delta
+            )
             asignaciones["updated_at"] = iso(utcnow())
             sql = ", ".join(f"{nombre} = :{nombre}" for nombre in asignaciones)
             conexion.execute(

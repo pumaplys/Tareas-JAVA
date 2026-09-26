@@ -2152,6 +2152,7 @@ simular y nunca enviar.
 | Almacenamiento temporal | no | **sí** (bucket privado, URL firmada 2 h) | no |
 | Programación remota | no (`publishAt` no se envía) | no | no |
 | Verificación | `videos.list` | consulta del medio | **ninguna** |
+| Divulgación sintética | `status.containsSyntheticMedia` (booleano, `true` y `false`) | no se transmite en este flujo | va en la ficha del paquete |
 | Estado típico | `delivered` | `delivered` | `awaiting_manual` → `manually_reported` |
 
 TikTok no tiene integración remota porque sus directrices de Direct Post
@@ -2191,6 +2192,7 @@ viralgen publish validate --plan <publication_plan.json>
 viralgen publish schema --out schema/
 viralgen publish accounts check --plan <publication_plan.json>
 viralgen publish gc            # enumera; con --apply borra lo propio
+viralgen publish verification  # que parámetro está verificado y quién lo confirmó
 ```
 
 Ni `plan` ni `mock` necesitan credenciales. Para el modo real:
@@ -2240,6 +2242,13 @@ plataforma**, y el recibo no finge lo contrario.
 * Las URLs firmadas, las URIs de sesión y los tokens viven en un directorio
   privado (0700, archivos 0600) **fuera del repositorio**, y los contratos
   rechazan en validación cualquier texto que las contenga.
+* **Sin decisión de divulgación no se sube.** Si la declaración de contenido
+  sintético realista no está resuelta, el envío se bloquea con
+  `disclosure_not_transmittable`: no se manda `false` por omisión. Y un `false`
+  aprobado **sí** se transmite, porque es una declaración.
+* **Los intentos de una operación que crea algo están acotados**
+  (`operation_attempts`, 3 por defecto, persistidos). Consultar no gasta
+  intentos; repetir un envío sí. Agotados, el destino pasa a `needs_review`.
 
 ### Límites locales ≠ cuotas de las plataformas
 
@@ -2251,11 +2260,23 @@ no se deducen de memoria.
 
 ### Pendiente antes de operar en una VPS
 
-El modo real está **bloqueado a propósito**: ninguna de las referencias de
-protocolo citadas era alcanzable desde este entorno (403 del proxy de egreso), y
-esa limitación vive en el código (`viralgen.publish.verification`), aparece en
-`publish plan` y bloquea el destino afectado. Levantar un bloqueo exige
-comprobar el parámetro contra su fuente, no que "parezca correcto".
+El modo real está **bloqueado a propósito**: las referencias de protocolo
+citadas no eran alcanzables desde este entorno (403 del proxy de egreso), y esa
+limitación vive en el código (`viralgen.publish.verification`), aparece en
+`publish plan` y bloquea el destino afectado. La lista completa, con el supuesto
+que usa el código y la condición para darla por verificada:
+
+```bash
+viralgen publish verification                 # las 13 entradas
+viralgen publish verification --target youtube --pending-only
+```
+
+**13 entradas: 12 pendientes y 1 verificada; 8 bloquean el modo real.** La
+verificada es `yt_synthetic_media_property`, y su evidencia declara **quién la
+aportó**: el revisor consultó la documentación oficial y confirmó
+`status.containsSyntheticMedia`. Este módulo no se atribuye un acceso que no
+tuvo. Levantar un bloqueo exige comprobar el parámetro contra su fuente, no que
+"parezca correcto".
 
 Faltan además cuentas, permisos, credenciales y un paquete de producción; los
 mocks **no los sustituyen**. Las unidades de systemd están **preparadas y no

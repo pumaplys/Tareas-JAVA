@@ -76,6 +76,7 @@ def destination_from_row(fila: dict, *, request_limit: int, attempt_limit: int) 
             request_limit=request_limit,
             bytes_transferred=int(fila["bytes_transferred"]),
             attempts=int(fila["attempts"]),
+            operation_attempts=int(fila["operation_attempts"]),
             attempt_limit=attempt_limit,
         ),
         last_error=_modelo(fila["last_error_json"], StructuredError),

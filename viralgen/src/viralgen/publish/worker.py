@@ -362,15 +362,46 @@ class PublishWorker:
             phase=TransferPhase.UPLOADING.value,
             dispatch_started_at=iso(now),
             attempts_delta=1,
+            operation_attempts_delta=1,
         )
         return self._ejecutar(fila, plan, destino_plan, modo, now=now, paso="start")
 
     def _continuar(self, fila, plan, destino_plan, modo, *, now) -> DestinationOutcome:
-        paso = "start" if fila["state"] == DestinationState.DISPATCHING.value else "poll"
-        fila = self.storage.update_destination(
-            fila["publication_id"], fila["destination_id"], attempts_delta=1
+        """Retoma un destino en curso: o reintenta el envio, o consulta.
+
+        La distincion importa para el limite: **consultar no gasta intentos**
+        -leer dos veces no publica dos veces-, pero repetir la operacion que
+        crea algo si. Por eso el tope se aplica solo al reintento.
+        """
+        reintento = fila["state"] == DestinationState.DISPATCHING.value
+        if reintento:
+            limite = int(self.settings.publish_max_attempts_per_operation)
+            realizados = int(fila["operation_attempts"])
+            if realizados >= limite:
+                return self._a_revision(
+                    fila,
+                    now=now,
+                    codigo="operation_attempts_exhausted",
+                    mensaje=(
+                        f"se agotaron los {limite} intentos de la operacion de "
+                        f"envio de este destino ({realizados} realizados). No se "
+                        "crea nada mas sin que una persona lo revise: repetir a "
+                        "ciegas es como aparecen los duplicados."
+                    ),
+                )
+            fila = self.storage.update_destination(
+                fila["publication_id"],
+                fila["destination_id"],
+                attempts_delta=1,
+                operation_attempts_delta=1,
+            )
+        else:
+            fila = self.storage.update_destination(
+                fila["publication_id"], fila["destination_id"], attempts_delta=1
+            )
+        return self._ejecutar(
+            fila, plan, destino_plan, modo, now=now, paso="start" if reintento else "poll"
         )
-        return self._ejecutar(fila, plan, destino_plan, modo, now=now, paso=paso)
 
     def _ejecutar(self, fila, plan, destino_plan, modo, *, now, paso) -> DestinationOutcome:
         adaptador = self.adapter_factory(

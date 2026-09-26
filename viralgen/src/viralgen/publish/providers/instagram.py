@@ -389,6 +389,12 @@ class InstagramReelsAdapter(PublisherAdapter):
                 # Un contenedor NO es una publicacion: sin `media_publish` no
                 # hay nada visible, y el contenedor caduca solo. Por eso esto
                 # no bloquea el destino, pero queda registrado como ambiguo.
+                #
+                # La excepcion tiene limite: el trabajador cuenta los intentos
+                # de operacion y, agotados, manda el destino a revision. Y como
+                # aqui no se guarda ningun `container_id`, un contenedor cuya
+                # identidad no llego NO se publica nunca: `media_publish` solo
+                # se pide con un identificador recibido y guardado.
                 return StepResult(
                     state=DestinationState.DISPATCHING,
                     phase=TransferPhase.UPLOADING,

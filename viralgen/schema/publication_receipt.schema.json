@@ -115,8 +115,16 @@
         },
         "attempts": {
           "default": 0,
+          "description": "Pasos dados sobre el destino, consultas incluidas.",
           "minimum": 0,
           "title": "Attempts",
+          "type": "integer"
+        },
+        "operation_attempts": {
+          "default": 0,
+          "description": "Intentos de la operacion que CREA algo en remoto. Es el contador que gobierna `attempt_limit`: consultar no gasta intentos, repetir un envio si.",
+          "minimum": 0,
+          "title": "Operation Attempts",
           "type": "integer"
         },
         "attempt_limit": {
