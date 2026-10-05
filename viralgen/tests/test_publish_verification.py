@@ -224,3 +224,80 @@ def test_el_motivo_no_afirma_haber_leido_nada() -> None:
         v.UNREACHABLE_REASON
     )
     assert "2026-10-05" in v.UNREACHABLE_REASON
+
+
+# ---------------------------------------------------------------------------
+# El comando que publica este registro
+# ---------------------------------------------------------------------------
+
+
+def test_el_comando_de_verificacion_suma_los_tres_estados(tmp_path, capsys) -> None:
+    """Los recuentos del informe tienen que cuadrar con las entradas.
+
+    Regresion de un defecto real: el comando contaba `pending` y `verified` y
+    se dejaba `partial` fuera, asi que 4+5 no sumaban 13 y el informe mentia por
+    omision.
+    """
+    import json
+
+    from viralgen.cli import main
+
+    assert main(["--data-dir", str(tmp_path), "publish", "verification"]) == 0
+    datos = json.loads(capsys.readouterr().out)
+    totales = datos["totals"]
+    assert (
+        totales["verified"] + totales["partial"] + totales["pending"]
+        == totales["entries"]
+        == len(datos["checks"])
+    )
+    assert totales["blocking"] == len(datos["blocking"])
+
+
+def test_el_comando_filtra_por_destino(tmp_path, capsys) -> None:
+    import json
+
+    from viralgen.cli import main
+
+    assert (
+        main(
+            ["--data-dir", str(tmp_path), "publish", "verification", "--target", "youtube"]
+        )
+        == 0
+    )
+    datos = json.loads(capsys.readouterr().out)
+    assert {c["target"] for c in datos["checks"]} == {"youtube"}
+    assert datos["blocking"] == []
+    assert datos["totals"]["entries"] == len(v.checks_for("youtube"))
+
+
+def test_el_comando_puede_ocultar_las_verificadas(tmp_path, capsys) -> None:
+    import json
+
+    from viralgen.cli import main
+
+    assert (
+        main(
+            [
+                "--data-dir", str(tmp_path), "publish", "verification",
+                "--target", "youtube", "--pending-only",
+            ]
+        )
+        == 0
+    )
+    datos = json.loads(capsys.readouterr().out)
+    assert datos["totals"]["verified"] == 0
+    assert {c["status"] for c in datos["checks"]} == {"partial"}
+
+
+def test_el_comando_declara_la_procedencia_de_cada_evidencia(tmp_path, capsys) -> None:
+    import json
+
+    from viralgen.cli import main
+
+    assert main(["--data-dir", str(tmp_path), "publish", "verification"]) == 0
+    datos = json.loads(capsys.readouterr().out)
+    for entrada in datos["checks"]:
+        for prueba in entrada["evidence"]:
+            assert prueba["confirmed_by"] == "revisor"
+            assert prueba["sources"]
+    assert "Ninguna evidencia" in datos["reason"]

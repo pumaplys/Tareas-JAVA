@@ -867,10 +867,13 @@ def _cmd_verification(args: argparse.Namespace) -> int:
             "command": "publish verification",
             "target": args.target,
             "reason": verification.UNREACHABLE_REASON,
+            # Los tres estados suman el total: si faltara `partial`, los
+            # numeros no cuadrarian y el informe mentiria por omision.
             "totals": {
                 "entries": len(datos),
-                "pending": sum(1 for fila in datos if fila["status"] == "pending"),
                 "verified": sum(1 for fila in datos if fila["status"] == "verified"),
+                "partial": sum(1 for fila in datos if fila["status"] == "partial"),
+                "pending": sum(1 for fila in datos if fila["status"] == "pending"),
                 "blocking": len(bloqueantes),
             },
             "blocking": bloqueantes,
