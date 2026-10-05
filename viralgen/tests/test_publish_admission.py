@@ -152,16 +152,119 @@ def test_el_transporte_real_se_niega_fuera_del_modo_real(modo: PublishMode) -> N
 def test_la_verificacion_pendiente_bloquea_el_envio_real(
     monkeypatch, paquete_falso, settings: Settings
 ) -> None:
-    """Un parametro de protocolo sin contrastar no se presenta como aprobado."""
+    """Un parametro de protocolo sin contrastar no se presenta como aprobado.
+
+    Tras la revision documental del 2026-10-05, los pendientes que bloquean son
+    los de Instagram y los de su almacenamiento temporal.
+    """
     informe = _admision(
-        monkeypatch, paquete_falso, settings, targets=[Platform.YOUTUBE_SHORTS]
+        monkeypatch, paquete_falso, settings, targets=[Platform.INSTAGRAM_REELS]
     )
     assert informe.checks["verificacion_de_protocolo"] is False
     bloqueantes = {pendiente.check_id for pendiente in informe.blocking_verification()}
-    assert bloqueantes  # hay al menos uno de YouTube
-    assert all(pendiente.startswith("yt_") for pendiente in bloqueantes)
-    # Y no contamina otros destinos: los de Instagram no aparecen aqui.
-    assert not any(pendiente.startswith("ig_") for pendiente in bloqueantes)
+    assert bloqueantes == {
+        "ig_graph_version",
+        "ig_container_fields",
+        "ig_status_values",
+        "ig_permissions",
+        "s3_presign_expiry",
+    }
+    # Y no contamina otros destinos: los de YouTube no aparecen aqui.
+    assert not any(pendiente.startswith("yt_") for pendiente in bloqueantes)
+
+
+def test_un_plan_solo_de_youtube_no_arrastra_bloqueos_de_otros_destinos(
+    monkeypatch, paquete_falso, settings: Settings
+) -> None:
+    """La admision se delimita por destino, y eso es lo que abre el piloto.
+
+    YouTube cerro sus tres bloqueos documentales. Un plan dirigido solo a
+    YouTube no debe heredar los pendientes de Instagram ni los del
+    almacenamiento temporal, que ese plan no usa.
+    """
+    informe = _admision(
+        monkeypatch, paquete_falso, settings, targets=[Platform.YOUTUBE_SHORTS]
+    )
+    assert informe.blocking_verification() == []
+    assert informe.checks["verificacion_de_protocolo"] is True
+    # El motivo del rechazo, si queda alguno, ya no es la verificacion.
+    assert not any(
+        nombre == "verificacion_de_protocolo" for nombre, _m in informe.failures
+    )
+    assert not any("sin contrastar" in motivo for motivo in informe.reasons)
+
+
+def test_anadir_instagram_a_un_plan_de_youtube_vuelve_a_bloquearlo(
+    monkeypatch, paquete_falso, settings: Settings
+) -> None:
+    """Los bloqueos se suman por destino: basta un destino bloqueado."""
+    solo_youtube = _admision(
+        monkeypatch, paquete_falso, settings, targets=[Platform.YOUTUBE_SHORTS]
+    )
+    con_instagram = _admision(
+        monkeypatch,
+        paquete_falso,
+        settings,
+        targets=[Platform.YOUTUBE_SHORTS, Platform.INSTAGRAM_REELS],
+    )
+    assert solo_youtube.checks["verificacion_de_protocolo"] is True
+    assert con_instagram.checks["verificacion_de_protocolo"] is False
+    assert {p.check_id for p in con_instagram.blocking_verification()} == {
+        "ig_graph_version",
+        "ig_container_fields",
+        "ig_status_values",
+        "ig_permissions",
+        "s3_presign_expiry",
+    }
+
+
+def test_los_tres_veredictos_de_un_plan_solo_de_youtube(
+    monkeypatch, paquete_falso, settings: Settings
+) -> None:
+    """Con origen de produccion y sin bloqueos, el envio real es admisible.
+
+    El informe del modulo 4 se sustituye por un DOBLE que declara origen de
+    produccion: no se reclasifica ningun paquete simulado del repositorio para
+    que pase por produccion, que es justo lo que no hay que hacer. Lo que se
+    comprueba aqui es la logica de los tres veredictos, no la del modulo 4.
+    """
+    monkeypatch.setattr(
+        "viralgen.publish.admission.check_render_admission",
+        lambda **_: _render_report(contrato=True, origen_real=True),
+    )
+    informe = PublishAdmissionReport(targets=(Platform.YOUTUBE_SHORTS,))
+    informe.contract_valid = True
+    informe.checks = {
+        "destinos_indicados": True,
+        "destinos_soportados": True,
+        "destinos_con_transporte_real": True,
+        "verificacion_de_protocolo": not informe.blocking_verification(),
+        "cadena_contractualmente_valida": True,
+        "montaje_tecnicamente_admisible": True,
+        "origen_de_produccion": True,
+        "documentos_legibles": True,
+        "video_disponible": True,
+        "video_dentro_del_limite": True,
+    }
+    assert informe.admissible_for_simulation is True
+    assert informe.admissible_for_real_dispatch is True
+    require_mode(informe, PublishMode.REAL)  # no lanza
+
+    # El mismo informe con Instagram entre los destinos vuelve a bloquear.
+    con_instagram = PublishAdmissionReport(
+        targets=(Platform.YOUTUBE_SHORTS, Platform.INSTAGRAM_REELS)
+    )
+    con_instagram.contract_valid = True
+    con_instagram.checks = dict(informe.checks)
+    con_instagram.checks["verificacion_de_protocolo"] = not (
+        con_instagram.blocking_verification()
+    )
+    con_instagram.failures = [
+        ("verificacion_de_protocolo", "hay parametros de protocolo sin contrastar")
+    ]
+    assert con_instagram.admissible_for_real_dispatch is False
+    with pytest.raises(PublishAdmissionError):
+        require_mode(con_instagram, PublishMode.REAL)
 
 
 def test_instagram_arrastra_la_verificacion_del_staging(

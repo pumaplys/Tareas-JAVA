@@ -717,7 +717,7 @@
     },
     "VerificationEvidenceNotice": {
       "additionalProperties": false,
-      "description": "Quien leyo la fuente, cuando y que confirmo.\n\nQue exista evidencia no dice que la haya leido este programa: `confirmed_by`\nlo declara. Una evidencia aportada por el revisor se registra como tal.",
+      "description": "Quien leyo la fuente, cuando, que confirma y hasta donde alcanza.\n\nQue exista evidencia no dice que la haya leido este programa: `confirmed_by`\nlo declara. Una evidencia aportada por el revisor se registra como tal.",
       "properties": {
         "confirmed_by": {
           "maxLength": 200,
@@ -732,16 +732,26 @@
           "type": "string"
         },
         "states": {
-          "maxLength": 600,
+          "maxLength": 4000,
           "minLength": 1,
           "title": "States",
           "type": "string"
         },
         "scope": {
-          "maxLength": 600,
+          "maxLength": 4000,
           "minLength": 1,
           "title": "Scope",
           "type": "string"
+        },
+        "sources": {
+          "items": {
+            "maxLength": 2048,
+            "minLength": 8,
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Sources",
+          "type": "array"
         }
       },
       "required": [
@@ -755,7 +765,7 @@
     },
     "VerificationNotice": {
       "additionalProperties": false,
-      "description": "Un parametro de protocolo, con el supuesto usado y su estado.",
+      "description": "Un parametro de protocolo, con el supuesto usado y su estado.\n\n`partial` es un estado de verdad: hay evidencia y no cierra la condicion.\nSigue bloqueando si al parametro le corresponde bloquear.",
       "properties": {
         "check_id": {
           "maxLength": 64,
@@ -804,6 +814,7 @@
         "status": {
           "enum": [
             "pending",
+            "partial",
             "verified"
           ],
           "title": "Status",
@@ -814,15 +825,22 @@
           "type": "boolean"
         },
         "evidence": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/VerificationEvidenceNotice"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
+          "items": {
+            "$ref": "#/$defs/VerificationEvidenceNotice"
+          },
+          "maxItems": 10,
+          "title": "Evidence",
+          "type": "array"
+        },
+        "notes": {
+          "items": {
+            "maxLength": 600,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Notes",
+          "type": "array"
         }
       },
       "required": [

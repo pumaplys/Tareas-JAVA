@@ -709,7 +709,7 @@ class ReviewChecklist(StrictModel):
 
 
 class VerificationEvidenceNotice(StrictModel):
-    """Quien leyo la fuente, cuando y que confirmo.
+    """Quien leyo la fuente, cuando, que confirma y hasta donde alcanza.
 
     Que exista evidencia no dice que la haya leido este programa: `confirmed_by`
     lo declara. Una evidencia aportada por el revisor se registra como tal.
@@ -717,12 +717,17 @@ class VerificationEvidenceNotice(StrictModel):
 
     confirmed_by: ShortText
     confirmed_on: ShortText
-    states: MediumText
-    scope: MediumText
+    states: LongText
+    scope: LongText
+    sources: list[HttpUrlStr] = Field(default_factory=list, max_length=10)
 
 
 class VerificationNotice(StrictModel):
-    """Un parametro de protocolo, con el supuesto usado y su estado."""
+    """Un parametro de protocolo, con el supuesto usado y su estado.
+
+    `partial` es un estado de verdad: hay evidencia y no cierra la condicion.
+    Sigue bloqueando si al parametro le corresponde bloquear.
+    """
 
     check_id: Identifier
     target: Identifier
@@ -733,15 +738,22 @@ class VerificationNotice(StrictModel):
     assumption: LongText
     #: Condicion concreta para darlo por verificado.
     verified_when: LongText
-    status: Literal["pending", "verified"]
+    status: Literal["pending", "partial", "verified"]
     blocks_real_dispatch: bool
-    evidence: VerificationEvidenceNotice | None = None
+    #: Historial de consultas, de la mas antigua a la mas reciente.
+    evidence: list[VerificationEvidenceNotice] = Field(
+        default_factory=list, max_length=10
+    )
+    #: Observaciones fechadas que NO confirman nada (p. ej. un intento que
+    #: devolvio error de acceso).
+    notes: list[MediumText] = Field(default_factory=list, max_length=10)
 
     @model_validator(mode="after")
     def _coherente(self) -> VerificationNotice:
-        if (self.status == "verified") != (self.evidence is not None):
+        if (self.status == "pending") == bool(self.evidence):
             raise ValueError(
-                "una entrada verificada lleva evidencia, y una pendiente no la lleva"
+                "una entrada pendiente no lleva evidencia, y una con evidencia no "
+                "puede estar pendiente: usa `partial` si no cierra la condicion"
             )
         if self.status == "verified" and self.blocks_real_dispatch:
             raise ValueError("una entrada verificada ya no bloquea el envio real")

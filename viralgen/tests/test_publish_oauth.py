@@ -388,13 +388,21 @@ def test_la_uri_de_redireccion_es_de_loopback() -> None:
 def test_el_consentimiento_sigue_siendo_integracion_externa_pendiente() -> None:
     """Esto no es una prueba de integracion con Google, y se dice.
 
-    Lo que falta es una persona aceptando el consentimiento en la pantalla de
-    Google y un canje contra su endpoint real. Los dobles de aqui no lo
-    sustituyen, y la entrada `yt_oauth_installed_app` sigue bloqueando el modo
-    real.
+    La revision documental del 2026-10-05 cerro los PARAMETROS del protocolo,
+    asi que `yt_oauth_installed_app` ya no bloquea. Lo que no cierra -y no puede
+    cerrar una lectura de documentacion- es que una persona haya concedido los
+    permisos y que el token pertenezca al canal esperado. Eso se comprueba en
+    ejecucion, y el alcance de la evidencia lo dice.
     """
     from viralgen.publish import verification
 
     entrada = verification.find("yt_oauth_installed_app")
-    assert entrada.blocking is True
-    assert entrada.evidence is None
+    assert entrada.verified is True
+    assert entrada.blocking is False
+    alcance = entrada.evidence[-1].scope
+    assert "NO acredita" in alcance
+    assert "channels.list" in alcance
+    # Y esa comprobacion existe de verdad en el adaptador.
+    from viralgen.publish.providers.youtube import YouTubeAdapter
+
+    assert hasattr(YouTubeAdapter, "check_account")

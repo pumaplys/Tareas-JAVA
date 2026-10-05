@@ -636,6 +636,8 @@ viralgen/
 ├── docs/contrato_modulo_3_visuales.md  # contrato modulo 3 -> modulo 4 (montaje)
 ├── docs/contrato_modulo_4_montaje.md   # contrato modulo 4 -> modulo 5 (publicacion)
 ├── docs/modulo_5_publicacion.md        # modulo 5: modos, estados, secretos, pendientes
+├── docs/piloto_youtube.md              # guia ejecutable del primer piloto privado
+├── tools/diagnostico_piloto.py         # presencia de configuracion, dependencias y rutas
 ├── deploy/systemd/                     # unidades PREPARADAS, no instaladas
 ├── tools/demo_publicacion.sh           # recorrido completo simulado del modulo 5
 ├── .github/workflows/viralgen-ffmpeg.yml  # CI con FFmpeg real (en la raiz del repo)
@@ -2265,26 +2267,42 @@ no se deducen de memoria.
 
 ### Pendiente antes de operar en una VPS
 
-El modo real está **bloqueado a propósito**: las referencias de protocolo
-citadas no eran alcanzables desde este entorno (403 del proxy de egreso), y esa
-limitación vive en el código (`viralgen.publish.verification`), aparece en
-`publish plan` y bloquea el destino afectado. La lista completa, con el supuesto
-que usa el código y la condición para darla por verificada:
+**Este entorno no alcanza la documentación** (403 del proxy de egreso,
+recomprobado el 2026-10-05 con PyPI respondiendo 200 como control), así que
+ninguna evidencia del registro la aportó el desarrollo: viene del revisor, y
+cada entrada declara **quién la leyó y cuándo**. Esa limitación vive en el
+código (`viralgen.publish.verification`), aparece en `publish plan` y bloquea el
+destino afectado.
 
 ```bash
 viralgen publish verification                 # las 13 entradas
 viralgen publish verification --target youtube --pending-only
 ```
 
-**13 entradas: 12 pendientes y 1 verificada; 8 bloquean el modo real.** La
-verificada es `yt_synthetic_media_property`, y su evidencia declara **quién la
-aportó**: el revisor consultó la documentación oficial y confirmó
-`status.containsSyntheticMedia`. Este módulo no se atribuye un acceso que no
-tuvo. Levantar un bloqueo exige comprobar el parámetro contra su fuente, no que
+**13 entradas: 5 verificadas, 4 parciales y 4 pendientes; 5 bloquean el modo
+real.** Los cinco bloqueos son de **Instagram y su almacenamiento temporal**:
+tras la revisión documental del 2026-10-05, **YouTube ya no tiene bloqueos
+documentales**, y eso es lo que abre el
+[piloto privado](docs/piloto_youtube.md). Una entrada **parcial** tiene
+evidencia que no cierra su condición y sigue bloqueando si le corresponde.
+Levantar un bloqueo exige comprobar el parámetro contra su fuente, no que
 "parezca correcto".
 
 Faltan además cuentas, permisos, credenciales y un paquete de producción; los
-mocks **no los sustituyen**. Las unidades de systemd están **preparadas y no
-instaladas** en [`deploy/systemd/`](deploy/systemd/), y el procedimiento para
-probar después YouTube en privado e Instagram (que **tiene efecto real**) está en
-[`docs/modulo_5_publicacion.md`](docs/modulo_5_publicacion.md).
+mocks **no los sustituyen**, y una lectura de documentación tampoco: que el
+protocolo esté confirmado no dice que alguien haya concedido los permisos ni que
+el token sea del canal esperado. Las unidades de systemd están **preparadas y no
+instaladas** en [`deploy/systemd/`](deploy/systemd/).
+
+### Primer piloto: cuento infantil subido en privado
+
+[`docs/piloto_youtube.md`](docs/piloto_youtube.md) es la guía ejecutable:
+diagnóstico local, perfil solo de imágenes configurado **antes** de generar el
+guion, voz e imágenes reales, montaje local, revisión del MP4 y subida privada a
+un único canal, con la verificación del identificador remoto, el canal, el
+procesamiento y la privacidad. Incluye un **ensayo completo en simulación** que
+no gasta nada y que se ejecutó al escribirla.
+
+```bash
+python tools/diagnostico_piloto.py     # qué falta configurar, sin mostrar valores
+```

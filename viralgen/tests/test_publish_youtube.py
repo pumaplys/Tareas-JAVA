@@ -463,9 +463,18 @@ def test_un_timeout_en_el_ultimo_bloque_consulta_la_sesion(tmp_path: Path) -> No
     assert len([p for p in capturadas if p.method == "POST"]) == 1
 
 
-def test_una_sesion_caducada_va_a_reconciliacion_sin_crear_otro_video(
-    tmp_path: Path,
+@pytest.mark.parametrize("estado_http", [404, 410])
+def test_una_sesion_desaparecida_va_a_reconciliacion_sin_crear_otro_video(
+    tmp_path: Path, estado_http: int
 ) -> None:
+    """404 y 410 se tratan igual, por motivos distintos.
+
+    El 404 es la regla DOCUMENTADA de sesion caducada. El 410 es una decision
+    defensiva de este proyecto, no atribuida a Google (ver
+    `verification.yt_resumable_protocol`). En los dos casos el resultado es
+    incierto -una sesion inaccesible no prueba que no exista ya un video-, asi
+    que se va a reconciliacion y no se crea un segundo video.
+    """
     ajustes = _ajustes(tmp_path)
 
     def handler(request: httpx2.Request) -> httpx2.Response:
@@ -473,13 +482,16 @@ def test_una_sesion_caducada_va_a_reconciliacion_sin_crear_otro_video(
             return httpx2.Response(
                 200, headers={"Location": "https://www.googleapis.com/session/abc123"}
             )
-        return httpx2.Response(410, json={"error": {"message": "sesion caducada"}})
+        return httpx2.Response(
+            estado_http, json={"error": {"message": "sesion desaparecida"}}
+        )
 
     adaptador, capturadas = _adaptador(ajustes, handler)
     resultado = adaptador.start(_contexto(tmp_path, ajustes))
 
     assert resultado.state is DestinationState.NEEDS_RECONCILIATION
     assert resultado.error is not None
+    assert resultado.error.code == "upload_session_gone"
     assert resultado.error.error_class is ErrorClass.AMBIGUOUS
     assert resultado.error.retryable is False
     assert len([p for p in capturadas if p.method == "POST"]) == 1
@@ -646,3 +658,148 @@ def test_no_se_llama_a_hosts_no_configurados(tmp_path: Path) -> None:
             "GET", "https://evil.example.com/robo", mutating=False
         )
     assert capturadas == []
+
+
+# ---------------------------------------------------------------------------
+# Sobre el trabajador: que una sesion desaparecida NO vuelva a crear nada
+# ---------------------------------------------------------------------------
+#
+# El adaptador deja el destino en `needs_reconciliation`. Lo que importa de
+# verdad es lo que pasa DESPUES: que ninguna pasada posterior del trabajador
+# abra otra sesion de subida, porque una sesion inaccesible tras un resultado
+# incierto no prueba que no exista ya un video.
+
+
+def _worker_youtube(tmp_path: Path, handler):
+    """Trabajador con el adaptador REAL de YouTube y transporte simulado."""
+    from conftest import publish_destination, publish_plan, publish_sources
+    from viralgen.diskutil import sha256_file
+    from viralgen.publish.authorize import build_authorization, store_authorization
+    from viralgen.publish.clock import ManualClock
+    from viralgen.publish.queue import enqueue_plan, publication_id_for
+    from viralgen.publish.storage import PublishStorage
+    from viralgen.publish.worker import PublishWorker
+    from viralgen.storage import Storage
+
+    ajustes = _ajustes(tmp_path)
+    video = tmp_path / "video.mp4"
+    video.write_bytes(b"\x07" * 1_200_000)
+    fuentes = publish_sources(
+        video=publish_sources().video.model_copy(
+            update={
+                "path": str(video),
+                "sha256": sha256_file(video),
+                "size_bytes": video.stat().st_size,
+            }
+        )
+    )
+    # La cuenta del plan es el canal que responde el transporte simulado: asi
+    # el destino autorizado y el canal observado coinciden, como en el piloto.
+    from viralgen.publish.schemas import AccountRef
+
+    destino = publish_destination(
+        account=AccountRef(
+            platform=Platform.YOUTUBE_SHORTS,
+            alias="canal_demo",
+            expected_account_id=CANAL,
+            account_id_kind="youtube_channel_id",
+        )
+    )
+    plan = publish_plan(mode=PublishMode.REAL, sources=fuentes, destinations=[destino])
+    identificador = publication_id_for(plan.publish_key, mode=PublishMode.REAL)
+
+    almacenamiento = PublishStorage(Storage(tmp_path / "datos"))
+    almacenamiento.migrate()
+    inicio = datetime(2026, 9, 24, 14, 0, tzinfo=UTC)
+    store_authorization(
+        almacenamiento,
+        publication_id=identificador,
+        registro=build_authorization(
+            plan, plan_sha256="e" * 64, operator_identity="operador",
+            clock=ManualClock(inicio),
+        ),
+    )
+    enqueue_plan(
+        almacenamiento, plan=plan, plan_sha256="e" * 64,
+        publication_id=identificador, settings=ajustes, clock=ManualClock(inicio),
+    )
+    adaptador, capturadas = _adaptador(ajustes, handler)
+    trabajador = PublishWorker(
+        storage=almacenamiento,
+        settings=ajustes,
+        clock=ManualClock(datetime(2026, 9, 24, 16, 35, tzinfo=UTC)),
+        secrets=_almacen(tmp_path),
+        adapter_factory=lambda *a, **k: adaptador,
+    )
+    return trabajador, almacenamiento, identificador, capturadas
+
+
+@pytest.mark.parametrize("estado_http", [404, 410])
+def test_tras_una_sesion_desaparecida_ninguna_pasada_abre_otra(
+    tmp_path: Path, estado_http: int
+) -> None:
+    from datetime import timedelta
+
+    from viralgen.publish.clock import ManualClock
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        if request.url.path.endswith("/upload/youtube/v3/videos"):
+            return httpx2.Response(
+                200, headers={"Location": "https://www.googleapis.com/session/abc123"}
+            )
+        return httpx2.Response(estado_http, json={"error": {"message": "sin sesion"}})
+
+    trabajador, almacenamiento, pub, capturadas = _worker_youtube(tmp_path, handler)
+
+    trabajador.run_once()
+    fila = almacenamiento.get_destination(pub, "yt_principal")
+    assert fila["state"] == DestinationState.NEEDS_RECONCILIATION.value
+    assert fila["real_remote_id"] is None
+
+    # Cuatro pasadas mas, con el reloj avanzando: el trabajador no toca un
+    # destino en reconciliacion, asi que no hay un segundo POST de sesion.
+    for _ in range(4):
+        trabajador.clock = ManualClock(trabajador.clock.now() + timedelta(minutes=10))
+        informe = trabajador.run_once()
+        assert informe.outcomes == []
+
+    assert len([p for p in capturadas if p.method == "POST"]) == 1
+    assert almacenamiento.get_destination(pub, "yt_principal")["operation_attempts"] == 1
+
+
+def test_el_recorrido_completo_de_youtube_entrega_en_privado(tmp_path: Path) -> None:
+    """Camino feliz sobre el trabajador: subida, verificacion y entrega privada.
+
+    Es el recorrido del piloto, con transporte simulado: nada sale a la red.
+    """
+    from datetime import timedelta
+
+    from viralgen.publish.clock import ManualClock
+
+    estado = {"offset": 0}
+    base = _handler_subida(estado)
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        if request.url.path.endswith("/youtube/v3/videos") and request.method == "GET":
+            return httpx2.Response(
+                200, json={"items": [_recurso(privacy="private")]}
+            )
+        return base(request)
+
+    trabajador, almacenamiento, pub, capturadas = _worker_youtube(tmp_path, handler)
+
+    trabajador.run_once()  # abre sesion, sube los bloques
+    fila = almacenamiento.get_destination(pub, "yt_principal")
+    assert fila["state"] == DestinationState.WAITING_REMOTE.value
+    assert fila["real_remote_id"] == VIDEO_ID
+    assert fila["bytes_transferred"] == 1_200_000
+
+    trabajador.clock = ManualClock(trabajador.clock.now() + timedelta(minutes=2))
+    trabajador.run_once()  # videos.list: procesado y privado
+    fila = almacenamiento.get_destination(pub, "yt_principal")
+    assert fila["state"] == DestinationState.DELIVERED.value
+    assert fila["observed_visibility"] == "private"
+    assert fila["publicly_visible"] == 0
+    assert fila["observed_account_id"] == CANAL
+    # Se pidio privado y se entrego privado: entregado no es publicado.
+    assert fila["permalink"] is None

@@ -327,7 +327,7 @@ la operación falló**. El cliente HTTP:
 | Situación | Qué hace el módulo |
 | --- | --- |
 | Se pierde la respuesta de un bloque de subida | **Consulta la sesión** (`Content-Range: bytes */total`) y reanuda desde el offset confirmado |
-| La sesión reanudable devuelve 404/410 | `needs_reconciliation`: no se sabe si se creó un vídeo, así que **no se crea otro** |
+| La sesión reanudable devuelve 404 o 410 | `needs_reconciliation`: no se sabe si se creó un vídeo, así que **no se crea otro**. El 404 es la regla **documentada** de sesión caducada; el 410 es una decisión **defensiva propia**, no atribuida a Google, y así consta en `verification.yt_resumable_protocol` |
 | `videos.insert` termina sin `id` | `needs_reconciliation`. **No se adjudica** un vídeo por título y fecha: una coincidencia aparente puede ser de otra persona |
 | Se pierde la respuesta de `media_publish` | Se consulta **el contenedor existente**. Si figura `PUBLISHED` sin id recuperable → `needs_reconciliation`, y no se crea otro contenedor |
 | Se pierde la respuesta al **crear** un contenedor | Queda registrado como ambiguo y se puede reintentar **con límite**: un contenedor sin `media_publish` no es visible y caduca solo. Ver el recuadro de abajo |
@@ -521,8 +521,20 @@ simulación no se transfiere nada, así que los contadores de bytes se quedan a
 cero, que es lo honesto.
 
 Las cuotas reales de cada plataforma **no están aquí** y no se deducen de
-memoria: `yt_quota_units` es una entrada de verificación pendiente precisamente
-por eso.
+memoria. Lo que el revisor leyó el 2026-10-05 en la referencia de
+`videos.insert` -100 llamadas diarias y una unidad en el grupo de cuota de
+subidas- está registrado en `yt_quota_units` como **información documental
+fechada**: no es una cuota concedida a este proyecto, no sustituye al
+presupuesto local y la entrada sigue **parcial** porque esas unidades no son
+configurables todavía.
+
+Lo mismo con los límites de texto. La referencia establece título de 100
+caracteres, descripción de **5.000 bytes** y etiquetas con límite **agregado**
+de 500 caracteres. Los topes locales están en **caracteres** (100 / 2.200 / 30
+etiquetas), así que no son comparables: 2.200 caracteres no garantizan 5.000
+bytes y 30 etiquetas no garantizan el agregado. `yt_text_limits` queda
+**parcial** con la diferencia escrita; alinear las unidades es un cambio de
+metadatos que no entra en el alcance actual.
 
 ---
 
@@ -548,142 +560,163 @@ módulos 1-4 queda como **decisión de operación** antes de producción sosteni
 
 ---
 
-## 12. Verificación pendiente: por qué el modo real está bloqueado
+## 12. Estado de la verificación documental
 
-Durante esta entrega **ninguna** de las referencias citadas era alcanzable: el
-proxy de egreso respondió 403 a `developers.google.com`,
-`developers.facebook.com`, `www.postman.com`, `developers.tiktok.com` y
-`docs.aws.amazon.com`. El código, los contratos y las pruebas de transporte están
-completos; lo que falta es **contrastar los parámetros con su fuente**.
+**Este entorno no alcanza la documentación.** El proxy de egreso respondió 403 a
+`developers.google.com`, `developers.facebook.com`, `www.postman.com`,
+`developers.tiktok.com` y `docs.aws.amazon.com`; se volvió a comprobar el
+2026-10-05 con el mismo resultado y con PyPI respondiendo 200 como control. Por
+tanto **ninguna evidencia de este registro la aportó el desarrollo**: toda viene
+del revisor, y cada entrada dice quién la leyó y cuándo.
 
 Eso no se disimula en una nota al pie: vive en
-`viralgen.publish.verification`, aparece en `publish plan` y **bloquea el modo
-real** del destino al que afecta.
+`viralgen.publish.verification`, aparece en `publish plan` y en
+`publish verification`, y una entrada sin verificar **bloquea el modo real** del
+destino al que afecta.
 
-| Entrada | Destino | Estado | ¿Bloquea? |
-| --- | --- | --- | --- |
-| `yt_insert_part_and_fields` | youtube | **pendiente** | **sí** |
-| `yt_synthetic_media_property` | youtube | verificada | no |
-| `yt_resumable_protocol` | youtube | **pendiente** | **sí** |
-| `yt_oauth_installed_app` | youtube | **pendiente** | **sí** |
-| `yt_quota_units` | youtube | **pendiente** | no |
-| `yt_text_limits` | youtube | **pendiente** | no |
-| `ig_graph_version` | instagram | **pendiente** | **sí** |
-| `ig_container_fields` | instagram | **pendiente** | **sí** |
-| `ig_status_values` | instagram | **pendiente** | **sí** |
-| `ig_permissions` | instagram | **pendiente** | **sí** |
-| `ig_caption_limits` | instagram | **pendiente** | no |
-| `s3_presign_expiry` | staging | **pendiente** | **sí** |
-| `tiktok_guidelines` | tiktok | **pendiente** | no |
+La revisión documental del **2026-10-05** cerró los tres bloqueos de YouTube, lo
+que es exactamente lo que abre el [piloto](piloto_youtube.md). Instagram y el
+almacenamiento temporal conservan los suyos.
 
-**13 entradas: 12 pendientes y 1 verificada; 8 bloquean el modo real.** La lista viva se obtiene con `viralgen publish verification` (con `--target` para un solo destino), que es la misma que viaja en cada plan.
+| Entrada | Destino | Estado | ¿Bloquea? | Evidencia |
+| --- | --- | --- | --- | --- |
+| `yt_insert_part_and_fields` | youtube | verificada | no | revisor 2026-10-05 |
+| `yt_synthetic_media_property` | youtube | verificada | no | revisor 2026-09-26, revisor 2026-10-05 |
+| `yt_resumable_protocol` | youtube | verificada | no | revisor 2026-10-05 |
+| `yt_oauth_installed_app` | youtube | verificada | no | revisor 2026-10-05 |
+| `yt_quota_units` | youtube | **parcial** | no | revisor 2026-10-05 |
+| `yt_text_limits` | youtube | **parcial** | no | revisor 2026-10-05 |
+| `ig_graph_version` | instagram | **pendiente** | **sí** | — |
+| `ig_container_fields` | instagram | **parcial** | **sí** | revisor 2026-10-05 |
+| `ig_status_values` | instagram | **pendiente** | **sí** | — |
+| `ig_permissions` | instagram | **pendiente** | **sí** | — |
+| `ig_caption_limits` | instagram | **pendiente** | no | — |
+| `s3_presign_expiry` | staging | **parcial** | **sí** | revisor 2026-10-05 |
+| `tiktok_guidelines` | tiktok | verificada | no | revisor 2026-10-05 |
+
+**13 entradas: 5 verificadas, 4 parciales y 4 pendientes; 5 bloquean el modo real.** Todas las entradas bloqueantes son de Instagram y de su almacenamiento temporal: **YouTube ya no tiene bloqueos documentales**. La lista viva se obtiene con `viralgen publish verification` (con `--target` para un solo destino), que es la misma que viaja en cada plan.
+
+Una entrada **parcial** tiene evidencia que no cierra su condición, y sigue bloqueando si le corresponde: `ig_container_fields` tiene host, ruta y campos confirmados pero la colección usa una variable de versión, y `s3_presign_expiry` vale para AWS y no para el proveedor compatible que se elija.
 
 ### Detalle de cada entrada
 
-#### `yt_insert_part_and_fields` — ⏳ pendiente, bloquea el envío real
+#### `yt_insert_part_and_fields` — ✅ verificada, no bloquea
 
 * **Destino**: youtube  
-* **Qué falta comprobar**: Nombres exactos de `part`, de los campos de `snippet`/`status` y de las propiedades de audiencia y divulgacion admitidas por la version vigente.  
-* **Supuesto que usa el código hoy**: part='snippet,status'; cuerpo con snippet.title, snippet.description, snippet.tags (solo si hay), snippet.defaultLanguage, status.privacyStatus en {public, private, unlisted}, status.selfDeclaredMadeForKids booleano y status.containsSyntheticMedia booleano; notifySubscribers como parametro de consulta con 'true'/'false'.  
-* **Se da por verificada cuando**: Cada nombre y cada valor admitido se compara con el recurso `videos` y con `videos.insert`, y se corrige lo que difiera. La evidencia de `yt_synthetic_media_property` cubre UNA de estas propiedades, no la lista completa.  
+* **Qué hay que comprobar**: Nombres exactos de `part`, de los campos de `snippet`/`status` y de las propiedades de audiencia y divulgacion admitidas por la version vigente.  
+* **Supuesto que usa el código hoy**: part='snippet,status'; cuerpo con snippet.title, snippet.description, snippet.tags (solo si hay), snippet.defaultLanguage, status.privacyStatus en {public, private, unlisted}, status.selfDeclaredMadeForKids booleano y status.containsSyntheticMedia booleano. `notifySubscribers` viaja como parametro de consulta y SIEMPRE explicito ('true'/'false'), precisamente porque su valor predeterminado es verdadero: asi no decide por nosotros.  
+* **Se da por verificada cuando**: Cada nombre y cada valor admitido se compara con el recurso `videos` y con `videos.insert`, y se corrige lo que difiera.  
 * **Fuente** (S1): <https://developers.google.com/youtube/v3/docs/videos/insert>
+* **Evidencia** (revisor, 2026-10-05): Se admiten part='snippet,status'; snippet.title, snippet.description, snippet.tags[] y snippet.defaultLanguage; los campos de `status` enumerados. Privacidad: private, public, unlisted. `selfDeclaredMadeForKids` y `containsSyntheticMedia` son booleanos. `notifySubscribers` es un parametro booleano de consulta cuyo valor predeterminado es verdadero. **Alcance**: Acredita el VOCABULARIO del protocolo para los nombres y tipos enumerados. Los valores concretos siguen saliendo del plan aprobado, y no dice nada de campos no enumerados. <https://developers.google.com/youtube/v3/docs/videos/insert> <https://developers.google.com/youtube/v3/docs/videos>
 
 #### `yt_synthetic_media_property` — ✅ verificada, no bloquea
 
 * **Destino**: youtube  
-* **Qué falta comprobar**: Nombre y tipo de la propiedad con la que YouTube recoge la divulgacion de contenido sintetico realista.  
+* **Qué hay que comprobar**: Nombre y tipo de la propiedad con la que YouTube recoge la divulgacion de contenido sintetico realista.  
 * **Supuesto que usa el código hoy**: Se envia `status.containsSyntheticMedia` como booleano en `videos.insert`: true cuando la decision editorial aprobada dice que contiene medios sinteticos realistas y false cuando dice que no.  
 * **Se da por verificada cuando**: Confirmado que la propiedad existe con ese nombre, es booleana y la admite `videos.insert`.  
 * **Fuente** (S2): <https://developers.google.com/youtube/v3/docs/videos#status.containsSyntheticMedia>
-* **Evidencia**: aportada por el **revisor** el 2026-09-26. Confirma: `status.containsSyntheticMedia` existe, es booleano y lo admite `videos.insert`. Alcance: Solo esta propiedad. No verifica el resto de los campos de `snippet`/`status` ni el valor de `part`, que siguen en `yt_insert_part_and_fields`.
+* **Evidencia** (revisor, 2026-09-26): `status.containsSyntheticMedia` existe, es booleano y lo admite `videos.insert`. **Alcance**: Solo esta propiedad. No verifica el resto de los campos de `snippet`/`status` ni el valor de `part`. <https://developers.google.com/youtube/v3/docs/videos>
+* **Evidencia** (revisor, 2026-10-05): Reconfirmado: propiedad booleana admitida por `videos.insert`. **Alcance**: Segunda consulta de la misma propiedad. <https://developers.google.com/youtube/v3/docs/videos/insert> <https://developers.google.com/youtube/v3/docs/videos>
 
-#### `yt_resumable_protocol` — ⏳ pendiente, bloquea el envío real
+#### `yt_resumable_protocol` — ✅ verificada, no bloquea
 
 * **Destino**: youtube  
-* **Qué falta comprobar**: Cabeceras exactas de inicio de sesion, semantica de 308, formato de `Range`/`Content-Range` y multiplo de bloque exigido.  
-* **Supuesto que usa el código hoy**: POST con uploadType=resumable y cabeceras X-Upload-Content-Length y X-Upload-Content-Type; la URI de sesion llega en `Location`; cada bloque va en PUT con 'Content-Range: bytes a-b/total'; un 308 es subida incompleta y su `Range: bytes=0-N` marca el offset confirmado; el estado se consulta con 'Content-Range: bytes */total'; 404 o 410 significan sesion desaparecida; bloque de 8 MiB (multiplo de 256 KiB).  
-* **Se da por verificada cuando**: Cada cabecera, el significado del 308 y el multiplo de bloque coinciden con la guia del protocolo, o el adaptador se ajusta.  
+* **Qué hay que comprobar**: Cabeceras exactas de inicio de sesion, semantica de 308, formato de `Range`/`Content-Range` y multiplo de bloque exigido.  
+* **Supuesto que usa el código hoy**: POST con uploadType=resumable y cabeceras X-Upload-Content-Length y X-Upload-Content-Type; la URI de sesion llega en `Location`; cada bloque va en PUT con 'Content-Range: bytes a-b/total' y todos los bloques ordinarios miden lo mismo (8 MiB, multiplo de 256 KiB), con el ultimo como excepcion; un 308 es subida incompleta y su 'Range: bytes=0-N' marca el offset confirmado, y si falta `Range` no hay ningun byte confirmado; el estado se consulta con 'Content-Range: bytes */total'. La regla DOCUMENTADA de sesion caducada es 404. El tratamiento de 410 es una decision DEFENSIVA PROPIA de este proyecto, no atribuida a Google: lleva a reconciliacion igual que el 404, nunca a crear otro video.  
+* **Se da por verificada cuando**: Las cabeceras, el significado del 308 y el multiplo y la igualdad de tamano de los bloques coinciden con la guia del protocolo.  
 * **Fuente** (S5): <https://developers.google.com/youtube/v3/guides/using_resumable_upload_protocol>
+* **Evidencia** (revisor, 2026-10-05): La guia confirma POST con uploadType=resumable, cabeceras X-Upload-Content-Length/Type, sesion en `Location`, PUT con rangos, consulta vacia con 'bytes */total' y 308 con el ultimo byte confirmado en `Range`; si falta `Range`, no hay bytes confirmados. Los bloques ordinarios deben ser multiplos de 256 KiB y del mismo tamano, con el ultimo como excepcion; 8 MiB cumple. Documenta 404 para una sesion caducada y NO menciona 410. **Alcance**: Cubre el protocolo documentado. El tratamiento de 410 NO esta respaldado por la guia y queda declarado como decision propia; una sesion inaccesible tras un resultado incierto no prueba que no exista ya un video, asi que se conserva la prevencion de duplicados. <https://developers.google.com/youtube/v3/guides/using_resumable_upload_protocol>
 
-#### `yt_oauth_installed_app` — ⏳ pendiente, bloquea el envío real
+#### `yt_oauth_installed_app` — ✅ verificada, no bloquea
 
 * **Destino**: youtube  
-* **Qué falta comprobar**: Endpoints de autorizacion y token, parametros de PKCE y scopes efectivos para subir y para verificar el canal.  
-* **Supuesto que usa el código hoy**: Autorizacion en accounts.google.com/o/oauth2/v2/auth y token en oauth2.googleapis.com/token; response_type=code, code_challenge_method=S256, access_type=offline, prompt=consent y redirect_uri de loopback http://127.0.0.1:<puerto>/; scopes youtube.upload y youtube.readonly.  
+* **Qué hay que comprobar**: Endpoints de autorizacion y token, parametros de PKCE y scopes efectivos para subir y para verificar el canal.  
+* **Supuesto que usa el código hoy**: Autorizacion en accounts.google.com/o/oauth2/v2/auth y token en oauth2.googleapis.com/token; response_type=code, code_challenge_method=S256, access_type=offline, prompt=consent y redirect_uri de loopback http://127.0.0.1:<puerto>/, identico en la autorizacion y en el canje -puerto y ruta incluidos-; scopes youtube.upload y youtube.readonly.  
 * **Se da por verificada cuando**: Los dos endpoints, los parametros de PKCE y los scopes minimos necesarios para subir y para leer el resultado se confirman en la guia de aplicaciones instaladas.  
 * **Fuente** (S3): <https://developers.google.com/youtube/v3/guides/auth/installed-apps>
+* **Evidencia** (revisor, 2026-10-05): La guia de aplicaciones instaladas confirma autorizacion en https://accounts.google.com/o/oauth2/v2/auth, canje en https://oauth2.googleapis.com/token, response_type=code, PKCE S256 y receptor loopback para cliente de escritorio, y documenta los scopes youtube.upload y youtube.readonly. La documentacion complementaria de Google explica access_type=offline y prompt=consent. El redirect_uri debe mantenerse consistente entre autorizacion y canje, puerto y ruta incluidos. **Alcance**: Acredita los parametros del protocolo. NO acredita que el usuario haya concedido los permisos ni que el token pertenezca al canal esperado: eso se comprueba en ejecucion con channels.list(mine=true) contra el ID autorizado. <https://developers.google.com/youtube/v3/guides/auth/installed-apps> <https://developers.google.com/identity/protocols/oauth2/web-server>
 
-#### `yt_quota_units` — ⏳ pendiente, no bloquea
+#### `yt_quota_units` — 🟡 parcial, no bloquea
 
 * **Destino**: youtube  
-* **Qué falta comprobar**: Unidades de cuota por operacion y bucket.  
+* **Qué hay que comprobar**: Unidades de cuota por operacion y bucket.  
 * **Supuesto que usa el código hoy**: NINGUNA cifra de cuota de Google se usa en el codigo. El presupuesto local (200 solicitudes por destino) es un limite del producto y no se presenta como cuota de la plataforma.  
-* **Se da por verificada cuando**: Se documentan las unidades por operacion y se hacen configurables, sin mezclarlas con el presupuesto local.  
+* **Se da por verificada cuando**: Las unidades por operacion se documentan Y se hacen configurables, sin mezclarlas con el presupuesto local.  
 * **Fuente** (S1): <https://developers.google.com/youtube/v3/docs/videos/insert>
+* **Evidencia** (revisor, 2026-10-05): La referencia consultada indica 100 llamadas diarias y una unidad en el grupo de cuota de subidas. **Alcance**: Informacion documental FECHADA. No es una cuota concedida a este proyecto, no sustituye al presupuesto local de solicitudes y no cierra la entrada, porque esas unidades siguen sin ser configurables en el codigo. <https://developers.google.com/youtube/v3/docs/videos/insert>
 
-#### `yt_text_limits` — ⏳ pendiente, no bloquea
+#### `yt_text_limits` — 🟡 parcial, no bloquea
 
 * **Destino**: youtube  
-* **Qué falta comprobar**: Longitudes maximas de titulo, descripcion y etiquetas.  
-* **Supuesto que usa el código hoy**: Topes LOCALES conservadores: 100 caracteres de titulo, 2200 de descripcion, 30 etiquetas y 12 hashtags. Superarlos marca revision; el texto no se recorta en silencio.  
-* **Se da por verificada cuando**: Los limites reales se comparan con los topes locales y estos se ajustan si son mayores que los de la plataforma.  
+* **Qué hay que comprobar**: Longitudes maximas de titulo, descripcion y etiquetas.  
+* **Supuesto que usa el código hoy**: Topes LOCALES conservadores, medidos en CARACTERES: 100 de titulo, 2200 de descripcion, 30 etiquetas y 12 hashtags. Superarlos marca revision y el texto no se recorta en silencio. OJO: el limite de descripcion de la plataforma esta en BYTES y el de etiquetas es AGREGADO, asi que los topes locales no son comparables y no garantizan el cumplimiento; un payload excesivo produce un rechazo clasificado, no una publicacion equivocada.  
+* **Se da por verificada cuando**: Los topes locales se expresan en las MISMAS unidades que los de la plataforma -bytes para la descripcion, agregado para las etiquetas- y se comprueban antes de enviar.  
 * **Fuente** (S2): <https://developers.google.com/youtube/v3/docs/videos>
+* **Evidencia** (revisor, 2026-10-05): La referencia establece titulo de 100 caracteres, descripcion de 5.000 bytes y etiquetas con limite agregado de 500 caracteres, contando separadores y comillas aplicables. **Alcance**: Documenta los limites de la plataforma. No cierra la entrada: 2.200 caracteres no garantizan 5.000 bytes y 30 etiquetas no garantizan el agregado de 500 caracteres. Alinear las unidades es un cambio de metadatos que queda fuera del encargo actual. <https://developers.google.com/youtube/v3/docs/videos>
 
 #### `ig_graph_version` — ⏳ pendiente, bloquea el envío real
 
 * **Destino**: instagram  
-* **Qué falta comprobar**: Version de Graph soportada y vigente.  
+* **Qué hay que comprobar**: Version de Graph soportada y vigente.  
 * **Supuesto que usa el código hoy**: NINGUNA por defecto: META_GRAPH_API_VERSION es obligatoria y explicita en modo real. No se usa `latest` ni se cambia de version automaticamente.  
 * **Se da por verificada cuando**: Se comprueba que la version que fija el operador esta soportada y vigente, y que los campos de esta entrega corresponden a ella.  
 * **Fuente** (S7a): <https://www.postman.com/meta/instagram/folder/u4g5a2a/instagram-api-with-facebook-login>
+* **Nota**: 2026-10-05 (revisor): no se ha elegido una version concreta, asi que no hay nada que contrastar todavia.
 
-#### `ig_container_fields` — ⏳ pendiente, bloquea el envío real
+#### `ig_container_fields` — 🟡 parcial, bloquea el envío real
 
 * **Destino**: instagram  
-* **Qué falta comprobar**: Campos exactos del contenedor de Reel y su host.  
+* **Qué hay que comprobar**: Campos exactos del contenedor de Reel y su host.  
 * **Supuesto que usa el código hoy**: POST a {graph_base}/{version}/{ig_user_id}/media con media_type='REELS', video_url (URL firmada temporal), caption y share_to_feed 'true'/'false'; host graph.facebook.com, no el endpoint de Reels de una Pagina de Facebook.  
-* **Se da por verificada cuando**: Los cuatro campos, el host y la ruta coinciden con la coleccion oficial para la version fijada.  
+* **Se da por verificada cuando**: Los cuatro campos, el host y la ruta se confirman PARA LA VERSION que fije el operador.  
 * **Fuente** (S7b): <https://www.postman.com/meta/instagram/request/5kkpkh6/upload-a-reel-to-an-ig-container>
+* **Evidencia** (revisor, 2026-10-05): La coleccion oficial de Meta muestra el host, la ruta y los cuatro parametros indicados. **Alcance**: La coleccion usa una VARIABLE de version, asi que la compatibilidad con la version concreta que se configure sigue sin contrastar. No levanta el bloqueo. <https://www.postman.com/meta/instagram/request/5kkpkh6/upload-a-reel-to-an-ig-container>
 
 #### `ig_status_values` — ⏳ pendiente, bloquea el envío real
 
 * **Destino**: instagram  
-* **Qué falta comprobar**: Valores de `status_code` del contenedor y respuesta de `media_publish`.  
+* **Qué hay que comprobar**: Valores de `status_code` del contenedor y respuesta de `media_publish`.  
 * **Supuesto que usa el código hoy**: Se tratan IN_PROGRESS, FINISHED, ERROR, EXPIRED y PUBLISHED; cualquier otro valor se considera desconocido y va a reconciliacion. La publicacion es POST a {ig_user_id}/media_publish con creation_id, y devuelve el id del medio.  
 * **Se da por verificada cuando**: La lista de valores y la forma de la respuesta de `media_publish` se confirman, y se anade el tratamiento de cualquier valor que falte.  
 * **Fuente** (S7c): <https://www.postman.com/meta/instagram/documentation/6yqw8pt/instagram-api>
+* **Nota**: 2026-10-05 (revisor): la pagina documental general recuperada ese dia no expuso la lista completa de estados. No se verifica nada.
 
 #### `ig_permissions` — ⏳ pendiente, bloquea el envío real
 
 * **Destino**: instagram  
-* **Qué falta comprobar**: Lista de permisos vigente y requisitos de revision de la app.  
+* **Qué hay que comprobar**: Lista de permisos vigente y requisitos de revision de la app.  
 * **Supuesto que usa el código hoy**: Se exigen concedidos pages_show_list, pages_read_engagement, instagram_basic e instagram_content_publish, comprobados en me/permissions. No se piden permisos de mensajes ni de comentarios.  
-* **Se da por verificada cuando**: La lista vigente y los requisitos de revision de la app se confirman, y se ajusta lo que falte o sobre.  
+* **Se da por verificada cuando**: La lista vigente y los requisitos de revision de la app se confirman para la configuracion concreta, y se ajusta lo que falte.  
 * **Fuente** (S7a): <https://www.postman.com/meta/instagram/folder/u4g5a2a/instagram-api-with-facebook-login>
+* **Nota**: 2026-10-05 (revisor): no se pudo cerrar la lista aplicable ni los requisitos de revision para la configuracion concreta.
 
 #### `ig_caption_limits` — ⏳ pendiente, no bloquea
 
 * **Destino**: instagram  
-* **Qué falta comprobar**: Longitud maxima del `caption` y numero de hashtags admitidos.  
+* **Qué hay que comprobar**: Longitud maxima del `caption` y numero de hashtags admitidos.  
 * **Supuesto que usa el código hoy**: Los mismos topes locales conservadores que en YouTube.  
 * **Se da por verificada cuando**: Se comparan con los limites reales y se ajustan si son menores.  
 * **Fuente** (S7b): <https://www.postman.com/meta/instagram/request/5kkpkh6/upload-a-reel-to-an-ig-container>
+* **Nota**: 2026-10-05 (revisor): pendiente. Los topes propios no acreditan los limites de Instagram.
 
-#### `s3_presign_expiry` — ⏳ pendiente, bloquea el envío real
+#### `s3_presign_expiry` — 🟡 parcial, bloquea el envío real
 
 * **Destino**: staging  
-* **Qué falta comprobar**: Limites de caducidad de una URL firmada y su interaccion con la caducidad de las credenciales que la firman.  
+* **Qué hay que comprobar**: Limites de caducidad de una URL firmada y su interaccion con la caducidad de las credenciales que la firman.  
 * **Supuesto que usa el código hoy**: URL GET firmada con generate_presigned_url('get_object', ExpiresIn=7200). Si las credenciales son renovables se comprueba con refresh_needed(ttl) que duran mas que la URL; si no declaran caducidad, no se afirma que la cubran.  
-* **Se da por verificada cuando**: El tope de caducidad admitido y su relacion con las credenciales se confirman para el proveedor elegido, y el TTL se ajusta si excede el maximo.  
+* **Se da por verificada cuando**: El tope de caducidad admitido y su relacion con las credenciales se confirman PARA EL PROVEEDOR ELEGIDO y su configuracion efectiva.  
 * **Fuente** (S10): <https://docs.aws.amazon.com/boto3/latest/guide/s3-presigned-urls.html>
+* **Evidencia** (revisor, 2026-10-05): Boto3 admite `get_object` con `ExpiresIn`, y 7.200 segundos esta dentro del maximo documentado para SDK. Con credenciales temporales, una URL no conserva validez mas alla de las credenciales que la firmaron, y las politicas del bucket pueden imponer una restriccion adicional. **Alcance**: Vale para AWS S3. No cubre el proveedor compatible que se elija ni su configuracion efectiva, y no certifica la implementacion de refresh_needed(ttl) ni la vida util de las credenciales que use el codigo. <https://docs.aws.amazon.com/boto3/latest/guide/s3-presigned-urls.html> <https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-presigned-url.html>
 
-#### `tiktok_guidelines` — ⏳ pendiente, no bloquea
+#### `tiktok_guidelines` — ✅ verificada, no bloquea
 
 * **Destino**: tiktok  
-* **Qué falta comprobar**: Directrices de Direct Post.  
-* **Supuesto que usa el código hoy**: No se implementa Direct Post ni ningun interruptor que lo eluda: la entrega es manual. Es la decision CONSERVADORA, asi que no bloquea.  
-* **Se da por verificada cuando**: Solo haria falta para AMPLIAR el alcance a una integracion oficial, que seria un cambio documentado de producto.  
+* **Qué hay que comprobar**: Directrices de Direct Post.  
+* **Supuesto que usa el código hoy**: No se implementa Direct Post ni ningun interruptor que lo eluda: la entrega es manual.  
+* **Se da por verificada cuando**: Se confirma que las directrices excluyen este caso de uso, que es el fundamento de la entrega manual.  
 * **Fuente** (S8): <https://developers.tiktok.com/docs/en/content-sharing-guidelines>
+* **Evidencia** (revisor, 2026-10-05): La guia de Direct Post excluye utilidades privadas destinadas a las cuentas propias o del equipo. **Alcance**: Confirma el fundamento de mantener la entrega manual. No se ha verificado ni habilitado ninguna integracion Direct Post; ampliar el alcance seria un cambio documentado de producto. <https://developers.tiktok.com/docs/en/content-sharing-guidelines>
 
 **Para levantar un bloqueo**: comprobar el parámetro contra su fuente, ajustar el
 adaptador si difiere y marcar la entrada como verificada indicando la fecha y qué
@@ -694,19 +727,25 @@ se leyó. No se levanta "porque parece correcto".
 ## 13. Qué queda pendiente antes de operar en una VPS
 
 1. **Integración externa real.** Faltan cuentas, permisos, credenciales y un
-   paquete de producción. Los mocks y stubs **no la sustituyen**.
-2. **Verificación de los parámetros** de la tabla anterior.
-3. **Un paquete de producción admisible.** Hoy el único ejemplo del repositorio
-   es un preview simulado, y eso no se publica.
-4. **Decidir el almacenamiento temporal**: proveedor, bucket privado,
-   credenciales y si su caducidad cubre las 2 h de la URL firmada.
-5. **Instalar el timer**, que esta entrega deja preparado y sin instalar
+   paquete de producción. Los mocks y stubs **no la sustituyen**, y una lectura
+   de documentación tampoco: que los parámetros del protocolo estén confirmados
+   no dice que el usuario haya concedido los permisos ni que el token pertenezca
+   al canal esperado.
+2. **Un paquete de producción admisible.** Hoy el único ejemplo del repositorio
+   es un preview simulado, y eso no se publica. La
+   [guía del piloto](piloto_youtube.md) recorre cómo producir uno.
+3. **Instagram y su almacenamiento temporal** siguen con 5 entradas
+   bloqueantes, y falta decidir proveedor, bucket privado, credenciales y si su
+   caducidad cubre las 2 h de la URL firmada.
+4. **Instalar el timer**, que esta entrega deja preparado y sin instalar
    (`deploy/systemd/`).
 
 ### Procedimiento para probarlo después (no se ejecuta aquí)
 
 **YouTube, subida privada.** Es el primer caso razonable porque su efecto es
-reversible desde el estudio del canal:
+reversible desde el estudio del canal. El recorrido completo, con el perfil solo
+de imágenes y la revisión del MP4, está en la
+[guía del piloto](piloto_youtube.md); en resumen:
 
 ```bash
 export VIRALGEN_PUBLISH_SECRETS_DIR=~/.config/viralgen/secretos   # 0700
@@ -748,6 +787,7 @@ pruebas propia y con un vídeo que no te importe publicar.
 | `publish record-manual` | Registra lo publicado a mano | ninguno |
 | `publish gc [--apply]` | Limpieza de lo propio | borra objetos con `--apply` |
 | `publish verification` | Estado de la verificación documental de cada parámetro | ninguno |
+| `tools/diagnostico_piloto.py` | Qué configuración, dependencias, rutas y espacio hay (sin mostrar valores) | ninguno |
 | `auth youtube` | Conecta el canal (loopback + PKCE) | sí: OAuth |
 | `auth instagram --from-file` | Importa un token del flujo oficial | ninguno |
 
