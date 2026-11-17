@@ -155,6 +155,10 @@ class Settings(BaseSettings):
 
     media_image_quality: str = "medium"
     media_image_format: str = "jpeg"
+    #: `input_fidelity` de la edicion con referencias. None = NO se envia el
+    #: parametro. Se valida contra el catalogo del modelo antes de cualquier
+    #: HTTP y entra en la identidad de cache: cambiarlo produce otro asset.
+    media_input_fidelity: str | None = None
     #: Politica de adaptacion geometrica: contain (relleno) o crop (recorte).
     media_geometry_policy: str = "contain"
     #: Version del conjunto de referencias; por defecto se deriva de la biblia.
@@ -165,7 +169,19 @@ class Settings(BaseSettings):
     ffprobe_path: str = "ffprobe"
 
     #: Tarifas explicitas. Sin ellas, el coste estimado es null.
+    #:
+    #: `price_image_per_unit_usd` es una tarifa PLANA por imagen y solo vale
+    #: cuando el proveedor cobra igual todos los tamanos y calidades. Para
+    #: gpt-image eso no es cierto, asi que existe la tabla de abajo: un JSON
+    #: {"1024x1536": {"medium": 0.042}} leido de archivo. La tabla manda sobre
+    #: la plana; sin ninguna de las dos, el coste estimado es `null`.
     price_image_per_unit_usd: float | None = Field(default=None, ge=0.0)
+    media_image_tariffs_path: Path | None = None
+    #: Suplemento por imagen de referencia enviada en una edicion. El
+    #: proveedor puede cobrar los tokens de las imagenes de entrada aparte; no
+    #: se asume que sean gratis NI que cuesten algo. None = desconocido, y el
+    #: desglose lo declara como desconocido en vez de contarlo como cero.
+    price_image_reference_input_usd: float | None = Field(default=None, ge=0.0)
     price_video_per_second_usd: float | None = Field(default=None, ge=0.0)
 
     # --- Modulo 4: montaje local -----------------------------------------
@@ -453,6 +469,9 @@ class Settings(BaseSettings):
         return {
             "media_image_quality": self.media_image_quality,
             "media_image_format": self.media_image_format,
+            # Cambia la imagen que devuelve el proveedor: es identidad, no
+            # limite administrativo.
+            "media_input_fidelity": self.media_input_fidelity,
             "media_geometry_policy": self.media_geometry_policy,
             "media_reference_set_version": self.media_reference_set_version,
             "runway_api_version": self.runway_api_version,
@@ -462,6 +481,7 @@ class Settings(BaseSettings):
         return {
             "image_per_unit_usd": self.price_image_per_unit_usd,
             "video_per_second_usd": self.price_video_per_second_usd,
+            "image_reference_input_usd": self.price_image_reference_input_usd,
         }
 
     def voice_pricing(self) -> float | None:

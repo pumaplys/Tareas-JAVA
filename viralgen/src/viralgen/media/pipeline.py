@@ -52,6 +52,7 @@ from .imaging import (
     plan_geometry,
     write_bytes_as_image,
 )
+from .budget import load_image_tariffs
 from .planner import (
     MediaPlan,
     build_plan,
@@ -930,6 +931,7 @@ class MediaPipeline:
             output_format=self.settings.media_image_format,
             reference_paths=list(reference_paths),
             scene_id=scene_id,
+            input_fidelity=self.settings.media_input_fidelity,
         )
         try:
             resultado = self.image_provider.create_image(peticion, self.budget)
@@ -1001,6 +1003,11 @@ class MediaPipeline:
             model=self.image_provider.model,
             reference_hashes=hashes_referencia,
             simulation=self.request.simulation,
+            # Igual que en el plan: la fidelidad solo cuenta como identidad
+            # cuando hay referencias, porque solo entonces se envia.
+            input_fidelity=(
+                self.settings.media_input_fidelity if hashes_referencia else None
+            ),
         )
         ruta_imagen, info_imagen, golpe = self._obtain_image(
             cache_key=clave_imagen,
@@ -1710,18 +1717,42 @@ class MediaPipeline:
         )
 
     def _estimated_cost(self, assets: list[MediaAsset]) -> float | None:
-        """Coste estimado local. Sin tarifa configurada, None."""
-        tarifas = self.settings.media_pricing()
-        if tarifas["image_per_unit_usd"] is None and tarifas["video_per_second_usd"] is None:
+        """Coste estimado local a partir de lo que de verdad se genero.
+
+        El precio de una imagen depende de su TAMANO y su CALIDAD, no es plano:
+        se cobra cada asset por sus dimensiones reales (`width x height`) y la
+        calidad con la que se pidio. `price_image_per_unit_usd` sigue valiendo
+        como respaldo para un proveedor de tarifa unica.
+
+        Si algun concepto generado no tiene tarifa, el total es None: sumar
+        solo lo que si tiene precio daria una cifra mas baja que la real, y una
+        estimacion incompleta presentada como total es peor que ninguna.
+        """
+        tarifas = load_image_tariffs(self.settings)
+        precio_video = self.settings.price_video_per_second_usd
+        calidad = self.settings.media_image_quality
+
+        cobrables = [
+            asset for asset in assets
+            if not asset.cache_hit and asset.provider not in {"local"}
+        ]
+        if not cobrables:
+            return 0.0 if (tarifas.configured or precio_video is not None) else None
+        if not tarifas.configured and precio_video is None:
             return None
+
         total = 0.0
-        for asset in assets:
-            if asset.cache_hit or asset.provider in {"local"}:
-                continue
-            if asset.kind is AssetKind.IMAGE and tarifas["image_per_unit_usd"] is not None:
-                total += tarifas["image_per_unit_usd"]
-            elif asset.kind is AssetKind.VIDEO and tarifas["video_per_second_usd"] is not None:
-                total += tarifas["video_per_second_usd"] * float(
+        for asset in cobrables:
+            if asset.kind is AssetKind.IMAGE:
+                size = f"{asset.width}x{asset.height}" if asset.width and asset.height else ""
+                precio = tarifas.unit_price(size, calidad) if size else None
+                if precio is None:
+                    return None
+                total += precio
+            elif asset.kind is AssetKind.VIDEO:
+                if precio_video is None:
+                    return None
+                total += precio_video * float(
                     asset.video.requested_duration_s if asset.video else 0
                 )
         return round(total, 6)

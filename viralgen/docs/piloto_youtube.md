@@ -82,10 +82,10 @@ cat > ~/.config/viralgen/cuentas.json <<'JSON'
 {
   "accounts": [
     {
-      "alias": "canal_piloto",
+      "alias": "nubaria",
       "platform": "youtube_shorts",
-      "account_id": "<el ID exacto de tu canal, empieza por UC>",
-      "label": "Canal del piloto"
+      "account_id": "<el ID exacto del canal, empieza por UC>",
+      "label": "Nubaria Cuentos (@nubariacuentos)"
     }
   ]
 }
@@ -276,7 +276,7 @@ verificar el canal y el resultado-.
 viralgen publish plan \
   --script "$SCRIPT" --voice "$VOICE" --media "$MEDIA" --render "$RENDER" \
   --mode real --publish-key piloto-001 \
-  --destination "id=yt,platform=youtube_shorts,account=canal_piloto,at=2026-10-06T18:30:00,tz=Europe/Madrid,visibility=private,notify=false" \
+  --destination "id=yt,platform=youtube_shorts,account=nubaria,at=2026-10-06T18:30:00,tz=Europe/Madrid,visibility=private,notify=false" \
   | tee ~/piloto/05_plan.json
 
 PLAN=$(python -c "import json;print(json.load(open('$HOME/piloto/05_plan.json'))['plan_path'])")
@@ -418,7 +418,7 @@ RENDER=$(python -c "import json;print(json.load(open('$HOME/ensayo/04.json'))['m
 
 viralgen publish plan --script "$SCRIPT" --voice "$VOICE" --media "$MEDIA" \
   --render "$RENDER" --accounts <tu catalogo> --mode mock --publish-key ensayo-001 \
-  --destination "id=yt,platform=youtube_shorts,account=canal_piloto,at=2026-10-06T18:30:00,tz=Europe/Madrid,visibility=private,notify=false" \
+  --destination "id=yt,platform=youtube_shorts,account=nubaria,at=2026-10-06T18:30:00,tz=Europe/Madrid,visibility=private,notify=false" \
   | tee ~/ensayo/05.json
 PLAN=$(python -c "import json;print(json.load(open('$HOME/ensayo/05.json'))['plan_path'])")
 
@@ -476,3 +476,64 @@ viralgen publish verification                      # las 13 entradas
 viralgen publish verification --target youtube     # 0 bloqueos
 viralgen publish verification --target instagram   # 4 bloqueos
 ```
+
+---
+
+## 11. Actualizar la instalación de la VPS
+
+La instalación que informa la sesión local está en `/opt/viralgen-repo/viralgen`
+sobre el commit `925381b`. **No he comprobado esa instalación desde aquí**: lo
+que sigue son los comandos para llevarla al commit nuevo, no una constatación de
+su estado.
+
+```bash
+# 1. Traer el commit nuevo de la misma rama.
+cd /opt/viralgen-repo
+git fetch origin claude/brave-sagan-bewv55
+git log --oneline -1 HEAD                 # anota el commit actual antes de moverlo
+git merge --ff-only FETCH_HEAD            # falla si hay cambios locales: no los pisa
+
+# 2. Reinstalar sólo si cambió el bloqueo de dependencias (esta vez NO cambió).
+cd /opt/viralgen-repo/viralgen
+. .venv/bin/activate
+git diff --name-only 925381b..HEAD -- requirements.lock.txt pyproject.toml
+
+# 3. Comprobar que el árbol nuevo pasa sus propias pruebas en la VPS.
+python -m pytest tests -m "not ffmpeg"    # rápido, sin FFmpeg
+python -m pytest tests -m ffmpeg          # la puerta obligatoria: tarda ~12 min
+
+# 4. Ver el catálogo de modelos y su verificación (no llama a ninguna API).
+python -m viralgen media models
+python -m viralgen media models --model gpt-image-2.6-sunburst
+```
+
+### Qué mirar después de actualizar
+
+```bash
+# El plan ahora trae `cost` separado de `budget`. Sin tarifas, el coste es null.
+python -m viralgen media plan --script <script.json> --voice <voice.json> --mock \
+  | python3 -c "import json,sys; d=json.load(sys.stdin); \
+print(json.dumps({'budget': d['budget'], 'cost': d['cost']}, indent=2, ensure_ascii=False))"
+```
+
+Dos cosas que conviene leer en esa salida:
+
+1. **`cost.cost_estimate_usd.expected` será `null`** mientras no se declaren
+   tarifas. Eso es correcto: un coste desconocido sigue siendo desconocido.
+2. **`cost.retry_ceiling_exceeds_limit` será `true`** para el cuento del piloto:
+   10 creaciones nominales con 2 reintentos cada una son 30 solicitudes contra
+   un tope de 24. Hay que decidir —antes del piloto con gasto— si se sube
+   `VIRALGEN_MEDIA_MAX_GENERATION_ATTEMPTS` o se baja
+   `VIRALGEN_MEDIA_MAX_SAFE_RETRIES`. Dejarlo así significa que, en el peor
+   caso, el trabajo se detiene con escenas sin imagen.
+
+### Lo que esta actualización NO cambia
+
+* **Las claves de caché de los assets ya generados.** `input_fidelity` sólo
+  entra en la identidad cuando se envía de verdad, así que con la
+  configuración por defecto las imágenes ya cacheadas siguen encontrándose y
+  no hay que volver a pagarlas.
+* **El modelo utilizable para el piloto con gasto.** Sigue siendo
+  `gpt-image-1`: `gpt-image-2.6-sunburst` está declarado pero **bloqueado**
+  para envío real hasta cerrar las entradas de
+  [`verificacion_modelos_openai.md`](verificacion_modelos_openai.md).

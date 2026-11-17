@@ -193,3 +193,90 @@ def test_un_hueco_en_la_voz_se_detecta(media_settings, media_inputs) -> None:
     manifest.scenes[1].start_sample += 10
     with pytest.raises(MediaTimelineError, match="Hueco"):
         build_visual_timeline(manifest, document)
+
+
+def test_sunburst_se_planifica_pero_no_se_despacha(media_settings, media_inputs) -> None:
+    """Declarado en el catalogo: el plan sale, el modo real queda bloqueado."""
+    document, manifest = _cargar(media_inputs)
+    bible, seleccion = _contexto(media_settings, document)
+    media_settings.openai_image_model = "gpt-image-2.6-sunburst"
+    media_settings.openai_api_key = SecretStr("sk-de-prueba-no-real")
+    timeline = build_visual_timeline(manifest, document)
+
+    plan = _plan(media_settings, document, timeline, bible, seleccion, simulation=False)
+
+    codigos = {issue.code for issue in plan.issues}
+    assert "modelo_de_imagen_sin_verificar" in codigos
+    # No es "desconocido": el modelo SI esta declarado.
+    assert "modelo_de_imagen_desconocido" not in codigos
+    assert plan.blocked
+    # Y el plan sigue siendo util: tiene escenas, tamanos y desglose.
+    assert plan.scenes
+    assert plan.image_model == "gpt-image-2.6-sunburst"
+    assert plan.cost["model_verified"] is False
+
+
+def test_en_simulacion_el_modelo_sin_verificar_no_estorba(
+    media_settings, media_inputs
+) -> None:
+    """La simulacion usa mock-image-1: el bloqueo es del envio real."""
+    document, manifest = _cargar(media_inputs)
+    bible, seleccion = _contexto(media_settings, document)
+    media_settings.openai_image_model = "gpt-image-2.6-sunburst"
+    timeline = build_visual_timeline(manifest, document)
+
+    plan = _plan(media_settings, document, timeline, bible, seleccion, simulation=True)
+
+    assert "modelo_de_imagen_sin_verificar" not in {issue.code for issue in plan.issues}
+    assert not plan.blocked
+    assert plan.image_model == "mock-image-1"
+
+
+def test_una_fidelidad_no_declarada_bloquea_el_plan(media_settings, media_inputs) -> None:
+    document, manifest = _cargar(media_inputs)
+    bible, seleccion = _contexto(media_settings, document)
+    media_settings.openai_image_model = "gpt-image-1"
+    media_settings.openai_api_key = SecretStr("sk-de-prueba-no-real")
+    # gpt-image-1 no declara `input_fidelity` en este catalogo.
+    media_settings.media_input_fidelity = "high"
+    timeline = build_visual_timeline(manifest, document)
+
+    plan = _plan(media_settings, document, timeline, bible, seleccion, simulation=False)
+
+    assert "input_fidelity_no_declarada" in {issue.code for issue in plan.issues}
+    assert plan.blocked
+
+
+def test_una_fidelidad_fuera_de_los_valores_declarados_bloquea(
+    media_settings, media_inputs
+) -> None:
+    document, manifest = _cargar(media_inputs)
+    bible, seleccion = _contexto(media_settings, document)
+    media_settings.openai_image_model = "gpt-image-2.6-sunburst"
+    media_settings.openai_api_key = SecretStr("sk-de-prueba-no-real")
+    media_settings.media_input_fidelity = "ultra"
+    timeline = build_visual_timeline(manifest, document)
+
+    plan = _plan(media_settings, document, timeline, bible, seleccion, simulation=False)
+
+    assert "input_fidelity_no_admitida" in {issue.code for issue in plan.issues}
+
+
+def test_el_plan_separa_el_coste_de_los_limites(media_settings, media_inputs) -> None:
+    """El desglose y los topes de solicitudes viajan en secciones distintas."""
+    document, manifest = _cargar(media_inputs)
+    bible, seleccion = _contexto(media_settings, document)
+    timeline = build_visual_timeline(manifest, document)
+    plan = _plan(media_settings, document, timeline, bible, seleccion)
+
+    datos = plan.to_dict()
+    assert datos["budget"]["max_generation_attempts"] == 24
+    coste = datos["cost"]
+    # Sin tarifas configuradas, desconocido; nunca cero.
+    assert coste["cost_estimate_usd"]["expected"] is None
+    assert coste["cost_estimate_usd"]["unknown_concepts"]
+    # Y el limite de intentos no aparece como una cifra de dinero.
+    assert "no es un maximo de gasto" in coste["limits_are_not_money"]
+    # Las unidades se cuentan con tamano y calidad explicitos.
+    lineas = [l for l in coste["lines"] if l["concept"] == "imagen_de_escena"]
+    assert lineas and all(l["size"] and l["quality"] for l in lineas)

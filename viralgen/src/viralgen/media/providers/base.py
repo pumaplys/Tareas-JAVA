@@ -68,11 +68,23 @@ class ImageRequest:
     reference_paths: list[Path] = field(default_factory=list)
     scene_id: str | None = None
     seed_text: str = ""
+    #: Solo se envia en la EDICION con referencias. None = no se envia.
+    input_fidelity: str | None = None
 
     @property
     def uses_edit(self) -> bool:
         """Con referencias se usa el flujo de EDICION; sin ellas, generacion."""
         return bool(self.reference_paths)
+
+    @property
+    def effective_input_fidelity(self) -> str | None:
+        """La fidelidad que de verdad viaja: solo existe en la edicion.
+
+        Sin referencias el parametro no se envia, asi que tampoco entra en la
+        identidad: dos generaciones sin referencias con distinta fidelidad
+        configurada producen la MISMA peticion y deben compartir asset.
+        """
+        return self.input_fidelity if self.uses_edit else None
 
     def identity_payload(self, reference_hashes: list[str], simulation: bool) -> dict:
         """Identidad del ASSET (no de la ejecucion).
@@ -81,7 +93,7 @@ class ImageRequest:
         proveedor, el modelo, los parametros y el modo. Los limites
         administrativos quedan fuera a proposito.
         """
-        return {
+        payload: dict[str, Any] = {
             "operation": "image_edit" if self.uses_edit else "image_generate",
             "prompt": self.prompt,
             "model": self.model,
@@ -91,6 +103,11 @@ class ImageRequest:
             "references": sorted(reference_hashes),
             "simulation": simulation,
         }
+        # Igual que en `planner.image_cache_key`: solo se anade si viaja, para
+        # no invalidar los assets generados antes de que existiera.
+        if self.effective_input_fidelity is not None:
+            payload["input_fidelity"] = self.effective_input_fidelity
+        return payload
 
 
 @dataclass

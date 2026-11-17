@@ -28,7 +28,11 @@ from pathlib import Path
 from typing import Any
 
 from ...logging_setup import get_logger
-from ..capabilities import image_capabilities, validate_image_request
+from ..capabilities import (
+    assert_verified_for_real,
+    image_capabilities,
+    validate_image_request,
+)
 from .base import (
     ImageProvider,
     ImageRequest,
@@ -66,6 +70,10 @@ class OpenAIImageProvider(ImageProvider):
         self.model = settings.require_image_settings()
         self.settings = settings
         self.capabilities = image_capabilities(self.model)
+        # Este adaptador SOLO existe para el modo real. Un modelo declarado con
+        # parametros supuestos no se despacha: se construye el proveedor y falla
+        # aqui, antes de crear el cliente y antes de cualquier HTTP.
+        assert_verified_for_real(self.capabilities)
         self._sleep = sleep
         self._rng = random.Random(0)
         if client is not None:
@@ -94,6 +102,7 @@ class OpenAIImageProvider(ImageProvider):
             output_format=request.output_format,
             edit=request.uses_edit,
             reference_count=len(request.reference_paths),
+            input_fidelity=request.effective_input_fidelity,
         )
         if len(request.prompt) > self.settings.media_max_prompt_chars:
             raise MediaPermanentError(
@@ -173,6 +182,11 @@ class OpenAIImageProvider(ImageProvider):
                     )
                     for ruta in request.reference_paths
                 ]
+                # `input_fidelity` solo existe en /v1/images/edits. Se envia
+                # unicamente si el operador lo configuro: el valor por defecto
+                # del proveedor no se fija desde aqui.
+                if request.effective_input_fidelity is not None:
+                    comun["input_fidelity"] = request.effective_input_fidelity
                 return self._client.images.edit(image=adjuntos, **comun)
             return self._client.images.generate(**comun)
         except Exception as exc:

@@ -20,7 +20,9 @@ from typing import Any
 from ..diskutil import free_mb
 from ..errors import ConfigError
 from ..textutil import sha256_json
+from .budget import estimate_from_plan
 from .capabilities import (
+    assert_verified_for_real,
     image_capabilities,
     parse_ratio,
     parse_size,
@@ -110,6 +112,9 @@ class MediaPlan:
     target_fps: int = 0
     free_disk_mb: float = 0.0
     budget: dict[str, Any] = field(default_factory=dict)
+    #: Desglose del presupuesto: coste estimado por dimensiones y calidad,
+    #: separado de los limites de solicitudes. Ver `media/budget.py`.
+    cost: dict[str, Any] = field(default_factory=dict)
     prompt_version: str = MEDIA_PROMPT_VERSION
 
     @property
@@ -158,6 +163,7 @@ class MediaPlan:
             "missing_tools": list(self.missing_tools),
             "free_disk_mb": round(self.free_disk_mb, 1),
             "budget": dict(self.budget),
+            "cost": dict(self.cost),
             "issues": [issue.to_dict() for issue in self.issues],
             "blocked": self.blocked,
             "can_run": self.can_run(),
@@ -196,12 +202,39 @@ def build_plan(
             capacidades_imagen = image_capabilities(image_model)
         except ConfigError as exc:
             problema("modelo_de_imagen_desconocido", exc.message, blocking=True)
+        else:
+            # Un modelo DECLARADO con parametros supuestos se puede planificar
+            # y simular, pero no despachar: el bloqueo se levanta aportando los
+            # extractos al registro, no con un interruptor.
+            if not capacidades_imagen.verified and not simulation:
+                try:
+                    assert_verified_for_real(capacidades_imagen)
+                except ConfigError as exc:
+                    problema("modelo_de_imagen_sin_verificar", exc.message, blocking=True)
     else:
         problema(
             "modelo_de_imagen_no_declarado",
             "Falta OPENAI_IMAGE_MODEL: el modelo de imagenes se declara explicitamente.",
             blocking=True,
         )
+
+    fidelidad = getattr(settings, "media_input_fidelity", None)
+    if fidelidad is not None and capacidades_imagen is not None:
+        if not capacidades_imagen.input_fidelities:
+            problema(
+                "input_fidelity_no_declarada",
+                f"VIRALGEN_MEDIA_INPUT_FIDELITY={fidelidad!r} pero el modelo "
+                f"{image_model!r} no declara ese parametro en el catalogo.",
+                blocking=True,
+            )
+        elif fidelidad not in capacidades_imagen.input_fidelities:
+            problema(
+                "input_fidelity_no_admitida",
+                f"VIRALGEN_MEDIA_INPUT_FIDELITY={fidelidad!r} no esta entre los "
+                f"valores declarados para {image_model!r} "
+                f"({', '.join(capacidades_imagen.input_fidelities)}).",
+                blocking=True,
+            )
 
     escenas_video = [escena for escena in timeline.scenes if escena.asset_type == "video"]
     capacidades_video = None
@@ -379,15 +412,23 @@ def build_plan(
     if media_storage is not None:
         referencias_hash = _reference_hashes(selection, media_storage, simulation)
         for plan in planes:
+            hashes_escena = [
+                referencias_hash[cid]
+                for cid in plan.character_ids
+                if cid in referencias_hash
+            ]
             plan.image_cache_key = image_cache_key(
                 plan=plan,
                 model=image_model,
-                reference_hashes=[
-                    referencias_hash[cid]
-                    for cid in plan.character_ids
-                    if cid in referencias_hash
-                ],
+                reference_hashes=hashes_escena,
                 simulation=simulation,
+                # Solo viaja en la edicion, asi que solo cuenta como identidad
+                # cuando hay referencias. Debe coincidir con
+                # ImageRequest.effective_input_fidelity o el plan predeciria
+                # una clave distinta de la que usa la ejecucion.
+                input_fidelity=(
+                    settings.media_input_fidelity if hashes_escena else None
+                ),
             )
             plan.image_cache_hit = media_storage.get_cached_asset(plan.image_cache_key) is not None
 
@@ -400,7 +441,7 @@ def build_plan(
             blocking=True,
         )
 
-    return MediaPlan(
+    plan_resultante = MediaPlan(
         scenes=planes,
         issues=issues,
         reference_plan=plan_referencias,
@@ -421,6 +462,10 @@ def build_plan(
             "max_job_mib": settings.media_max_job_mib,
         },
     )
+    # El desglose se calcula AL FINAL, sobre el plan ya cerrado: necesita el
+    # tamano y la calidad reales de cada escena y el estado de la cache.
+    plan_resultante.cost = estimate_from_plan(plan_resultante, settings).describe()
+    return plan_resultante
 
 
 def _reference_hashes(selection, media_storage, simulation: bool) -> dict[str, str]:
@@ -432,21 +477,38 @@ def _reference_hashes(selection, media_storage, simulation: bool) -> dict[str, s
     return resultado
 
 
-def image_cache_key(*, plan: ScenePlan, model: str, reference_hashes: list[str], simulation: bool) -> str:
-    """Identidad del ASSET de imagen. No depende de limites administrativos."""
-    return sha256_json(
-        {
-            "operation": "image_edit" if reference_hashes else "image_generate",
-            "prompt": plan.effective_prompt,
-            "prompt_version": MEDIA_PROMPT_VERSION,
-            "model": model,
-            "size": plan.image_size,
-            "quality": plan.image_quality,
-            "output_format": plan.image_format,
-            "references": sorted(reference_hashes),
-            "simulation": simulation,
-        }
-    )
+def image_cache_key(
+    *,
+    plan: ScenePlan,
+    model: str,
+    reference_hashes: list[str],
+    simulation: bool,
+    input_fidelity: str | None = None,
+) -> str:
+    """Identidad del ASSET de imagen. No depende de limites administrativos.
+
+    `input_fidelity` entra en la identidad porque cambia la imagen que
+    devuelve el proveedor: reutilizar un asset generado con otra fidelidad
+    seria servir algo distinto de lo pedido.
+    """
+    payload: dict[str, Any] = {
+        "operation": "image_edit" if reference_hashes else "image_generate",
+        "prompt": plan.effective_prompt,
+        "prompt_version": MEDIA_PROMPT_VERSION,
+        "model": model,
+        "size": plan.image_size,
+        "quality": plan.image_quality,
+        "output_format": plan.image_format,
+        "references": sorted(reference_hashes),
+        "simulation": simulation,
+    }
+    # La clave se AÑADE solo si el parametro viaja de verdad. Incluirla como
+    # `None` cambiaria el hash de todos los assets ya cacheados -que se
+    # generaron sin ella- y los obligaria a regenerarse sin que nada del
+    # resultado haya cambiado. Una identidad nueva se paga otra vez.
+    if input_fidelity is not None:
+        payload["input_fidelity"] = input_fidelity
+    return sha256_json(payload)
 
 
 def video_cache_key(

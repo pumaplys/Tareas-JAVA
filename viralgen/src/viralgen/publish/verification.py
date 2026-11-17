@@ -34,115 +34,35 @@ bloqueo: solo deja escrito lo que ya se sabe y lo que falta.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import StrEnum
+# Las primitivas viven en `viralgen.verification` porque el modulo 3 las
+# reutiliza para el catalogo de modelos de OpenAI. Se reexportan aqui: el
+# contrato de importacion de este modulo no cambia.
+from ..verification import (
+    DEVELOPER,
+    REVIEWER,
+    CheckStatus,
+    PendingCheck,
+    SourceEvidence,
+)
 
-#: Quien aporta una evidencia.
-REVIEWER = "revisor"
-DEVELOPER = "desarrollo"
-
-
-class CheckStatus(StrEnum):
-    """Estado de la verificacion de un parametro."""
-
-    PENDING = "pending"
-    """Sin evidencia."""
-
-    PARTIAL = "partial"
-    """Hay evidencia, pero no cubre la condicion completa. Sigue bloqueando."""
-
-    VERIFIED = "verified"
-    """La condicion se cumple con la evidencia aportada."""
-
-
-@dataclass(frozen=True)
-class SourceEvidence:
-    """Constancia de que alguien leyo la fuente, y de que confirmo.
-
-    No afirma nada sobre quien NO la leyo: si `confirmed_by` es el revisor, es
-    porque este entorno no pudo abrir la URL. El `scope` acota el alcance:
-    confirmar un campo no verifica la lista entera de la que forma parte.
-    """
-
-    confirmed_by: str
-    confirmed_on: str
-    states: str
-    scope: str
-    sources: tuple[str, ...] = ()
-
-    def describe(self) -> dict:
-        return {
-            "confirmed_by": self.confirmed_by,
-            "confirmed_on": self.confirmed_on,
-            "states": self.states,
-            "scope": self.scope,
-            "sources": list(self.sources),
-        }
-
-
-@dataclass(frozen=True)
-class PendingCheck:
-    """Un parametro de protocolo, con el supuesto que se usa y su estado."""
-
-    check_id: str
-    #: Destino afectado: "youtube", "instagram", "staging", "tiktok" o "*".
-    target: str
-    source_tag: str
-    source_url: str
-    what: str
-    #: Lo que el codigo hace hoy con este parametro.
-    assumption: str
-    #: Condicion exacta para considerarlo verificado.
-    verified_when: str
-    #: Si impediria el envio real mientras no este verificado.
-    blocks_real: bool
-    status: CheckStatus = CheckStatus.PENDING
-    #: Historial de consultas, de la mas antigua a la mas reciente.
-    evidence: tuple[SourceEvidence, ...] = field(default_factory=tuple)
-    #: Observaciones fechadas que NO confirman nada, como un intento de
-    #: consulta que devolvio un error de acceso. Se guardan para que conste que
-    #: alguien lo intento, sin que eso cuente como evidencia.
-    notes: tuple[str, ...] = field(default_factory=tuple)
-
-    def __post_init__(self) -> None:
-        if self.status is not CheckStatus.PENDING and not self.evidence:
-            raise ValueError(
-                f"{self.check_id}: un estado distinto de `pending` necesita "
-                "evidencia que lo respalde"
-            )
-        if self.status is CheckStatus.PENDING and self.evidence:
-            raise ValueError(
-                f"{self.check_id}: hay evidencia, asi que el estado no puede ser "
-                "`pending`; usa `partial` si no cierra la condicion"
-            )
-
-    @property
-    def verified(self) -> bool:
-        return self.status is CheckStatus.VERIFIED
-
-    @property
-    def blocking(self) -> bool:
-        """Bloquea mientras no este VERIFICADO. Un `partial` sigue bloqueando."""
-        return self.blocks_real and not self.verified
-
-    @property
-    def latest_evidence(self) -> SourceEvidence | None:
-        return self.evidence[-1] if self.evidence else None
-
-    def describe(self) -> dict:
-        return {
-            "check_id": self.check_id,
-            "target": self.target,
-            "source": self.source_tag,
-            "source_url": self.source_url,
-            "what": self.what,
-            "assumption": self.assumption,
-            "verified_when": self.verified_when,
-            "status": self.status.value,
-            "blocks_real_dispatch": self.blocking,
-            "evidence": [entrada.describe() for entrada in self.evidence],
-            "notes": list(self.notes),
-        }
+__all__ = [
+    "REVIEWER",
+    "DEVELOPER",
+    "CheckStatus",
+    "SourceEvidence",
+    "PendingCheck",
+    "UNREACHABLE_REASON",
+    "SOURCES",
+    "CHECKS",
+    "PENDING_CHECKS",
+    "checks_for",
+    "pending_for",
+    "blocking_for",
+    "verified_for",
+    "find",
+    "totals",
+    "describe_all",
+]
 
 
 #: Por que este entorno no aporta evidencia propia. Viaja en cada informe.

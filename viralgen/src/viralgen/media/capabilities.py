@@ -13,6 +13,20 @@ Consecuencias practicas:
 * Una combinacion no soportada (tamano, calidad, formato, edicion) tambien.
 * Nunca se sustituye un modelo por otro en silencio.
 * Ampliar el catalogo es una decision explicita, no un efecto secundario.
+
+DECLARADO NO ES VERIFICADO
+--------------------------
+
+Una entrada del catalogo puede estar DECLARADA con valores que todavia son un
+SUPUESTO. `gpt-image-2.6-sunburst` es ese caso: este entorno no alcanza la
+documentacion del proveedor (ver `model_checks.UNREACHABLE_REASON`), asi que
+sus tamanos, calidades y limite de referencias se declaran por continuidad con
+`gpt-image-1` y quedan marcados en `assumed_params`.
+
+Un modelo asi se puede planificar y simular, pero NO despachar en real:
+`assert_verified_for_real` lo bloquea citando las entradas pendientes del
+registro. No hay interruptor para eludirlo; se levanta aportando los extractos
+al registro, que es donde consta quien los leyo y cuando.
 """
 
 from __future__ import annotations
@@ -34,6 +48,36 @@ class ImageModelCapabilities:
     supports_edit: bool
     max_reference_images: int
     notes: str
+    #: Valores de `input_fidelity` que el proyecto admite enviar en una
+    #: edicion. Vacio = el proyecto NO envia el parametro para este modelo.
+    input_fidelities: tuple[str, ...] = ()
+    #: False cuando los valores de arriba son un supuesto sin confirmar. Un
+    #: modelo sin verificar se planifica y se simula, pero no se despacha.
+    verified: bool = True
+    #: Nombres de los campos cuyos valores son un SUPUESTO, para que el
+    #: informe no los presente como documentados.
+    assumed_params: tuple[str, ...] = ()
+    #: Entradas de `model_checks` que hay que cerrar para verificarlo.
+    pending_check_ids: tuple[str, ...] = ()
+
+    @property
+    def assumption_only(self) -> bool:
+        return bool(self.assumed_params)
+
+    def describe(self) -> dict:
+        """Vista para informes. Dice que esta verificado y que es supuesto."""
+        return {
+            "model_id": self.model_id,
+            "sizes": list(self.sizes),
+            "qualities": list(self.qualities),
+            "output_formats": list(self.output_formats),
+            "supports_edit": self.supports_edit,
+            "max_reference_images": self.max_reference_images,
+            "input_fidelities": list(self.input_fidelities),
+            "verified": self.verified,
+            "assumed_params": list(self.assumed_params),
+            "pending_check_ids": list(self.pending_check_ids),
+        }
 
     def vertical_sizes(self) -> list[str]:
         """Tamanos mas altos que anchos, del mas vertical al menos."""
@@ -119,6 +163,44 @@ IMAGE_MODELS: dict[str, ImageModelCapabilities] = {
             "presentacion registrado."
         ),
     ),
+    # DECLARADO, NO VERIFICADO. Los tamanos, calidades y el limite de
+    # referencias son un SUPUESTO por continuidad con gpt-image-1: este
+    # entorno no alcanzo la ficha del modelo. El envio real esta bloqueado
+    # hasta cerrar las entradas de `model_checks`.
+    "gpt-image-2.6-sunburst": ImageModelCapabilities(
+        model_id="gpt-image-2.6-sunburst",
+        sizes=("1024x1024", "1024x1536", "1536x1024"),
+        qualities=("low", "medium", "high", "auto"),
+        output_formats=("png", "jpeg", "webp"),
+        supports_edit=True,
+        max_reference_images=4,
+        input_fidelities=("low", "high"),
+        verified=False,
+        assumed_params=(
+            "sizes",
+            "qualities",
+            "output_formats",
+            "max_reference_images",
+            "input_fidelities",
+        ),
+        pending_check_ids=(
+            "sunburst_endpoint",
+            "sunburst_sizes",
+            "sunburst_qualities",
+            "sunburst_edit_references",
+            "sunburst_input_fidelity",
+            "sunburst_response_shape",
+            "sunburst_token_consumption",
+            "sunburst_account_availability",
+        ),
+        notes=(
+            "Soporte explicito preparado: generacion sin referencias por "
+            "images.generate y edicion con referencias de personaje por "
+            "images.edit, igual que gpt-image-1, mas `input_fidelity` opcional. "
+            "Los valores admitidos son un SUPUESTO sin confirmar y el envio real "
+            "esta bloqueado: ver model_checks.blocking_for('gpt-image-2.6-sunburst')."
+        ),
+    ),
     "mock-image-1": ImageModelCapabilities(
         model_id="mock-image-1",
         sizes=("1024x1536", "720x1280"),
@@ -126,6 +208,7 @@ IMAGE_MODELS: dict[str, ImageModelCapabilities] = {
         output_formats=("jpeg", "png"),
         supports_edit=True,
         max_reference_images=4,
+        input_fidelities=("low", "high"),
         notes="Modelo del proveedor simulado. No llama a ninguna API.",
     ),
 }
@@ -184,6 +267,7 @@ def validate_image_request(
     output_format: str,
     edit: bool,
     reference_count: int,
+    input_fidelity: str | None = None,
 ) -> None:
     """Valida la combinacion ANTES de emitir nada."""
     problemas: list[str] = []
@@ -199,6 +283,24 @@ def validate_image_request(
         )
     if edit and not capacidades.supports_edit:
         problemas.append("el modelo no declara soporte de edicion con referencias")
+    if input_fidelity is not None:
+        if not capacidades.input_fidelities:
+            problemas.append(
+                f"el modelo no declara `input_fidelity`; quita "
+                f"VIRALGEN_MEDIA_INPUT_FIDELITY o declaralo en el catalogo"
+            )
+        elif input_fidelity not in capacidades.input_fidelities:
+            problemas.append(
+                f"input_fidelity {input_fidelity!r} no declarada "
+                f"({', '.join(capacidades.input_fidelities)})"
+            )
+        elif not edit:
+            # El SDK solo lo acepta en `images.edit`. Enviarlo en una
+            # generacion sin referencias seria un parametro inexistente.
+            problemas.append(
+                "`input_fidelity` solo existe en la edicion con referencias; "
+                "esta operacion no lleva ninguna"
+            )
     if reference_count > capacidades.max_reference_images:
         problemas.append(
             f"{reference_count} referencias superan el maximo declarado "
@@ -209,3 +311,29 @@ def validate_image_request(
             f"Combinacion no soportada por {capacidades.model_id!r}: " + "; ".join(problemas),
             details={"model": capacidades.model_id, "problems": problemas},
         )
+
+
+def assert_verified_for_real(capacidades: ImageModelCapabilities) -> None:
+    """Impide el despacho REAL de un modelo cuyos valores son supuestos.
+
+    No es un limite del proveedor: es la consecuencia de no haber podido leer
+    su documentacion. Se levanta aportando los extractos al registro de
+    `model_checks`, no con un interruptor.
+    """
+    if capacidades.verified:
+        return
+    from .model_checks import blocking_for
+
+    bloqueantes = blocking_for(capacidades.model_id)
+    detalle = "; ".join(f"{c.check_id}: {c.what}" for c in bloqueantes)
+    raise ConfigError(
+        f"El modelo de imagen {capacidades.model_id!r} esta DECLARADO pero no "
+        f"VERIFICADO: sus parametros admitidos ({', '.join(capacidades.assumed_params)}) "
+        "son un supuesto, porque este entorno no alcanzo la documentacion oficial. "
+        "Se puede planificar y simular, no despachar en real. Pendiente: " + detalle,
+        details={
+            "model": capacidades.model_id,
+            "assumed_params": list(capacidades.assumed_params),
+            "blocking_checks": [c.check_id for c in bloqueantes],
+        },
+    )

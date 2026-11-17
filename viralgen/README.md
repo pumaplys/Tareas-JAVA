@@ -637,6 +637,8 @@ viralgen/
 ├── docs/contrato_modulo_4_montaje.md   # contrato modulo 4 -> modulo 5 (publicacion)
 ├── docs/modulo_5_publicacion.md        # modulo 5: modos, estados, secretos, pendientes
 ├── docs/piloto_youtube.md              # guia ejecutable del primer piloto privado
+├── docs/verificacion_modelos_openai.md # que falta verificar de cada modelo y quien puede aportarlo
+├── docs/marca_y_series.md              # marca publica (canal) vs serie de contenido (biblia)
 ├── tools/diagnostico_piloto.py         # presencia de configuracion, dependencias y rutas
 ├── deploy/systemd/                     # unidades PREPARADAS, no instaladas
 ├── tools/demo_publicacion.sh           # recorrido completo simulado del modulo 5
@@ -667,6 +669,8 @@ viralgen/
 │   │   └── data/voice_profiles.json
 │   ├── media/                  # MODULO 3
 │   │   ├── capabilities.py     # tamanos, calidades y duraciones ADMITIDAS
+│   │   ├── model_checks.py     # verificacion de los modelos: quien lo confirmo y cuando
+│   │   ├── budget.py           # coste estimado por tamano y calidad != limite de solicitudes
 │   │   ├── imaging.py          # Pillow: decodificar, medir, geometria, hoja
 │   │   ├── videoprobe.py       # ffprobe: medir el STREAM de video
 │   │   ├── timeline.py         # reloj tomado de voice.json
@@ -693,6 +697,7 @@ viralgen/
 │       └── pipeline.py
 │   └── publish/                # MODULO 5
 │       ├── verification.py     # lo que NO se pudo contrastar con su fuente
+│                               # (primitivas compartidas en src/viralgen/verification.py)
 │       ├── schemas.py          # contratos del plan y del recibo
 │       ├── clock.py            # reloj inyectable, zonas IANA y cambios de hora
 │       ├── admission.py        # tres veredictos, independientes del modo
@@ -1034,8 +1039,12 @@ la validación.
    llamada remota termina de forma incierta.
 7. **Solo hay dos proveedores** (OpenAI y simulado), sin cola de trabajos ni
    servidor web: un proceso, un trabajo a la vez, por diseño.
-8. **No se ha instalado ni probado en la VPS**, porque no se facilitó acceso.
-   Las instrucciones de Ubuntu están escritas para ejecutarse allí tal cual.
+8. **La instalación en la VPS no se ha verificado desde este entorno.** La
+   sesión local informa (2026-11-17) de una instalación en
+   `/opt/viralgen-repo/viralgen` sobre el commit `925381b` que ejecutó
+   correctamente la demostración simulada. Ese dato es **suyo, no mío**: este
+   entorno no tiene acceso a la VPS y no lo ha comprobado. Las instrucciones de
+   Ubuntu están escritas para ejecutarse allí tal cual.
 9. **La ruta al proveedor real nunca se ha ejecutado contra la API.** Está
    cubierta con un cliente falso (errores, reintentos, rechazos) y con una
    prueba del payload real del SDK sobre transporte simulado, pero eso solo
@@ -1499,6 +1508,39 @@ calidades, formatos, número de referencias, duraciones y relaciones de aspecto)
 y **rechaza una petición imposible antes de enviarla**: no se gasta una llamada
 para que el servidor diga que no.
 
+#### Declarado no es verificado
+
+El catálogo distingue dos estados, y `viralgen media models` los informa:
+
+| Modelo | Estado | Qué significa |
+| --- | --- | --- |
+| `gpt-image-1` | **verificado** | Parámetros comprobados contra la superficie del SDK y las referencias citadas. Se despacha en modo real. |
+| `gpt-image-2.6-sunburst` | **declarado, sin verificar** | Soporte explícito preparado —generación, edición con referencias de personaje e `input_fidelity` opcional—, pero sus tamaños, calidades y límite de referencias son un **supuesto**: este entorno no alcanza la ficha del modelo. Se planifica y se simula; el **envío real está bloqueado**. |
+| `mock-image-1` | simulado | No llama a ninguna API. |
+
+El bloqueo no se elude con un interruptor: se levanta aportando los extractos
+oficiales al registro de `src/viralgen/media/model_checks.py`, que anota **quién
+los leyó y cuándo**. Lo que hace falta, entrada por entrada, está en
+[`docs/verificacion_modelos_openai.md`](docs/verificacion_modelos_openai.md).
+
+Un detalle de atribución que el registro protege: el revisor declara haber
+consultado las cuatro referencias oficiales el 2026-11-17, pero **el contenido
+de esos extractos no ha llegado a este entorno**. Esa consulta consta como nota
+fechada, no como evidencia, y por eso no verifica ningún valor. Las dos únicas
+entradas verificadas las aportó el desarrollo leyendo las firmas del SDK
+instalado (`openai==3.16.2`), y su alcance dice explícitamente que **no** dicen
+nada sobre lo que acepta el modelo al otro lado.
+
+#### `input_fidelity`: el parámetro de la consistencia de personajes
+
+`VIRALGEN_MEDIA_INPUT_FIDELITY` viaja **solo en la edición con referencias**,
+que es el único sitio donde existe (`POST /v1/images/edits`). Vacío = no se
+envía, y entonces manda el valor por defecto del proveedor. Entra en la
+identidad de caché cuando se envía de verdad: una imagen pedida con otra
+fidelidad es otra imagen, y reutilizar la anterior sería servir algo distinto de
+lo pedido. En una generación sin referencias **no** cuenta como identidad,
+porque no se envía.
+
 ### Un clip nunca se sustituye por una imagen
 
 Si una escena pide `asset_type: video` y el clip no se puede producir —error,
@@ -1526,6 +1568,46 @@ una conexión cortada) la repetición automática queda **bloqueada**: puede hab
 consumido crédito. El presupuesto se reserva y se persiste **antes** de enviar,
 y se cuenta **por trabajo, no por proceso**: reiniciar no reinicia el contador.
 **No se promete facturación exactamente una vez.**
+
+### Presupuesto: coste estimado ≠ límite de solicitudes
+
+`viralgen media plan` lleva dos secciones **separadas a propósito**, porque
+confundirlas es lo que hace que alguien lea un número de intentos como una cifra
+de dinero:
+
+* **`budget`** — topes de **solicitudes**, decididos por el proyecto.
+  `max_generation_attempts` (24 por defecto) es un tope de intentos de creación
+  por trabajo. **No es un máximo de gasto en dólares** y el informe lo dice con
+  palabras, no sólo con la estructura.
+* **`cost`** — el desglose, calculado con **dimensiones y calidad explícitas**:
+
+  | Concepto | Qué cuenta |
+  | --- | --- |
+  | `imagen_de_escena` | Las imágenes que no están en caché, **agrupadas por (tamaño, calidad)**: el precio depende de las dos, así que una tarifa plana por imagen no sirve para gpt-image. |
+  | `imagen_de_referencia` | Las referencias de personaje que hay que generar. Una vez generadas se reutilizan: en el trabajo siguiente esta línea vale 0. |
+  | `referencia_enviada_en_edicion` | Cada referencia que viaja **como entrada** en una edición. Si el proveedor cobra esos tokens aparte, esto no es cero, y mientras no conste la tarifa es **desconocido**. |
+  | `segundos_de_video` | Sólo si el plan pide clips. |
+
+  Cada línea lleva su `unit_price_usd`, su `price_source` (`tabla`,
+  `tarifa_plana` o `desconocida`) y sus `retry_units`. El total viene en dos
+  formas: `expected` (camino nominal, una llamada por asset) y
+  `ceiling_with_retries` (si cada asset agotara sus reintentos seguros).
+
+Y un aviso que salta solo, porque el caso es frecuente: el cuento del piloto
+tiene 7 escenas y 3 referencias, o sea **10 creaciones nominales**; con 2
+reintentos seguros cada una son **30 solicitudes** contra un tope de **24**. El
+informe lo marca con `retry_ceiling_exceeds_limit` y lo explica: el trabajo se
+detendría por presupuesto agotado **antes** de llegar al techo, con escenas sin
+imagen, así que `ceiling_with_retries` es una cota que el propio límite impide
+alcanzar. Subir el límite o bajar los reintentos es una decisión del operador,
+no un detalle.
+
+Las tarifas se declaran en una **tabla** por tamaño y calidad
+(`VIRALGEN_MEDIA_IMAGE_TARIFFS_PATH`), que manda sobre la tarifa plana de
+respaldo. **Si falta el precio de cualquier concepto generado, los dos totales
+son `null`**: sumar sólo lo que tiene precio daría una cifra más baja que la
+real, y una estimación incompleta presentada como total es peor que ninguna. Un
+coste desconocido sigue siendo desconocido.
 
 ### Qué se mide y qué se declara
 
@@ -1575,8 +1657,9 @@ el personaje es reconocible entre escenas.
 `--media-key` es la clave de idempotencia del **trabajo**: repetir el mismo
 comando devuelve `reused: true` sin gastar llamadas. La **caché de assets** es
 distinta: un asset se identifica por su contenido —prompt efectivo, referencias
-por hash, operación, proveedor, modelo, parámetros y modo—, no por la ejecución
-que lo pidió. Los límites administrativos (presupuestos, tamaños) quedan fuera
+por hash, operación, proveedor, **modelo**, parámetros efectivos (tamaño,
+calidad, formato e `input_fidelity` cuando se envía) y modo—, no por la
+ejecución que lo pidió. Los límites administrativos (presupuestos, tamaños) quedan fuera
 de esa identidad a propósito: cambiarlos no debe invalidar un asset.
 
 Los archivos entran en el paquete por **enlace duro** desde la caché, de forma

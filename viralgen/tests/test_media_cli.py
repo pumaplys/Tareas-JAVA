@@ -140,3 +140,50 @@ def test_uso_incorrecto(cli) -> None:
     with pytest.raises(SystemExit) as exc:
         cli("media", "generate", "--script", "x.json")  # falta --voice
     assert exc.value.code == ExitCode.USAGE
+
+
+def test_media_models_informa_del_catalogo_sin_llamar_a_nadie(cli) -> None:
+    codigo, resumen, _ = cli("media", "models")
+
+    assert codigo == int(ExitCode.OK)
+    modelos = resumen["models"]
+    assert set(modelos) == {"gpt-image-1", "gpt-image-2.6-sunburst", "mock-image-1"}
+    # El informe distingue lo verificado de lo supuesto, modelo a modelo.
+    assert modelos["gpt-image-1"]["verified"] is True
+    assert modelos["gpt-image-1"]["assumed_params"] == []
+    assert modelos["gpt-image-2.6-sunburst"]["verified"] is False
+    assert modelos["gpt-image-2.6-sunburst"]["assumed_params"]
+    assert modelos["gpt-image-2.6-sunburst"]["blocking_checks"]
+
+
+def test_media_models_lleva_el_registro_y_sus_recuentos(cli) -> None:
+    _, resumen, _ = cli("media", "models")
+    verificacion = resumen["verification"]
+    totales = verificacion["totals"]
+
+    # Los recuentos suman: un informe que no sume miente por omision.
+    assert (
+        totales["pending"] + totales["partial"] + totales["verified"] == totales["total"]
+    )
+    # Y el informe dice por que no hay evidencia propia de la documentacion.
+    assert "developers.openai.com" in verificacion["reason"]
+    assert verificacion["reviewer_consulted_on"] == "2026-11-17"
+    assert "gpt-image-2.6-sunburst" in verificacion["blocked_models"]
+
+
+def test_media_models_filtra_por_modelo(cli) -> None:
+    _, resumen, _ = cli("media", "models", "--model", "gpt-image-1")
+    assert set(resumen["models"]) == {"gpt-image-1"}
+
+
+def test_media_models_rechaza_un_modelo_inexistente(cli) -> None:
+    codigo, resumen, _ = cli("media", "models", "--model", "gpt-image-999")
+    assert codigo == int(ExitCode.CONFIG)
+    assert resumen["error_code"] == "config_error"
+    assert "desconocido" in resumen["error_message"]
+    # El error enumera lo que si esta declarado, en vez de solo negar.
+    assert resumen["details"]["known"] == [
+        "gpt-image-1",
+        "gpt-image-2.6-sunburst",
+        "mock-image-1",
+    ]

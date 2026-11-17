@@ -203,6 +203,19 @@ def _add_media_parser(subparsers: argparse._SubParsersAction) -> None:
     schema = media_sub.add_parser("schema", help="Exporta el JSON Schema de media.json.")
     schema.add_argument("--output", type=Path, required=True, help="Ruta del esquema.")
 
+    models = media_sub.add_parser(
+        "models",
+        help=(
+            "Catalogo de modelos de imagen y estado de su verificacion. "
+            "No llama a ninguna API."
+        ),
+    )
+    models.add_argument(
+        "--model",
+        default=None,
+        help="Limita el informe a un modelo del catalogo.",
+    )
+
 
 def _add_voice_parser(subparsers: argparse._SubParsersAction) -> None:
     """Comandos del modulo 2 bajo `viralgen voice ...`."""
@@ -454,6 +467,38 @@ def _run_media(args: argparse.Namespace, settings: Settings) -> int:
     from .media.admission import check_media_admission
     from .media.pipeline import MediaJobRequest, MediaPipeline
     from .media.schemas import MediaManifest
+
+    if args.media_command == "models":
+        from .media import model_checks
+        from .media.capabilities import IMAGE_MODELS
+
+        if args.model is not None and args.model not in IMAGE_MODELS:
+            raise ConfigError(
+                f"Modelo de imagen desconocido para este proyecto: {args.model!r}. "
+                f"Declarados: {', '.join(sorted(IMAGE_MODELS))}.",
+                details={"known": sorted(IMAGE_MODELS)},
+            )
+        elegidos = (
+            {args.model: IMAGE_MODELS[args.model]} if args.model else dict(IMAGE_MODELS)
+        )
+        informe = model_checks.describe_all()
+        _emit(
+            {
+                "models": {
+                    nombre: {
+                        **capacidades.describe(),
+                        "blocking_checks": [
+                            c.check_id for c in model_checks.blocking_for(nombre)
+                        ],
+                        "notes": capacidades.notes,
+                    }
+                    for nombre, capacidades in sorted(elegidos.items())
+                },
+                "verification": informe,
+                "exit_code": int(ExitCode.OK),
+            }
+        )
+        return int(ExitCode.OK)
 
     if args.media_command == "schema":
         schema = MediaManifest.model_json_schema()
