@@ -203,6 +203,41 @@ def _add_media_parser(subparsers: argparse._SubParsersAction) -> None:
     schema = media_sub.add_parser("schema", help="Exporta el JSON Schema de media.json.")
     schema.add_argument("--output", type=Path, required=True, help="Ruta del esquema.")
 
+    smoke = media_sub.add_parser(
+        "smoke",
+        help=(
+            "Prueba aislada: una generacion y una edicion con referencia. "
+            "Sin guion, sin voz y sin publicar."
+        ),
+    )
+    grupo = smoke.add_mutually_exclusive_group()
+    grupo.add_argument(
+        "--simulated-transport",
+        action="store_true",
+        help=(
+            "Adaptador real contra un transporte falso: muestra la secuencia de "
+            "endpoints y comprueba el adjunto. Sin clave y sin red."
+        ),
+    )
+    grupo.add_argument(
+        "--real",
+        action="store_true",
+        help=(
+            "GASTA: hace las dos peticiones de verdad. Tope de dos peticiones y "
+            "cero reintentos."
+        ),
+    )
+    smoke.add_argument(
+        "--character",
+        default=None,
+        help="Personaje de la biblia. Por defecto, lumi.",
+    )
+    smoke.add_argument(
+        "--run-id",
+        default=None,
+        help="Identificador de la ejecucion; fijalo para repetir sin duplicar envios.",
+    )
+
     models = media_sub.add_parser(
         "models",
         help=(
@@ -467,6 +502,37 @@ def _run_media(args: argparse.Namespace, settings: Settings) -> int:
     from .media.admission import check_media_admission
     from .media.pipeline import MediaJobRequest, MediaPipeline
     from .media.schemas import MediaManifest
+
+    if args.media_command == "smoke":
+        from .media import smoke as smoke_mod
+
+        modo = (
+            "real"
+            if args.real
+            else "simulated_transport"
+            if args.simulated_transport
+            else "plan"
+        )
+        resumen = smoke_mod.run(
+            settings,
+            mode=modo,
+            character_id=args.character or smoke_mod.SMOKE_CHARACTER,
+            run_id=args.run_id,
+        )
+        if modo == "plan":
+            problemas = resumen.get("capability_problems") or []
+            codigo = ExitCode.CONFIG if problemas else ExitCode.OK
+        else:
+            estados = [paso.get("status") for paso in resumen.get("steps", [])]
+            if all(estado == "ok" for estado in estados) and len(estados) == 2:
+                codigo = ExitCode.OK
+            elif "outcome_unknown" in estados:
+                codigo = ExitCode.NEEDS_REVIEW
+            else:
+                codigo = ExitCode.PROVIDER
+        resumen["exit_code"] = int(codigo)
+        _emit(resumen)
+        return int(codigo)
 
     if args.media_command == "models":
         from .media import model_checks

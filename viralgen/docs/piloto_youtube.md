@@ -582,3 +582,129 @@ fuera de una suscripción de pago **no adquiere** licencia comercial al
 contratarla después. Si el vídeo se va a reutilizar comercialmente, su voz tiene
 que generarse **durante** un plan que lo permita. La prueba puramente técnica
 puede seguir con voz simulada.
+
+---
+
+## 12. `media smoke`: la prueba aislada de generación + edición
+
+El §11 fija dos intentos y cero reintentos, pero no daba una orden
+reproducible. Ésta es. No necesita guion, ni voz, ni YouTube, ni perfil, y usa
+**el mismo adaptador de imágenes del módulo 3**, así que lo que se prueba es el
+camino real.
+
+Hace exactamente **dos** peticiones:
+
+| Paso | Endpoint | Qué pide |
+|---|---|---|
+| 1 | `POST /v1/images/generations` | Lumi de cuerpo entero, con su descripción y su vestuario tal como los fija la biblia. JSON. |
+| 2 | `POST /v1/images/edits` | La **misma** Lumi cruzando un puente de madera, adjuntando como **única** referencia los bytes de la imagen anterior. Multipart con un `image[]`. |
+
+En las dos: `gpt-image-2.6-sunburst`, `720x1280`, calidad `medium`, `n=1`, PNG.
+**Sin `input_fidelity`** (la guía de 2.6 dice omitirlo) y **sin
+`response_format`** (es heredado y GPT Image no lo admite).
+
+### Ensayo sin claves y sin red — pégalo tal cual
+
+```bash
+cd /opt/viralgen-repo/viralgen && . .venv/bin/activate
+rm -rf /tmp/viralgen-smoke
+VIRALGEN_DATA_DIR=/tmp/viralgen-smoke OPENAI_IMAGE_MODEL=gpt-image-2.6-sunburst \
+  python -m viralgen media smoke --simulated-transport > /tmp/smoke.json
+```
+
+```bash
+python3 - /tmp/smoke.json <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+print("secuencia:", " -> ".join(f"{c['method']} {c['path']}" for c in d["http_calls"]))
+print("referencia adjunta == imagen 1:", d["reference_sha256_matches"])
+print("peticiones enviadas:", d["requests_sent"])
+print("salida:", d["out_dir"])
+for s in d["steps"]:
+    usage = "si" if s["usage"] else "no"
+    print(f"  {s['step_id']}: {s['width']}x{s['height']} {s['mime']} "
+          f"sha={s['sha256'][:12]} dimensiones_ok={s['dimensions_match_request']} usage={usage}")
+PY
+```
+
+No hay nada que sustituir: `/tmp/viralgen-smoke` y `/tmp/smoke.json` son rutas
+fijas. El `rm -rf` del principio es lo que garantiza ver la secuencia completa,
+porque una segunda ejecución reutiliza la caché (ver abajo). Debe imprimir:
+
+```
+secuencia: POST /v1/images/generations -> POST /v1/images/edits
+referencia adjunta == imagen 1: True
+peticiones enviadas: 2
+  1_generacion: 720x1280 image/png sha=... dimensiones_ok=True usage=si
+  2_edicion:    720x1280 image/png sha=... dimensiones_ok=True usage=no
+```
+
+Dos cosas que conviene entender de esa salida:
+
+* **`usage=no` en la edición es deliberado.** El transporte simulado devuelve
+  consumo en la generación y lo omite en la edición, para recorrer las dos
+  ramas: un `usage` ausente se registra como ausente, nunca como cero.
+* **Los dos `sha` son distintos.** Si fueran iguales, comparar las imágenes no
+  diría nada.
+
+Vuelve a ejecutar el **mismo** comando sin el `rm -rf` y verás la otra mitad de
+la prueba:
+
+```
+secuencia:
+referencia adjunta == imagen 1: None
+peticiones enviadas: 0
+```
+
+Cero peticiones y ninguna llamada HTTP: repetir la orden **no reenvía nada**.
+La identidad de un asset es su contenido, no la ejecución, así que incluso con
+otro `--run-id` se reutiliza. `reference_sha256_matches` es `None` porque no
+hubo edición que comparar, no porque fallara.
+
+### Sólo el plan, sin construir nada
+
+```bash
+cd /opt/viralgen-repo/viralgen && . .venv/bin/activate
+OPENAI_IMAGE_MODEL=gpt-image-2.6-sunburst python -m viralgen media smoke
+```
+
+Imprime los dos prompts completos, los parámetros y el presupuesto. No abre
+red, no lee la clave y no construye el proveedor. Si el modelo configurado no
+admite alguno de los parámetros, sale en `capability_problems` y el código de
+salida es 3.
+
+### El comando real — 💸 GASTA, no lo he ejecutado
+
+```bash
+cd /opt/viralgen-repo/viralgen && . .venv/bin/activate
+export OPENAI_API_KEY=<la clave del proyecto «Viralgen VPS»>
+export OPENAI_IMAGE_MODEL=gpt-image-2.6-sunburst
+python -m viralgen media smoke --real --run-id piloto-01
+```
+
+No hace falta exportar límites: `--real` fija por sí mismo el tope de **dos
+peticiones** y **cero reintentos**, también en el cliente HTTP
+(`max_retries=0`). Es la única variable que falta en el ensayo anterior: la
+clave.
+
+Después, las dos imágenes están en el `out_dir` que imprime el resumen.
+Ábrelas y compáralas: eso es lo único que dice si la edición conservó al
+personaje.
+
+### Lo que impide que esto gaste de más
+
+| Riesgo | Qué lo impide |
+|---|---|
+| Más de dos peticiones | Tope duro de 2, no configurable, con la reserva **persistida antes** de cada envío. |
+| Un reintento silencioso | `media_max_safe_retries=0` forzado, y `max_retries=0` en el SDK. Un 500 gasta una petición y se detiene. |
+| Editar sin referencia | Si la primera imagen falla, la segunda **ni se intenta**: sería otra prueba. |
+| Repetir y pagar dos veces | La identidad del asset es su contenido, no la ejecución: repetir la orden —incluso con otro `--run-id`— devuelve las imágenes de la caché y envía **0 peticiones**. |
+| Un cargo incierto | Un corte después de enviar marca la operación como incierta y **bloquea** su repetición automática hasta reconciliar a mano. |
+| Que esto acabe publicado | No escribe `media.json` ni entra en la cola: el resumen declara `diagnostic_only: true` y `admissible_for_assembly: false`. Ningún módulo posterior puede recogerlas porque no hay manifiesto que las declare. |
+
+### Qué NO demuestra
+
+Dos imágenes no acreditan continuidad visual, ni que la facturación sea la
+esperada. El modo simulado tampoco demuestra que el modelo esté disponible en
+la cuenta: eso sigue siendo `sunburst_account_availability`, y sólo lo cierra
+el modo `--real`.

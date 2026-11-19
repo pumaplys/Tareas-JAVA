@@ -671,6 +671,7 @@ viralgen/
 │   │   ├── capabilities.py     # tamanos, calidades y duraciones ADMITIDAS
 │   │   ├── model_checks.py     # verificacion de los modelos: quien lo confirmo y cuando
 │   │   ├── budget.py           # coste estimado por tamano y calidad != limite de solicitudes
+│   │   ├── smoke.py           # prueba aislada: una generacion + una edicion con referencia
 │   │   ├── imaging.py          # Pillow: decodificar, medir, geometria, hoja
 │   │   ├── videoprobe.py       # ffprobe: medir el STREAM de video
 │   │   ├── timeline.py         # reloj tomado de voice.json
@@ -1478,6 +1479,14 @@ viralgen media generate --script <script.json> --voice <voice.json> \
 viralgen media validate --script <script.json> --voice <voice.json> \
   --manifest <media.json>
 
+# Catálogo de modelos y estado de su verificación. No llama a ninguna API.
+viralgen media models
+
+# Prueba aislada: una generación y una edición con referencia, sin guion ni voz.
+# Sin red ni clave por defecto; --simulated-transport demuestra los endpoints;
+# --real GASTA, con tope de dos peticiones y cero reintentos.
+viralgen media smoke --simulated-transport
+
 # Contrato exportable.
 viralgen media schema --output schema/media.schema.json
 ```
@@ -1782,6 +1791,28 @@ viralgen voice generate --script <script.json> \
 viralgen media generate --script <script.json> --voice <voice.json> \
   --media-key ejemplo-visual-001 --mock --seed 2026
 ```
+
+### `media smoke`: probar el adaptador antes de pagar el cuento
+
+Antes de gastar en las diez imágenes hay que comprobar tres cosas que ninguna
+prueba de transporte simulado puede demostrar: que el modelo responde en la
+cuenta, que factura lo que dice y que una edición con referencia conserva al
+personaje. `viralgen media smoke` hace exactamente **dos** peticiones —una
+generación de Lumi de cuerpo entero y una edición de esa misma Lumi cruzando un
+puente, adjuntando la primera imagen como única referencia— con el **mismo
+adaptador** del módulo 3.
+
+No necesita guion, voz, perfil ni YouTube, y sus salidas son **material de
+diagnóstico**: no escribe `media.json`, así que ningún módulo posterior puede
+recogerlas. Tres modos, con el gasto siempre explícito: `plan` por defecto (sin
+red ni clave), `--simulated-transport` (adaptador real contra transporte falso)
+y `--real` (tope duro de dos peticiones, cero reintentos también en el cliente
+HTTP). Si la primera imagen falla, la segunda no se intenta; si una petición
+queda incierta, se bloquea su repetición; y repetir la orden devuelve las
+imágenes de la caché sin enviar nada.
+
+Las órdenes exactas, con el ensayo sin claves listo para pegar, están en
+[`docs/piloto_youtube.md`](docs/piloto_youtube.md) §12.
 
 ### 16.1 Prueba con los proveedores reales de imagen y vídeo (pendiente)
 
