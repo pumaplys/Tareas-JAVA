@@ -203,14 +203,20 @@ def build_plan(
         except ConfigError as exc:
             problema("modelo_de_imagen_desconocido", exc.message, blocking=True)
         else:
-            # Un modelo DECLARADO con parametros supuestos se puede planificar
-            # y simular, pero no despachar: el bloqueo se levanta aportando los
-            # extractos al registro, no con un interruptor.
-            if not capacidades_imagen.verified and not simulation:
+            # En modo real se pregunta SIEMPRE a la puerta, no solo cuando el
+            # modelo esta sin verificar: un modelo retirado esta perfectamente
+            # verificado y aun asi no atiende peticiones nuevas. Preguntar
+            # siempre evita que el planificador tenga que replicar su criterio.
+            if not simulation:
                 try:
                     assert_verified_for_real(capacidades_imagen)
                 except ConfigError as exc:
-                    problema("modelo_de_imagen_sin_verificar", exc.message, blocking=True)
+                    codigo = (
+                        "modelo_de_imagen_retirado"
+                        if capacidades_imagen.retired
+                        else "modelo_de_imagen_sin_verificar"
+                    )
+                    problema(codigo, exc.message, blocking=True)
     else:
         problema(
             "modelo_de_imagen_no_declarado",
@@ -220,7 +226,19 @@ def build_plan(
 
     fidelidad = getattr(settings, "media_input_fidelity", None)
     if fidelidad is not None and capacidades_imagen is not None:
-        if not capacidades_imagen.input_fidelities:
+        if capacidades_imagen.forbids_input_fidelity:
+            # No es que el proyecto no lo declare: es que la documentacion del
+            # modelo dice OMITIRLO. El codigo del problema lo distingue para
+            # que el operador sepa que quitarlo es la correccion, no declararlo.
+            problema(
+                "input_fidelity_prohibida",
+                f"La documentacion de {image_model!r} indica OMITIR "
+                f"`input_fidelity` en las ediciones, y VIRALGEN_MEDIA_INPUT_FIDELITY "
+                f"esta puesta en {fidelidad!r}. Dejala vacia: no se envia el "
+                "parametro, y tampoco se envia `null`.",
+                blocking=True,
+            )
+        elif not capacidades_imagen.input_fidelities:
             problema(
                 "input_fidelity_no_declarada",
                 f"VIRALGEN_MEDIA_INPUT_FIDELITY={fidelidad!r} pero el modelo "

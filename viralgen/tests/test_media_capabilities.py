@@ -98,85 +98,110 @@ def test_el_catalogo_es_pequeno_y_explicito() -> None:
         assert capacidades.notes
 
 
-def test_sunburst_esta_declarado_pero_no_verificado() -> None:
-    """Declarado para poder planificar; sin verificar para no despachar."""
+def test_sunburst_esta_verificado_por_la_evidencia_del_revisor() -> None:
+    """Protocolo cerrado el 2026-11-18; lo que falta es otra cosa."""
     capacidades = image_capabilities("gpt-image-2.6-sunburst")
-    assert capacidades.verified is False
-    assert capacidades.assumption_only is True
-    # Los valores que son supuesto se nombran, para que ningun informe los
-    # presente como documentados.
-    assert "sizes" in capacidades.assumed_params
-    assert "qualities" in capacidades.assumed_params
-    # Y cada supuesto apunta a la entrada del registro que lo cerraria.
-    assert capacidades.pending_check_ids
-    for check_id in capacidades.pending_check_ids:
-        assert model_checks.find(check_id).target == "gpt-image-2.6-sunburst"
-
-
-def test_gpt_image_1_sigue_siendo_el_modelo_verificado() -> None:
-    capacidades = image_capabilities("gpt-image-1")
     assert capacidades.verified is True
     assert capacidades.assumed_params == ()
-    # No lanza: es el modelo que el piloto puede usar de verdad.
+    assert capacidades.retired is False
+    # Factura por tokens: una tabla por (tamano, calidad) no le aplica.
+    assert capacidades.bills_by_tokens is True
+    # Solo consta `medium`, asi que solo se declara `medium`.
+    assert capacidades.qualities == ("medium",)
+    # 720x1280 es 9:16 NATIVO y es el primero de la seleccion.
+    assert capacidades.sizes[0] == "720x1280"
+    assert Fraction(*parse_size("720x1280")) == Fraction(9, 16)
+    # Lo unico que sigue pendiente es la disponibilidad en la cuenta, y no
+    # bloquea: la unica prueba posible es una llamada real.
+    assert capacidades.pending_check_ids == ("sunburst_account_availability",)
+    assert model_checks.find("sunburst_account_availability").blocks_real is False
     assert_verified_for_real(capacidades) is None
 
 
-def test_un_modelo_sin_verificar_no_se_despacha_en_real() -> None:
-    capacidades = image_capabilities("gpt-image-2.6-sunburst")
+def test_la_regla_de_geometria_documentada_se_aplica() -> None:
+    """La guia publica limites, no una lista. Se implementan como regla."""
+    reglas = image_capabilities("gpt-image-2.6-sunburst").size_rules
+    assert reglas is not None
+    # 720x1280: 45x16 y 80x16, 9:16, 921 600 px. Lo admite.
+    assert reglas.problems("720x1280") == []
+    # Y lo que la regla prohibe, lo dice y por que.
+    assert "multiplos de 16" in " ".join(reglas.problems("1000x1280"))
+    assert "lado mayor supera" in " ".join(reglas.problems("4096x1024"))
+    assert "por debajo del minimo" in " ".join(reglas.problems("512x512"))
+    assert "proporcion" in " ".join(reglas.problems("720x3008"))
+
+
+def test_gpt_image_1_esta_retirado_pero_sigue_resolviendose() -> None:
+    """Se apago el 2026-10-23. Borrarlo rompería la lectura del historial."""
+    capacidades = image_capabilities("gpt-image-1")
+    assert capacidades.retired is True
+    assert capacidades.retired_on == "2026-10-23"
+    # Sigue en el catalogo: los manifiestos y las claves de cache lo citan.
+    assert capacidades.sizes
+    assert capacidades.describe()["usable_for_new_real_requests"] is False
+
     with pytest.raises(ConfigError) as excinfo:
         assert_verified_for_real(capacidades)
-    # El mensaje dice por que, no solo que no.
-    assert "no" in excinfo.value.message.lower()
-    assert "VERIFICADO" in excinfo.value.message
-    assert excinfo.value.details["blocking_checks"]
-    # Y no hay interruptor: el bloqueo depende del registro, no de un ajuste.
-    assert "model_checks" not in excinfo.value.details
+    assert "RETIRADO" in excinfo.value.message
+    assert excinfo.value.details["retired_on"] == "2026-10-23"
+    # El mensaje dice que el historial se sigue pudiendo leer.
+    assert excinfo.value.details["readable_for_history"] is True
 
 
-def test_input_fidelity_solo_existe_en_la_edicion() -> None:
-    capacidades = image_capabilities("gpt-image-1")
-    # gpt-image-1 no la declara en este catalogo: enviarla es un error.
-    with pytest.raises(ConfigError, match="no declara"):
-        validate_image_request(
-            capacidades,
-            size="1024x1536",
-            quality="medium",
-            output_format="jpeg",
-            edit=True,
-            reference_count=1,
-            input_fidelity="high",
-        )
+def test_un_modelo_sin_verificar_no_se_despacha_en_real() -> None:
+    """Hoy no hay ninguno, pero la puerta sigue cubierta.
 
-    sunburst = image_capabilities("gpt-image-2.6-sunburst")
-    # Declarada y en una edicion: pasa.
-    validate_image_request(
-        sunburst,
-        size="1024x1536",
-        quality="medium",
-        output_format="jpeg",
-        edit=True,
-        reference_count=2,
-        input_fidelity="high",
+    Se construye uno sintetico: si manana se declara un modelo con parametros
+    supuestos, tiene que seguir bloqueandose.
+    """
+    from viralgen.media.capabilities import ImageModelCapabilities
+
+    supuesto = ImageModelCapabilities(
+        model_id="gpt-image-2.6-sunburst",  # reutiliza sus entradas del registro
+        sizes=("720x1280",),
+        qualities=("medium",),
+        output_formats=("jpeg",),
+        supports_edit=True,
+        max_reference_images=4,
+        notes="sintetico para la prueba",
+        verified=False,
+        assumed_params=("sizes",),
     )
-    # Declarada pero SIN referencias: el parametro no existe en generacion.
-    with pytest.raises(ConfigError, match="solo existe en la edicion"):
+    with pytest.raises(ConfigError) as excinfo:
+        assert_verified_for_real(supuesto)
+    assert "VERIFICADO" in excinfo.value.message
+    assert excinfo.value.details["assumed_params"] == ["sizes"]
+
+
+def test_input_fidelity_esta_prohibida_en_sunburst() -> None:
+    """La guia de 2.6 dice: «Omit `input_fidelity` on image edits.»"""
+    sunburst = image_capabilities("gpt-image-2.6-sunburst")
+    assert sunburst.forbids_input_fidelity is True
+    assert sunburst.input_fidelities == ()
+
+    base = dict(
+        size="720x1280", quality="medium", output_format="jpeg",
+        edit=True, reference_count=2,
+    )
+    # Sin el parametro: pasa.
+    validate_image_request(sunburst, **base)
+    # Con el parametro, con cualquier valor: error, y el mensaje dice que la
+    # correccion es QUITARLO.
+    for valor in ("low", "high", "ultra"):
+        with pytest.raises(ConfigError) as excinfo:
+            validate_image_request(sunburst, **base, input_fidelity=valor)
+        assert "OMITIR" in excinfo.value.message
+        assert "VIRALGEN_MEDIA_INPUT_FIDELITY" in excinfo.value.message
+
+
+def test_el_limite_local_de_referencias_es_mas_estricto_que_el_publicado() -> None:
+    """16 por peticion es lo documentado; el proyecto se queda en 4."""
+    sunburst = image_capabilities("gpt-image-2.6-sunburst")
+    assert sunburst.documented_max_reference_images == 16
+    assert sunburst.max_reference_images == 4
+    # Y el que se aplica es el local.
+    with pytest.raises(ConfigError, match="superan el maximo declarado"):
         validate_image_request(
-            sunburst,
-            size="1024x1536",
-            quality="medium",
-            output_format="jpeg",
-            edit=False,
-            reference_count=0,
-            input_fidelity="high",
-        )
-    # Un valor fuera de los declarados tambien falla antes de cualquier HTTP.
-    with pytest.raises(ConfigError, match="no declarada"):
-        validate_image_request(
-            sunburst,
-            size="1024x1536",
-            quality="medium",
-            output_format="jpeg",
-            edit=True,
-            reference_count=1,
-            input_fidelity="ultra",
+            sunburst, size="720x1280", quality="medium", output_format="jpeg",
+            edit=True, reference_count=5,
         )

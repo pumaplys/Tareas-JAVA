@@ -1,136 +1,138 @@
-# Verificación de los modelos de OpenAI: qué falta y quién puede aportarlo
+# Verificación de los modelos de OpenAI: qué se sabe y quién lo confirmó
 
-Fecha de este documento: **2026-11-17**. Estado del código: rama
-`claude/brave-sagan-bewv55`.
+Actualizado: **2026-11-19**. Rama `claude/brave-sagan-bewv55`.
 
 Este documento existe por una razón concreta: **este entorno no alcanza
 `developers.openai.com`**. La comprobación del 2026-11-17 devolvió código `000`
-(conexión no establecida) para las cuatro referencias oficiales, con
+(conexión no establecida) para las referencias oficiales, con
 `https://pypi.org/simple/openai/` respondiendo `200` en la misma tanda como
-control. Por tanto no he leído ninguna de las cuatro fuentes, y nada de lo que
-sigue afirma lo contrario.
+control. **No he leído ninguna de esas URLs**, y nada de lo que sigue afirma lo
+contrario.
 
 ## Atribución de la evidencia
 
 | Quién | Qué aportó | Fecha |
 |---|---|---|
-| Revisor | Declara haber **consultado** las cuatro referencias oficiales | 2026-11-17 |
-| Revisor | El **contenido** de esos extractos | — *no trasladado todavía* |
+| Revisor | Declara haber **consultado** las cuatro referencias iniciales | 2026-11-17 |
+| Revisor | El **contenido** de los extractos, en el documento «Evidencia para el piloto de Nubaria Cuentos», elaborado consultando ChatGPT y declarando haber revisado las fuentes oficiales enlazadas | 2026-11-18 |
 | Desarrollo (este entorno) | La **superficie de parámetros del SDK instalado** (`openai==3.16.2`), leída de las firmas de `Images.generate/edit` y `Responses.parse` | 2026-11-17 |
-| Desarrollo | Cualquier afirmación sobre lo que admite el modelo al otro lado | — *imposible aquí* |
+| Desarrollo | Cualquier lectura directa de la documentación del proveedor | — *imposible aquí* |
+| Nadie todavía | La **disponibilidad de los modelos en la cuenta «Viralgen VPS»** | — *solo la demuestra una llamada real* |
 
-Esa distinción está codificada, no sólo escrita: en
-`src/viralgen/media/model_checks.py` la consulta del revisor consta como `note`
-fechada —prueba de que alguien abrió la fuente— y **no** como `SourceEvidence`.
-`tests/test_media_model_checks.py::test_una_consulta_sin_extracto_no_se_cuenta_como_evidencia`
-falla si alguien intenta ascenderla.
+El revisor advierte además que no ejecutó las pruebas ni hizo llamadas en la
+cuenta. Esa ruta completa está registrada en
+`model_checks.EVIDENCE_ROUTE_2026_11_18` y viaja con **cada** evidencia suya,
+no solo en este documento.
 
-Que el SDK acepte un parámetro **no** significa que el modelo lo admita: el SDK
-es genérico para toda la familia de modelos de imagen. Confundir las dos cosas
-es el error que este registro existe para evitar.
+Tres distinciones que el registro protege en código, con pruebas que fallan si
+alguien las borra:
+
+1. Que el **SDK** acepte un parámetro no significa que el **modelo** lo admita.
+   `Images.edit` acepta `input_fidelity`; la guía de 2.6 dice omitirlo.
+2. Que la **documentación** lo describa no significa que **nuestra clave**
+   tenga acceso.
+3. Una **consulta sin extracto** no verifica nada: queda como nota fechada.
 
 ## Estado actual del registro
 
 ```
-total: 16   verificadas: 2   parciales: 0   pendientes: 14   bloqueantes: 8
+total: 18   verificadas: 11   parciales: 3   pendientes: 4
+bloqueantes por falta de verificación: 0
 ```
-
-Las dos verificadas son las del SDK, aportadas por el desarrollo. Las catorce
-pendientes dependen de la documentación oficial o de una llamada real. Las ocho
-bloqueantes son:
-
-```
-sunburst_endpoint          sunburst_sizes          sunburst_qualities
-sunburst_edit_references   sunburst_response_shape sunburst_account_availability
-terra_structured_outputs   terra_account_availability
-```
-
-Mientras siga cualquiera de ellas, `gpt-image-2.6-sunburst` no se despacha en
-modo real. Las de `terra` no bloquean el envío por sí mismas —el modelo de
-guion no tiene lista blanca, a propósito— pero dejan constancia de que su
-compatibilidad no está confirmada.
-
-Se consulta con:
 
 ```bash
+python -m viralgen media models
 python -c "import json; from viralgen.media import model_checks; \
 print(json.dumps(model_checks.describe_all(), indent=2, ensure_ascii=False))"
 ```
 
-## Extractos que necesito
+### Qué cerró la evidencia del 2026-11-18
 
-Para cada punto, lo útil es **el fragmento literal** de la página (o una captura
-de la tabla), no un resumen. Si un dato no aparece en la fuente, decir «no
-aparece» también cierra la entrada: es información.
+| Entrada | Antes | Ahora | Lo que dice la fuente |
+|---|---|---|---|
+| `gpt_image_1_retired` | *(no existía)* | **verificada** | «was shut down on October 23, 2026 and is no longer available» |
+| `sunburst_endpoint` | pendiente, bloqueante | **verificada** | Generación y edición, con el ID exacto; «Specify a model explicitly.» |
+| `sunburst_sizes` | pendiente, bloqueante | **verificada** | Lados múltiplos de 16, proporción 1:3–3:1, lado máx. 3840 px, 655 360–8 294 400 px |
+| `sunburst_qualities` | pendiente, bloqueante | **parcial** | Consta `medium`; la lista completa no |
+| `sunburst_edit_references` | pendiente, bloqueante | **parcial** | «you can provide up to 16 images» por petición; el límite de bytes no es atribuible a 2.6 |
+| `sunburst_input_fidelity` | pendiente | **verificada** | «Omit `input_fidelity` on image edits.» |
+| `sunburst_response_shape` | pendiente, bloqueante | **verificada** | La imagen en `data[].b64_json`; `response_format` es heredado y no admitido |
+| `sunburst_usage_schema` | *(no existía)* | **verificada** | `usage` opcional, con `input_tokens_details.{text,image}_tokens` |
+| `sunburst_token_consumption` | pendiente | **verificada** | 5 / 8 / 30 USD por millón de tokens (texto entrada / imagen entrada / imagen salida) |
+| `terra_structured_outputs` | pendiente, bloqueante | **verificada** | La ficha incluye Responses y Structured Outputs |
+| `terra_reasoning_and_output_budget` | pendiente | **parcial** | `max_output_tokens` incluye los tokens de razonamiento |
+| `deprecations_current_models` | pendiente | **verificada** | Vía la ficha de gpt-image-1 |
 
-### A. `gpt-image-2.6-sunburst` — ficha del modelo y guía de imágenes
+### Qué sigue sin cerrar
 
-Fuentes: `developers.openai.com/api/docs/models/gpt-image-2.6-sunburst` y
-`developers.openai.com/api/docs/guides/image-generation`.
-
-| # | Entrada del registro | Extracto que hace falta |
+| Entrada | Estado | Qué falta exactamente |
 |---|---|---|
-| A1 | `sunburst_endpoint` | Los **endpoints** que lista la ficha. Concretamente: ¿responde en `POST /v1/images/generations` y `POST /v1/images/edits`, o sólo como herramienta de imagen dentro de `/v1/responses`? **Si fuera sólo lo segundo, el adaptador actual no sirve** y no es un cambio de cadena de modelo: es un flujo nuevo. |
-| A2 | `sunburst_sizes` | La **lista de valores de `size`**. Interesa especialmente si hay un vertical 9:16 nativo (p. ej. `1080x1920`): hoy el único vertical es 2:3 y el módulo 4 lo adapta. |
-| A3 | `sunburst_qualities` | La **lista de valores de `quality`**. |
-| A4 | `sunburst_response_shape` | Si la respuesta trae **siempre `b64_json`**, si `response_format` sigue existiendo, y si incluye `usage` (con qué campos). |
-| A5 | `sunburst_edit_references` | **Cuántas imágenes** admite `image[]` en una edición, y el **límite por imagen** (bytes y/o píxeles). |
-| A6 | `sunburst_input_fidelity` | Si el modelo admite **`input_fidelity`**, con qué valores, y si cambia el consumo de tokens de entrada. Es el parámetro que más afecta a la consistencia de los personajes. |
-| A7 | `sunburst_token_consumption` | La **tarifa**: por imagen según tamaño y calidad, o por tokens. Y si las **imágenes de referencia de una edición se cobran aparte**. |
+| `sunburst_qualities` | parcial | La lista completa de valores de `quality`. No molesta: el proyecto solo declara y envía `medium`. |
+| `sunburst_edit_references` | parcial | El límite de **bytes** por imagen de referencia **para 2.6**. La referencia Python lo enuncia para modelos anteriores; atribuirlo por analogía sería inventarlo. |
+| `terra_reasoning_and_output_budget` | parcial | Si **6000** tokens de salida bastan para un cuento de ~50 s. Solo lo dice una ejecución real. |
+| `terra_temperature` | pendiente | Si acepta `temperature`. La evidencia del 18 no lo menciona. Mientras no conste, **no se envía**. |
+| `terra_pricing` | pendiente | Sus tarifas por millón de tokens. La evidencia aporta las de Sunburst, no las de Terra. |
+| `sunburst_account_availability` | pendiente | Que el modelo esté disponible para nuestra clave. |
+| `terra_account_availability` | pendiente | Lo mismo para el modelo de guion. |
 
-### B. `gpt-6.1-terra` — ficha del modelo
+### Por qué la disponibilidad en la cuenta ya no bloquea
 
-Fuente: `developers.openai.com/api/docs/models/gpt-6.1-terra`.
+Hasta el 2026-11-18 esas dos entradas estaban marcadas como bloqueantes. Era un
+bucle: la única prueba posible es una llamada real, y un bloqueo que impide esa
+llamada no se levanta nunca. Ahora quedan como **pendientes declaradas** con
+`blocks_real=False`, y lo que gobierna la primera llamada real es el
+**presupuesto acordado del piloto** —una generación y una edición de prueba
+antes de las diez imágenes del cuento—, no una puerta de código que se
+contradice a sí misma.
 
-| # | Entrada del registro | Extracto que hace falta |
-|---|---|---|
-| B1 | `terra_structured_outputs` | Si declara soporte de **Structured Outputs / `json_schema` estricto** en `/v1/responses`. Es el único modo en que este proyecto pide guiones. |
-| B2 | `terra_temperature` | Si **acepta `temperature`**, la ignora o la rechaza. Hoy no se envía. |
-| B3 | `terra_reasoning_and_output_budget` | Si es un **modelo de razonamiento**, su ventana de contexto, su máximo de tokens de salida, y **si los tokens de razonamiento cuentan contra `max_output_tokens`**. Si cuentan, los 6000 actuales pueden quedarse cortos para un guion largo. |
-| B4 | `terra_pricing` | **Tarifa** por millón de tokens de entrada y de salida (y de entrada en caché, si la hay). |
+Lo que sí bloquea es lo que se puede comprobar sin gastar nada: un modelo
+**retirado** y un protocolo **sin verificar**.
 
-### C. Deprecaciones
+## Consecuencias en el código
 
-Fuente: `developers.openai.com/api/docs/deprecations`.
+| Decisión | Dónde vive |
+|---|---|
+| `gpt-image-1` se sigue resolviendo, pero no acepta peticiones nuevas | `capabilities.assert_verified_for_real`, código `modelo_de_imagen_retirado` |
+| La geometría se valida contra la **regla** documentada, no contra una lista inventada | `capabilities.SizeRules`, `GPT_IMAGE_SIZE_RULES` |
+| `720x1280` es 9:16 **nativo** (45×16, 80×16, 921 600 px) y es el tamaño del piloto | primera entrada de `sizes` en el catálogo |
+| `input_fidelity` se **omite**; configurarlo es un error | `forbids_input_fidelity`, código `input_fidelity_prohibida` |
+| `response_format` no se envía nunca | `openai_images._call` |
+| El consumo se guarda por componentes, y ausente no es cero | `openai_images._read`, `pipeline._accumulate_usage` |
+| Factura **por tokens**: una tabla por (tamaño, calidad) no aplica | `bills_by_tokens`, `budget.TokenRates` |
+| El límite local de referencias (4) es más estricto que el publicado (16) | `max_reference_images` vs `documented_max_reference_images` |
 
-| # | Entrada del registro | Extracto que hace falta |
-|---|---|---|
-| C1 | `deprecations_current_models` | Si **`gpt-image-1`** aparece con fecha de retirada. Es el modelo verificado que el piloto puede usar hoy; si está anunciado, el piloto depende de cerrar sunburst antes de esa fecha. |
-
-### D. Lo que ningún documento resuelve
-
-Dos entradas (`sunburst_account_availability`, `terra_account_availability`) no
-se cierran leyendo nada: **sólo una llamada real** con la clave del proyecto
-«Viralgen VPS» demuestra que esos modelos están disponibles para nuestra cuenta.
-Un modelo declarado en el catálogo no da acceso a él; el proveedor puede
-responder `model_not_found` o `403`, y ambos se tratan como permanentes sin
-reintento.
-
-## Cómo se incorpora un extracto cuando llegue
-
-En `src/viralgen/media/model_checks.py`, a la entrada correspondiente:
+## Cómo se incorpora un extracto nuevo
 
 ```python
 PendingCheck(
-    check_id="sunburst_sizes",
+    check_id="terra_pricing",
     ...
     status=CheckStatus.VERIFIED,          # o PARTIAL si no cierra la condicion
     evidence=(
-        SourceEvidence(
-            confirmed_by=REVIEWER,         # quien lo leyo de verdad
-            confirmed_on="2026-11-__",
-            states="La ficha enumera: 1024x1024, 1024x1536, ...",
-            scope="Cubre los tamanos; no dice nada de las calidades.",
-            sources=(SOURCES["O1"],),
+        _revisor(
+            states="La ficha da X USD de entrada y Y de salida por millon.",
+            scope="Cubre las tarifas; no cubre el acceso de nuestra clave.",
+            tags=("O3",),
         ),
     ),
 )
 ```
 
-Y, si el extracto confirma los valores, quitar ese campo de `assumed_params` en
-`capabilities.py`. Cuando `assumed_params` queda vacío se pone `verified=True` y
-el bloqueo del envío real desaparece **por sí solo**: no hay interruptor que lo
-eluda, y `tests/test_media_capabilities.py` lo comprueba.
-
 Si un extracto **contradice** un supuesto, el valor del catálogo se corrige y se
-registra igual. Un supuesto desmentido no se borra en silencio.
+registra igual. Ya pasó una vez: se había supuesto que `input_fidelity` ayudaría
+con la consistencia de personajes, y la guía dice omitirlo. Un supuesto
+desmentido no se borra en silencio.
+
+## Fuera de OpenAI: la voz
+
+No es un modelo de OpenAI y por eso no está en este registro, pero condiciona el
+piloto. Según la evidencia del revisor (2026-11-18):
+
+- Las condiciones del EEE limitan el plan **Free** de ElevenLabs a usos **no
+  comerciales**.
+- El contenido generado **fuera** de una suscripción de pago **no adquiere**
+  licencia comercial al contratarla después.
+
+Consecuencia práctica: si el vídeo se va a reutilizar comercialmente, su voz
+tiene que generarse **durante** un plan que lo permita. Una prueba puramente
+técnica puede seguir con voz simulada.

@@ -1046,10 +1046,13 @@ la validación.
    entorno no tiene acceso a la VPS y no lo ha comprobado. Las instrucciones de
    Ubuntu están escritas para ejecutarse allí tal cual.
 9. **La ruta al proveedor real nunca se ha ejecutado contra la API.** Está
-   cubierta con un cliente falso (errores, reintentos, rechazos) y con una
-   prueba del payload real del SDK sobre transporte simulado, pero eso solo
-   verifica lo que sale de esta máquina: **no demuestra que el servidor acepte
-   el esquema**. Ver §13.
+   cubierta con un cliente falso (errores, reintentos, rechazos) y con pruebas
+   del payload real del SDK sobre transporte simulado, pero eso solo verifica
+   lo que sale de esta máquina: **no demuestra que el servidor acepte el
+   esquema, que el modelo esté disponible en la cuenta, cómo factura de verdad
+   ni la continuidad visual de los personajes**. Por eso la primera ejecución
+   con gasto es una generación y una edición de prueba, no el cuento completo.
+   Ver §13 y `docs/piloto_youtube.md` §11.
 10. **Resuelto:** el contrato 1.0 no tenía sitio para las medidas del módulo 2.
     Se optó por el manifiesto lateral `voice.json` en vez de migrar el guion a
     1.1 (§15). `video.actual_duration_s` queda como campo reservado.
@@ -1499,47 +1502,73 @@ Tres adaptadores, ni uno más:
 Modelos: los identificadores **los aporta la configuración**, no el código.
 `OPENAI_IMAGE_MODEL` es independiente de `OPENAI_MODEL` (el del guion): un
 modelo de texto no sirve para imágenes y el proyecto **no lo sustituye en
-silencio**. Los puntos de partida compatibles con las referencias consultadas
-son `gpt-image-1` y `gen4_turbo`; se declaran en `.env.example` **sin valor por
-defecto** para que nadie los cambie sin darse cuenta.
+silencio**. El modelo de imagen vigente es `gpt-image-2.6-sunburst`
+(`gpt-image-1` se retiró el 2026-10-23) y el de vídeo, `gen4_turbo`. El de
+vídeo se declara en `.env.example` **sin valor por defecto** para que nadie lo
+cambie sin darse cuenta; el de imagen lleva el vigente, porque poner uno
+retirado bloquea el plan.
 
 `src/viralgen/media/capabilities.py` recoge lo que cada modelo admite (tamaños,
 calidades, formatos, número de referencias, duraciones y relaciones de aspecto)
 y **rechaza una petición imposible antes de enviarla**: no se gasta una llamada
 para que el servidor diga que no.
 
-#### Declarado no es verificado
+#### Declarado no es verificado, y declarado no es vigente
 
-El catálogo distingue dos estados, y `viralgen media models` los informa:
+El catálogo distingue tres situaciones, y `viralgen media models` las informa:
 
 | Modelo | Estado | Qué significa |
 | --- | --- | --- |
-| `gpt-image-1` | **verificado** | Parámetros comprobados contra la superficie del SDK y las referencias citadas. Se despacha en modo real. |
-| `gpt-image-2.6-sunburst` | **declarado, sin verificar** | Soporte explícito preparado —generación, edición con referencias de personaje e `input_fidelity` opcional—, pero sus tamaños, calidades y límite de referencias son un **supuesto**: este entorno no alcanza la ficha del modelo. Se planifica y se simula; el **envío real está bloqueado**. |
+| `gpt-image-2.6-sunburst` | **vigente y verificado** | Parámetros documentados, aportados por el revisor el 2026-11-18 con las fuentes oficiales. Es el modelo del piloto. Factura **por tokens**. |
+| `gpt-image-1` | **retirado** (2026-10-23) | Se sigue **resolviendo** —los manifiestos, ejemplos y claves de caché ya generados lo citan, y borrarlo convertiría ese historial en «modelo desconocido»— pero no acepta solicitudes nuevas: el plan en modo real se bloquea con `modelo_de_imagen_retirado`. |
 | `mock-image-1` | simulado | No llama a ninguna API. |
 
-El bloqueo no se elude con un interruptor: se levanta aportando los extractos
-oficiales al registro de `src/viralgen/media/model_checks.py`, que anota **quién
-los leyó y cuándo**. Lo que hace falta, entrada por entrada, está en
+Un cuarto estado sigue cubierto aunque hoy no haya ningún modelo en él:
+**declarado con supuestos**, que se planifica y se simula pero no se despacha.
+Ese bloqueo se levanta aportando extractos al registro de
+`src/viralgen/media/model_checks.py`, nunca con un interruptor.
+
+Lo que el catálogo **no** decide es si el modelo está disponible en nuestra
+cuenta. Eso no lo cierra ningún documento, solo una llamada real, y por eso
+**no bloquea**: un bloqueo que impide la única prueba posible no se levanta
+nunca. Queda como pendiente declarada y lo gobierna el presupuesto acordado del
+piloto. Detalle entrada por entrada en
 [`docs/verificacion_modelos_openai.md`](docs/verificacion_modelos_openai.md).
 
-Un detalle de atribución que el registro protege: el revisor declara haber
-consultado las cuatro referencias oficiales el 2026-11-17, pero **el contenido
-de esos extractos no ha llegado a este entorno**. Esa consulta consta como nota
-fechada, no como evidencia, y por eso no verifica ningún valor. Las dos únicas
-entradas verificadas las aportó el desarrollo leyendo las firmas del SDK
-instalado (`openai==3.16.2`), y su alcance dice explícitamente que **no** dicen
-nada sobre lo que acepta el modelo al otro lado.
+Sobre la atribución: el revisor aportó los extractos el 2026-11-18, en un
+documento elaborado consultando ChatGPT y declarando haber revisado las fuentes
+oficiales enlazadas. **Este entorno no ha leído esas URLs** (el proxy devolvió
+`000`, con PyPI en 200 como control). Esa ruta viaja con cada evidencia, no solo
+en el documento. Las dos únicas entradas que firma el desarrollo son las del
+SDK instalado, y su alcance dice explícitamente que **no** hablan de lo que
+acepta el modelo al otro lado: `Images.edit` acepta `input_fidelity`, y la guía
+de 2.6 dice omitirlo.
 
-#### `input_fidelity`: el parámetro de la consistencia de personajes
+#### La geometría se valida contra la regla, no contra una lista
 
-`VIRALGEN_MEDIA_INPUT_FIDELITY` viaja **solo en la edición con referencias**,
-que es el único sitio donde existe (`POST /v1/images/edits`). Vacío = no se
-envía, y entonces manda el valor por defecto del proveedor. Entra en la
-identidad de caché cuando se envía de verdad: una imagen pedida con otra
-fidelidad es otra imagen, y reutilizar la anterior sería servir algo distinto de
-lo pedido. En una generación sin referencias **no** cuenta como identidad,
-porque no se envía.
+La guía no enumera tamaños: publica condiciones —lados múltiplos de 16,
+proporción entre 1:3 y 3:1, lado máximo 3840 px y entre 655 360 y 8 294 400
+píxeles—. `SizeRules` las implementa como regla, que es más fiel que inventar
+una lista, y rechaza un tamaño imposible antes de pagar un 400.
+
+De ahí sale el mejor efecto práctico de esta tanda: **`720x1280` es 9:16
+nativo** (45×16, 80×16, 921 600 px). Con él la entrega vertical ya no necesita
+el plan de adaptación del módulo 4. Que cumpla la regla es una **deducción
+aritmética** de los límites documentados, no una imagen que hayamos generado.
+
+#### `input_fidelity`: se omite, y configurarlo es un error
+
+Se había supuesto que este parámetro ayudaría con la consistencia de los
+personajes. La guía de 2.6 dice lo contrario: **«Omit `input_fidelity` on image
+edits.»** Así que el catálogo lo marca prohibido para ese modelo, configurar
+`VIRALGEN_MEDIA_INPUT_FIDELITY` bloquea el plan con `input_fidelity_prohibida`,
+y el mensaje dice que la corrección es **quitarlo**, no declararlo. Tampoco se
+envía `null`.
+
+El mecanismo sigue existiendo —validación, prohibición e identidad de caché—
+precisamente para poder rechazar la mala configuración antes de la petición. La
+continuidad de los personajes se sostiene con las referencias y la revisión
+visual del MP4. Un supuesto desmentido no se borra en silencio.
 
 ### Un clip nunca se sustituye por una imagen
 
@@ -1571,7 +1600,7 @@ y se cuenta **por trabajo, no por proceso**: reiniciar no reinicia el contador.
 
 ### Presupuesto: coste estimado ≠ límite de solicitudes
 
-`viralgen media plan` lleva dos secciones **separadas a propósito**, porque
+`viralgen media plan` lleva tres secciones **separadas a propósito**, porque
 confundirlas es lo que hace que alguien lea un número de intentos como una cifra
 de dinero:
 
@@ -1579,35 +1608,46 @@ de dinero:
   `max_generation_attempts` (24 por defecto) es un tope de intentos de creación
   por trabajo. **No es un máximo de gasto en dólares** y el informe lo dice con
   palabras, no sólo con la estructura.
-* **`cost`** — el desglose, calculado con **dimensiones y calidad explícitas**:
+* **`billing`** — cómo cobra el proveedor. Para `gpt-image-2.6-sunburst` es
+  **por tokens**: 5 USD por millón de tokens de texto de entrada, 8 por millón
+  de imagen de entrada y 30 por millón de imagen de salida (evidencia del
+  revisor, 2026-11-18). **Esos 30 USD no son el precio de una imagen**; cargar
+  30 USD por imagen erraría por varios órdenes de magnitud. Con facturación por
+  tokens, una tabla por (tamaño, calidad) **no aplica**.
+* **`cost`** — el desglose, con dimensiones y calidad explícitas:
 
   | Concepto | Qué cuenta |
   | --- | --- |
-  | `imagen_de_escena` | Las imágenes que no están en caché, **agrupadas por (tamaño, calidad)**: el precio depende de las dos, así que una tarifa plana por imagen no sirve para gpt-image. |
+  | `imagen_de_escena` | Las imágenes que no están en caché, agrupadas por (tamaño, calidad). |
   | `imagen_de_referencia` | Las referencias de personaje que hay que generar. Una vez generadas se reutilizan: en el trabajo siguiente esta línea vale 0. |
-  | `referencia_enviada_en_edicion` | Cada referencia que viaja **como entrada** en una edición. Si el proveedor cobra esos tokens aparte, esto no es cero, y mientras no conste la tarifa es **desconocido**. |
+  | `referencia_enviada_en_edicion` | Cada referencia que viaja **como entrada** en una edición, que el proveedor cobra como imagen de entrada. Las 8 del cuento **no son 8 llamadas**: son las adjuntas de cada edición. |
   | `segundos_de_video` | Sólo si el plan pide clips. |
 
-  Cada línea lleva su `unit_price_usd`, su `price_source` (`tabla`,
-  `tarifa_plana` o `desconocida`) y sus `retry_units`. El total viene en dos
-  formas: `expected` (camino nominal, una llamada por asset) y
-  `ceiling_with_retries` (si cada asset agotara sus reintentos seguros).
+El coste **a priori** es `null`, y el informe distingue las dos razones posibles
+por las que lo es: *falta una tarifa* o —el caso de Sunburst— **las tarifas
+constan pero los recuentos de tokens de una imagen todavía no pedida no se
+conocen**. Esa diferencia importa: la primera se arregla configurando algo, la
+segunda sólo ejecutando.
 
-Y un aviso que salta solo, porque el caso es frecuente: el cuento del piloto
-tiene 7 escenas y 3 referencias, o sea **10 creaciones nominales**; con 2
-reintentos seguros cada una son **30 solicitudes** contra un tope de **24**. El
-informe lo marca con `retry_ceiling_exceeds_limit` y lo explica: el trabajo se
-detendría por presupuesto agotado **antes** de llegar al techo, con escenas sin
-imagen, así que `ceiling_with_retries` es una cota que el propio límite impide
-alcanzar. Subir el límite o bajar los reintentos es una decisión del operador,
-no un detalle.
+El coste **a posteriori** sí se calcula, a partir del consumo que el proveedor
+declara en cada respuesta:
 
-Las tarifas se declaran en una **tabla** por tamaño y calidad
-(`VIRALGEN_MEDIA_IMAGE_TARIFFS_PATH`), que manda sobre la tarifa plana de
-respaldo. **Si falta el precio de cualquier concepto generado, los dos totales
-son `null`**: sumar sólo lo que tiene precio daría una cifra más baja que la
-real, y una estimación incompleta presentada como total es peor que ninguna. Un
-coste desconocido sigue siendo desconocido.
+```
+(5 × tokens de texto de entrada + 8 × tokens de imagen de entrada
+ + 30 × tokens de imagen de salida) / 1 000 000
+```
+
+Se usan los **componentes** (`input_tokens_text`, `input_tokens_image`,
+`output_tokens`), nunca `total_tokens`: sumar el total a sus partes duplicaría
+la cuenta. `usage` es opcional, y un campo ausente **no vale cero**: si falta un
+componente con tarifa, el coste es `null` en vez de una cifra a medias.
+
+Y un aviso que salta solo cuando corresponde: con 7 escenas y 3 referencias son
+**10 creaciones nominales**. Con los 2 reintentos seguros por defecto serían 30
+solicitudes contra un tope de 24, y el informe lo marca con
+`retry_ceiling_exceeds_limit`. Con `VIRALGEN_MEDIA_MAX_SAFE_RETRIES=1`, la
+configuración acordada para el piloto, son **20**, que sí caben en 24 y el aviso
+desaparece.
 
 ### Qué se mide y qué se declara
 

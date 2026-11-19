@@ -42,7 +42,7 @@ from ..textutil import sha256_json, sha256_text
 from ..voice.admission import check_voice_admission
 from ..voice.schemas import VoiceManifest
 from . import MEDIA_PROCESSING_VERSION, MEDIA_SCHEMA_VERSION
-from .capabilities import parse_ratio, parse_size
+from .capabilities import image_capabilities, parse_ratio, parse_size
 from .imaging import (
     apply_geometry,
     build_contact_sheet,
@@ -52,7 +52,7 @@ from .imaging import (
     plan_geometry,
     write_bytes_as_image,
 )
-from .budget import load_image_tariffs
+from .budget import load_image_tariffs, load_token_rates
 from .planner import (
     MediaPlan,
     build_plan,
@@ -678,6 +678,9 @@ class MediaPipeline:
         run_dir = self._run_dir()
         run_dir.mkdir(parents=True, exist_ok=True)
         self.cache_hits = 0
+        # Consumo que el proveedor DECLARA, acumulado por campo. Un campo que
+        # nunca llega no aparece: ausente no es cero.
+        self.provider_tokens: dict[str, int] = {}
         self.plan_sample_rate = timeline.sample_rate_hz
         self.budget = self._build_budget()
         self.image_provider = self._image_override or build_image_provider(
@@ -967,7 +970,23 @@ class MediaPipeline:
             cache_key, destino, info, kind="image",
             meta={"request_id": resultado.request_id, "usage": resultado.provider_usage},
         )
+        self._accumulate_usage(resultado.provider_usage)
         return destino, info, False
+
+    def _accumulate_usage(self, informado: dict[str, int]) -> None:
+        """Suma el consumo declarado, campo a campo.
+
+        Solo se suman los campos que vienen. Si el proveedor no informa de
+        `input_tokens_image` en una respuesta, esa respuesta no contribuye a
+        ese campo, y el total deja de ser valorable: es la diferencia entre
+        "no lo se" y "fue cero".
+        """
+        acumulado = getattr(self, "provider_tokens", None)
+        if acumulado is None:  # pragma: no cover - se inicializa en la corrida
+            acumulado = self.provider_tokens = {}
+        for clave, valor in (informado or {}).items():
+            if isinstance(valor, int) and not isinstance(valor, bool):
+                acumulado[clave] = acumulado.get(clave, 0) + valor
 
     def _register_cached(self, cache_key: str, path: Path, info, *, kind: str, meta: dict | None = None) -> None:
         self.media_storage.put_cached_asset(
@@ -1613,7 +1632,7 @@ class MediaPipeline:
                 instantanea["used_this_run"].get("download_attempts", 0)
             ),
             cache_hits=self.cache_hits,
-            provider_reported={},
+            provider_reported=dict(getattr(self, "provider_tokens", {})),
             estimated_cost_usd=self._estimated_cost(assets),
         )
 
@@ -1717,17 +1736,33 @@ class MediaPipeline:
         )
 
     def _estimated_cost(self, assets: list[MediaAsset]) -> float | None:
-        """Coste estimado local a partir de lo que de verdad se genero.
+        """Coste estimado a partir de lo que de verdad paso. None si no consta.
 
-        El precio de una imagen depende de su TAMANO y su CALIDAD, no es plano:
-        se cobra cada asset por sus dimensiones reales (`width x height`) y la
-        calidad con la que se pidio. `price_image_per_unit_usd` sigue valiendo
-        como respaldo para un proveedor de tarifa unica.
+        Dos modelos de facturacion, y no se confunden:
 
-        Si algun concepto generado no tiene tarifa, el total es None: sumar
-        solo lo que si tiene precio daria una cifra mas baja que la real, y una
-        estimacion incompleta presentada como total es peor que ninguna.
+        * **Por tokens** (gpt-image-2.6-sunburst). Se valora el consumo que el
+          proveedor DECLARO en sus respuestas, con las tarifas por millon. Si
+          no declaro consumo, o falta un componente, el coste es None: no hay
+          nada que valorar y una tarifa conocida no suple un recuento ausente.
+        * **Por imagen.** Se cobra cada asset por sus dimensiones reales y la
+          calidad con la que se pidio; `price_image_per_unit_usd` sirve de
+          respaldo para un proveedor de tarifa unica.
+
+        Si algun concepto generado no tiene precio, el total es None: sumar
+        solo lo que si tiene precio daria una cifra mas baja que la real.
         """
+        por_tokens = False
+        try:
+            por_tokens = image_capabilities(self.image_provider.model).bills_by_tokens
+        except (ConfigError, AttributeError):
+            por_tokens = False
+
+        if por_tokens:
+            consumo = dict(getattr(self, "provider_tokens", {}))
+            if not consumo:
+                return None
+            return load_token_rates(self.settings).price(consumo)
+
         tarifas = load_image_tariffs(self.settings)
         precio_video = self.settings.price_video_per_second_usd
         calidad = self.settings.media_image_quality

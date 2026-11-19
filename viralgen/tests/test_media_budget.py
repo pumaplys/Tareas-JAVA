@@ -242,10 +242,70 @@ def test_el_informe_dice_si_el_modelo_esta_verificado() -> None:
     plan = MediaPlan(scenes=[_escena("s1")], image_model="gpt-image-2.6-sunburst")
     informe = estimate_from_plan(plan, _Ajustes()).describe()
     assert informe["model"] == "gpt-image-2.6-sunburst"
-    assert informe["model_verified"] is False
+    assert informe["model_verified"] is True
 
-    plan_ok = MediaPlan(scenes=[_escena("s1")], image_model="gpt-image-1")
-    assert estimate_from_plan(plan_ok, _Ajustes()).describe()["model_verified"] is True
+    # Un modelo que el catalogo no resuelve no se da por verificado.
+    plan_desconocido = MediaPlan(scenes=[_escena("s1")], image_model="gpt-image-999")
+    assert (
+        estimate_from_plan(plan_desconocido, _Ajustes()).describe()["model_verified"]
+        is False
+    )
+
+
+def test_con_facturacion_por_tokens_la_tabla_no_aplica() -> None:
+    """Las unidades siguen contando solicitudes; su precio unitario no existe."""
+    tarifas = ImageTariffs(per_size_quality={("1024x1536", "medium"): 0.1})
+    plan = MediaPlan(
+        scenes=[_escena("s1"), _escena("s2")], image_model="gpt-image-2.6-sunburst"
+    )
+    informe = estimate_from_plan(plan, _Ajustes(), tariffs=tarifas).describe()
+
+    assert informe["billing"]["model"] == "tokens"
+    assert all(l["price_source"] == "facturado_por_tokens" for l in informe["lines"])
+    assert informe["cost_estimate_usd"]["expected"] is None
+    # Y el motivo distingue "faltan recuentos" de "falta una tarifa".
+    assert "TOKENS" in informe["cost_estimate_usd"]["unknown_reason"]
+    assert "no se conocen" in informe["cost_estimate_usd"]["unknown_reason"]
+    # Las unidades, en cambio, si se conocen.
+    assert informe["planned_requests"]["creation_requests_nominal"] == 2
+
+
+def test_las_tarifas_por_token_se_declaran_con_su_formula() -> None:
+    ajustes = _Ajustes()
+    ajustes.price_image_text_input_per_1m_usd = 5.0
+    ajustes.price_image_input_per_1m_usd = 8.0
+    ajustes.price_image_output_per_1m_usd = 30.0
+    plan = MediaPlan(scenes=[_escena("s1")], image_model="gpt-image-2.6-sunburst")
+
+    tarifas = estimate_from_plan(plan, ajustes).describe()["billing"]["token_rates"]
+    assert tarifas["text_input_per_1m_usd"] == pytest.approx(5.0)
+    assert tarifas["image_input_per_1m_usd"] == pytest.approx(8.0)
+    assert tarifas["image_output_per_1m_usd"] == pytest.approx(30.0)
+    # La formula dice explicitamente que la salida no es el precio por imagen.
+    assert "NO es el precio de una imagen" in tarifas["formula"]
+
+
+def test_el_consumo_declarado_se_valora_por_componentes() -> None:
+    """Y nunca sumando el total a sus partes, que lo duplicaria."""
+    from viralgen.media.budget import TokenRates
+
+    tarifas = TokenRates(text_input_per_1m=5.0, image_input_per_1m=8.0, image_output_per_1m=30.0)
+    consumo = {
+        "input_tokens": 4600,          # el agregado, que NO se usa
+        "input_tokens_text": 1200,
+        "input_tokens_image": 3400,
+        "output_tokens": 1580,
+        "total_tokens": 6180,          # tampoco
+    }
+    esperado = (1200 * 5 + 3400 * 8 + 1580 * 30) / 1_000_000
+    assert tarifas.price(consumo) == pytest.approx(esperado)
+    # Nada que ver con cargar 30 USD por imagen.
+    assert tarifas.price(consumo) < 0.1
+
+    # Si falta un componente con tarifa, no hay cifra: ausente no es cero.
+    assert tarifas.price({"input_tokens_text": 1200, "output_tokens": 1580}) is None
+    # Y sin tarifas completas tampoco.
+    assert TokenRates(text_input_per_1m=5.0).price(consumo) is None
 
 
 # ---------------------------------------------------------------------------

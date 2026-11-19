@@ -77,7 +77,7 @@ def ajustes_imagen(tmp_path) -> Settings:
         _env_file=None,
         data_dir=tmp_path,
         openai_api_key="sk-de-prueba-no-real",
-        openai_image_model="gpt-image-1",
+        openai_image_model="gpt-image-2.6-sunburst",
         media_max_safe_retries=2,
         log_level="ERROR",
     )
@@ -114,7 +114,12 @@ def _respuesta_imagen(contenido: bytes = PNG_1X1) -> httpx2.Response:
         json={
             "created": 0,
             "data": [{"b64_json": base64.b64encode(contenido).decode("ascii")}],
-            "usage": {"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
+            "usage": {
+                "input_tokens": 30,
+                "input_tokens_details": {"text_tokens": 10, "image_tokens": 20},
+                "output_tokens": 20,
+                "total_tokens": 50,
+            },
         },
     )
 
@@ -124,8 +129,8 @@ def test_payload_de_generacion_sin_referencias(ajustes_imagen) -> None:
     presupuesto, reservas = _presupuesto()
     resultado = proveedor.create_image(
         ImageRequest(
-            operation_id="op", prompt="un zorro", model="gpt-image-1",
-            size="1024x1536", quality="medium", output_format="jpeg", scene_id="sc_01",
+            operation_id="op", prompt="un zorro", model="gpt-image-2.6-sunburst",
+            size="720x1280", quality="medium", output_format="jpeg", scene_id="sc_01",
         ),
         presupuesto,
     )
@@ -134,12 +139,19 @@ def test_payload_de_generacion_sin_referencias(ajustes_imagen) -> None:
     assert peticion.headers["content-type"].startswith("application/json")
     cuerpo = json.loads(peticion.content)
     assert cuerpo == {
-        "prompt": "un zorro", "model": "gpt-image-1", "n": 1,
-        "output_format": "jpeg", "quality": "medium", "size": "1024x1536",
+        "prompt": "un zorro", "model": "gpt-image-2.6-sunburst", "n": 1,
+        "output_format": "jpeg", "quality": "medium", "size": "720x1280",
     }
     assert resultado.image_bytes == PNG_1X1
+    # El consumo se guarda separando texto de entrada, imagen de entrada y
+    # salida, tal como lo documenta el esquema; el total se conserva aparte y
+    # no se deriva de las partes.
     assert resultado.provider_usage == {
-        "input_tokens": 10, "output_tokens": 20, "total_tokens": 30
+        "input_tokens": 30,
+        "input_tokens_text": 10,
+        "input_tokens_image": 20,
+        "output_tokens": 20,
+        "total_tokens": 50,
     }
     assert reservas[0]["status"] == "ok"
 
@@ -154,8 +166,8 @@ def test_payload_de_edicion_con_referencias(ajustes_imagen, tmp_path) -> None:
     proveedor, capturadas = _proveedor_imagen(ajustes_imagen, [_respuesta_imagen()])
     proveedor.create_image(
         ImageRequest(
-            operation_id="op", prompt="escena con los dos", model="gpt-image-1",
-            size="1024x1536", quality="medium", output_format="jpeg",
+            operation_id="op", prompt="escena con los dos", model="gpt-image-2.6-sunburst",
+            size="720x1280", quality="medium", output_format="jpeg",
             reference_paths=referencias, scene_id="sc_02",
         ),
         _presupuesto()[0],
@@ -171,12 +183,71 @@ def test_payload_de_edicion_con_referencias(ajustes_imagen, tmp_path) -> None:
     assert 'name="prompt"' in cuerpo and 'name="size"' in cuerpo
 
 
+def test_un_consumo_ausente_no_se_convierte_en_cero(ajustes_imagen) -> None:
+    """`usage` es opcional. Ausente significa "no lo se", no "fue cero".
+
+    Importa porque de ahi sale el coste: valorar un consumo inexistente como 0
+    presentaria el trabajo como gratis.
+    """
+    respuesta = httpx2.Response(
+        200,
+        json={
+            "created": 0,
+            "data": [{"b64_json": base64.b64encode(PNG_1X1).decode("ascii")}],
+        },
+    )
+    proveedor, _ = _proveedor_imagen(ajustes_imagen, [respuesta])
+    resultado = proveedor.create_image(
+        ImageRequest(
+            operation_id="op", prompt="un zorro", model="gpt-image-2.6-sunburst",
+            size="720x1280", quality="medium", output_format="jpeg", scene_id="sc_01",
+        ),
+        _presupuesto()[0],
+    )
+    # La imagen si llego y es valida.
+    assert resultado.image_bytes == PNG_1X1
+    # Y el consumo esta VACIO, no en ceros.
+    assert resultado.provider_usage == {}
+    assert "input_tokens" not in resultado.provider_usage
+
+
+def test_un_consumo_parcial_solo_anota_lo_que_vino(ajustes_imagen) -> None:
+    """Si falta `image_tokens`, no se inventa: queda sin anotar."""
+    respuesta = httpx2.Response(
+        200,
+        json={
+            "created": 0,
+            "data": [{"b64_json": base64.b64encode(PNG_1X1).decode("ascii")}],
+            "usage": {
+                "input_tokens": 10,
+                "input_tokens_details": {"text_tokens": 10},
+                "output_tokens": 20,
+            },
+        },
+    )
+    proveedor, _ = _proveedor_imagen(ajustes_imagen, [respuesta])
+    resultado = proveedor.create_image(
+        ImageRequest(
+            operation_id="op", prompt="un zorro", model="gpt-image-2.6-sunburst",
+            size="720x1280", quality="medium", output_format="jpeg",
+        ),
+        _presupuesto()[0],
+    )
+    assert resultado.provider_usage == {
+        "input_tokens": 10,
+        "input_tokens_text": 10,
+        "output_tokens": 20,
+    }
+    assert "input_tokens_image" not in resultado.provider_usage
+    assert "total_tokens" not in resultado.provider_usage
+
+
 def test_combinacion_invalida_no_llega_a_http(ajustes_imagen) -> None:
     proveedor, capturadas = _proveedor_imagen(ajustes_imagen, [])
     with pytest.raises(ConfigError, match="no soportada"):
         proveedor.create_image(
             ImageRequest(
-                operation_id="op", prompt="x", model="gpt-image-1",
+                operation_id="op", prompt="x", model="gpt-image-2.6-sunburst",
                 size="1080x1920", quality="medium", output_format="jpeg",
             ),
             _presupuesto()[0],
@@ -190,8 +261,8 @@ def test_prompt_demasiado_largo_no_se_trunca(ajustes_imagen) -> None:
     with pytest.raises(MediaPermanentError, match="caracteres"):
         proveedor.create_image(
             ImageRequest(
-                operation_id="op", prompt="x" * 200, model="gpt-image-1",
-                size="1024x1536", quality="medium", output_format="jpeg",
+                operation_id="op", prompt="x" * 200, model="gpt-image-2.6-sunburst",
+                size="720x1280", quality="medium", output_format="jpeg",
             ),
             _presupuesto()[0],
         )
@@ -207,8 +278,8 @@ def test_respuesta_sobredimensionada(ajustes_imagen) -> None:
     with pytest.raises(MediaPermanentError, match="limite"):
         proveedor.create_image(
             ImageRequest(
-                operation_id="op", prompt="x", model="gpt-image-1",
-                size="1024x1536", quality="medium", output_format="jpeg",
+                operation_id="op", prompt="x", model="gpt-image-2.6-sunburst",
+                size="720x1280", quality="medium", output_format="jpeg",
             ),
             _presupuesto()[0],
         )
@@ -222,8 +293,8 @@ def test_base64_invalido(ajustes_imagen) -> None:
     with pytest.raises(MediaPermanentError, match="base64"):
         proveedor.create_image(
             ImageRequest(
-                operation_id="op", prompt="x", model="gpt-image-1",
-                size="1024x1536", quality="medium", output_format="jpeg",
+                operation_id="op", prompt="x", model="gpt-image-2.6-sunburst",
+                size="720x1280", quality="medium", output_format="jpeg",
             ),
             _presupuesto()[0],
         )
@@ -238,8 +309,8 @@ def test_errores_permanentes_no_se_reintentan(ajustes_imagen, estado) -> None:
     with pytest.raises(MediaPermanentError):
         proveedor.create_image(
             ImageRequest(
-                operation_id="op", prompt="x", model="gpt-image-1",
-                size="1024x1536", quality="medium", output_format="jpeg",
+                operation_id="op", prompt="x", model="gpt-image-2.6-sunburst",
+                size="720x1280", quality="medium", output_format="jpeg",
             ),
             _presupuesto()[0],
         )
@@ -256,8 +327,8 @@ def test_5xx_se_reintenta_de_forma_acotada(ajustes_imagen) -> None:
     presupuesto, _ = _presupuesto()
     proveedor.create_image(
         ImageRequest(
-            operation_id="op", prompt="x", model="gpt-image-1",
-            size="1024x1536", quality="medium", output_format="jpeg",
+            operation_id="op", prompt="x", model="gpt-image-2.6-sunburst",
+            size="720x1280", quality="medium", output_format="jpeg",
         ),
         presupuesto,
     )
@@ -273,8 +344,8 @@ def test_un_timeout_deja_resultado_incierto(ajustes_imagen) -> None:
     with pytest.raises(MediaOutcomeUnknownError):
         proveedor.create_image(
             ImageRequest(
-                operation_id="op", prompt="x", model="gpt-image-1",
-                size="1024x1536", quality="medium", output_format="jpeg", scene_id="sc_01",
+                operation_id="op", prompt="x", model="gpt-image-2.6-sunburst",
+                size="720x1280", quality="medium", output_format="jpeg", scene_id="sc_01",
             ),
             presupuesto,
         )
@@ -288,8 +359,8 @@ def test_el_presupuesto_corta_antes_de_enviar(ajustes_imagen) -> None:
     with pytest.raises(MediaBudgetExceededError):
         proveedor.create_image(
             ImageRequest(
-                operation_id="op", prompt="x", model="gpt-image-1",
-                size="1024x1536", quality="medium", output_format="jpeg",
+                operation_id="op", prompt="x", model="gpt-image-2.6-sunburst",
+                size="720x1280", quality="medium", output_format="jpeg",
             ),
             presupuesto,
         )

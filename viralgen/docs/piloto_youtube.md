@@ -487,53 +487,98 @@ que sigue son los comandos para llevarla al commit nuevo, no una constatación d
 su estado.
 
 ```bash
-# 1. Traer el commit nuevo de la misma rama.
+# 1. Comprobar que el árbol está limpio ANTES de mover la historia.
+#    `git merge --ff-only` controla la historia, no la limpieza del árbol:
+#    si hay cambios locales, este comando los muestra y hay que decidir.
 cd /opt/viralgen-repo
+git status --short
+
+# 2. Traer el commit nuevo de la misma rama.
 git fetch origin claude/brave-sagan-bewv55
 git log --oneline -1 HEAD                 # anota el commit actual antes de moverlo
-git merge --ff-only FETCH_HEAD            # falla si hay cambios locales: no los pisa
+git merge --ff-only FETCH_HEAD
 
-# 2. Reinstalar sólo si cambió el bloqueo de dependencias (esta vez NO cambió).
+# 3. Reinstalar sólo si cambió el bloqueo de dependencias.
 cd /opt/viralgen-repo/viralgen
 . .venv/bin/activate
 git diff --name-only 925381b..HEAD -- requirements.lock.txt pyproject.toml
 
-# 3. Comprobar que el árbol nuevo pasa sus propias pruebas en la VPS.
+# 4. Comprobar que el árbol nuevo pasa sus propias pruebas en la VPS.
 python -m pytest tests -m "not ffmpeg"    # rápido, sin FFmpeg
-python -m pytest tests -m ffmpeg          # la puerta obligatoria: tarda ~12 min
+python -m pytest tests -m ffmpeg          # la puerta obligatoria: tarda ~9 min
 
-# 4. Ver el catálogo de modelos y su verificación (no llama a ninguna API).
+# 5. Ver el catálogo de modelos y su verificación (no llama a ninguna API).
 python -m viralgen media models
-python -m viralgen media models --model gpt-image-2.6-sunburst
+```
+
+### Configuración del piloto que hay que fijar
+
+```bash
+# El modelo vigente. gpt-image-1 se apagó el 2026-10-23: ponerlo bloquea el
+# plan en modo real, aunque se siga resolviendo para leer el historial.
+export OPENAI_IMAGE_MODEL=gpt-image-2.6-sunburst
+
+# DEJAR VACÍA: la guía de 2.6 dice omitir `input_fidelity` en las ediciones.
+unset VIRALGEN_MEDIA_INPUT_FIDELITY
+
+# Reintentos: 1, no 2. Con 7 escenas y 3 referencias son 10 solicitudes
+# nominales y hasta 20 con un reintento, que caben en el tope de 24. Con 2
+# reintentos serían 30 y el trabajo se detendría con escenas sin imagen.
+export VIRALGEN_MEDIA_MAX_GENERATION_ATTEMPTS=24
+export VIRALGEN_MEDIA_MAX_SAFE_RETRIES=1
+
+# Tarifas por millón de tokens, para valorar el consumo que declare el
+# proveedor. 30 USD NO es el precio de una imagen.
+export VIRALGEN_PRICE_IMAGE_TEXT_INPUT_PER_1M_USD=5
+export VIRALGEN_PRICE_IMAGE_INPUT_PER_1M_USD=8
+export VIRALGEN_PRICE_IMAGE_OUTPUT_PER_1M_USD=30
 ```
 
 ### Qué mirar después de actualizar
 
 ```bash
-# El plan ahora trae `cost` separado de `budget`. Sin tarifas, el coste es null.
 python -m viralgen media plan --script <script.json> --voice <voice.json> --mock \
   | python3 -c "import json,sys; d=json.load(sys.stdin); \
 print(json.dumps({'budget': d['budget'], 'cost': d['cost']}, indent=2, ensure_ascii=False))"
 ```
 
-Dos cosas que conviene leer en esa salida:
+1. **`cost.billing.model` será `tokens`** y las tres tarifas aparecerán ahí.
+2. **`cost.cost_estimate_usd.expected` será `null`**, y `unknown_reason` dirá
+   que es por falta de **recuentos**, no de tarifas: los tokens que gastará una
+   imagen todavía no pedida no se conocen.
+3. **`cost.planned_requests`** debe decir `10` nominales y `20` con un
+   reintento, y `retry_ceiling_exceeds_limit` debe ser `false`.
 
-1. **`cost.cost_estimate_usd.expected` será `null`** mientras no se declaren
-   tarifas. Eso es correcto: un coste desconocido sigue siendo desconocido.
-2. **`cost.retry_ceiling_exceeds_limit` será `true`** para el cuento del piloto:
-   10 creaciones nominales con 2 reintentos cada una son 30 solicitudes contra
-   un tope de 24. Hay que decidir —antes del piloto con gasto— si se sube
-   `VIRALGEN_MEDIA_MAX_GENERATION_ATTEMPTS` o se baja
-   `VIRALGEN_MEDIA_MAX_SAFE_RETRIES`. Dejarlo así significa que, en el peor
-   caso, el trabajo se detiene con escenas sin imagen.
+### Antes de las diez imágenes: la prueba acordada
+
+Que el transporte funcione contra un servidor simulado **no demuestra** que el
+modelo esté disponible en la cuenta «Viralgen VPS», ni que la facturación sea la
+esperada, ni la continuidad visual de los personajes. Por eso la primera
+ejecución con gasto no es el cuento completo, sino **una generación y una
+edición usando la primera como referencia**, con presupuesto acordado:
+
+```bash
+# Dos solicitudes, no diez. El tope del trabajo lo garantiza.
+export VIRALGEN_MEDIA_MAX_GENERATION_ATTEMPTS=2
+export VIRALGEN_MEDIA_MAX_SAFE_RETRIES=0
+```
+
+Con su resultado se comparan el consumo declarado y la facturación real, y se
+decide si seguir.
 
 ### Lo que esta actualización NO cambia
 
 * **Las claves de caché de los assets ya generados.** `input_fidelity` sólo
-  entra en la identidad cuando se envía de verdad, así que con la
-  configuración por defecto las imágenes ya cacheadas siguen encontrándose y
-  no hay que volver a pagarlas.
-* **El modelo utilizable para el piloto con gasto.** Sigue siendo
-  `gpt-image-1`: `gpt-image-2.6-sunburst` está declarado pero **bloqueado**
-  para envío real hasta cerrar las entradas de
-  [`verificacion_modelos_openai.md`](verificacion_modelos_openai.md).
+  entra en la identidad cuando se envía, y en Sunburst no se envía nunca. Las
+  imágenes ya cacheadas siguen encontrándose y no hay que volver a pagarlas.
+* **La lectura del historial.** Un manifiesto o una caché que citen
+  `gpt-image-1` siguen resolviéndose con sus tamaños y calidades de entonces.
+
+### La voz, antes de reutilizar el vídeo
+
+Según la evidencia del revisor (2026-11-18), las condiciones del EEE limitan el
+plan **Free** de ElevenLabs a usos **no comerciales**, y el contenido generado
+fuera de una suscripción de pago **no adquiere** licencia comercial al
+contratarla después. Si el vídeo se va a reutilizar comercialmente, su voz tiene
+que generarse **durante** un plan que lo permita. La prueba puramente técnica
+puede seguir con voz simulada.

@@ -177,6 +177,15 @@ class Settings(BaseSettings):
     #: la plana; sin ninguna de las dos, el coste estimado es `null`.
     price_image_per_unit_usd: float | None = Field(default=None, ge=0.0)
     media_image_tariffs_path: Path | None = None
+    #: Tarifas POR MILLON DE TOKENS del modelo de imagen. Es el modelo de
+    #: facturacion de gpt-image-2.6-sunburst: cobra por tokens, no por imagen,
+    #: y separa texto de entrada, imagen de entrada e imagen de salida. Con
+    #: ellas se puede valorar el consumo que el proveedor DECLARA en cada
+    #: respuesta; los tokens que gastara una imagen todavia no pedida no se
+    #: conocen, asi que la estimacion a priori sigue siendo desconocida.
+    price_image_text_input_per_1m_usd: float | None = Field(default=None, ge=0.0)
+    price_image_input_per_1m_usd: float | None = Field(default=None, ge=0.0)
+    price_image_output_per_1m_usd: float | None = Field(default=None, ge=0.0)
     #: Suplemento por imagen de referencia enviada en una edicion. El
     #: proveedor puede cobrar los tokens de las imagenes de entrada aparte; no
     #: se asume que sean gratis NI que cuesten algo. None = desconocido, y el
@@ -482,6 +491,9 @@ class Settings(BaseSettings):
             "image_per_unit_usd": self.price_image_per_unit_usd,
             "video_per_second_usd": self.price_video_per_second_usd,
             "image_reference_input_usd": self.price_image_reference_input_usd,
+            "image_text_input_per_1m_usd": self.price_image_text_input_per_1m_usd,
+            "image_input_per_1m_usd": self.price_image_input_per_1m_usd,
+            "image_output_per_1m_usd": self.price_image_output_per_1m_usd,
         }
 
     def voice_pricing(self) -> float | None:

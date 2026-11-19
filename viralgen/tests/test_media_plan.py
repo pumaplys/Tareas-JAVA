@@ -141,7 +141,7 @@ def test_las_credenciales_se_informan_aparte(media_settings, media_inputs) -> No
     """`plan` puede ejecutarse sin claves; lo dice en un campo propio."""
     document, manifest = _cargar(media_inputs)
     bible, seleccion = _contexto(media_settings, document)
-    media_settings.openai_image_model = "gpt-image-1"
+    media_settings.openai_image_model = "gpt-image-2.6-sunburst"
     timeline = build_visual_timeline(manifest, document)
     plan = _plan(media_settings, document, timeline, bible, seleccion, simulation=False)
     assert not plan.blocked
@@ -150,7 +150,12 @@ def test_las_credenciales_se_informan_aparte(media_settings, media_inputs) -> No
 
 
 def test_proporcion_no_exacta_es_informativa(media_settings, media_inputs) -> None:
-    """1024x1536 no es 9:16 y se dice, sin bloquear."""
+    """1024x1536 no es 9:16 y se dice, sin bloquear.
+
+    Se usa gpt-image-1 a proposito: es el modelo cuyo vertical es 2:3, y sigue
+    resolviendose para leer lo que se genero con el. Que ademas este retirado
+    anade un bloqueo distinto, que esta prueba no mira.
+    """
     document, manifest = _cargar(media_inputs)
     bible, seleccion = _contexto(media_settings, document)
     media_settings.openai_image_model = "gpt-image-1"
@@ -195,8 +200,12 @@ def test_un_hueco_en_la_voz_se_detecta(media_settings, media_inputs) -> None:
         build_visual_timeline(manifest, document)
 
 
-def test_sunburst_se_planifica_pero_no_se_despacha(media_settings, media_inputs) -> None:
-    """Declarado en el catalogo: el plan sale, el modo real queda bloqueado."""
+def test_sunburst_planifica_sin_bloqueo_de_protocolo(media_settings, media_inputs) -> None:
+    """Con la evidencia del 2026-11-18 el protocolo ya no bloquea.
+
+    Lo que sigue sin demostrar es la disponibilidad en la cuenta, y eso no
+    bloquea por construccion: la unica prueba posible es una llamada real.
+    """
     document, manifest = _cargar(media_inputs)
     bible, seleccion = _contexto(media_settings, document)
     media_settings.openai_image_model = "gpt-image-2.6-sunburst"
@@ -206,14 +215,31 @@ def test_sunburst_se_planifica_pero_no_se_despacha(media_settings, media_inputs)
     plan = _plan(media_settings, document, timeline, bible, seleccion, simulation=False)
 
     codigos = {issue.code for issue in plan.issues}
-    assert "modelo_de_imagen_sin_verificar" in codigos
-    # No es "desconocido": el modelo SI esta declarado.
+    assert "modelo_de_imagen_sin_verificar" not in codigos
     assert "modelo_de_imagen_desconocido" not in codigos
-    assert plan.blocked
-    # Y el plan sigue siendo util: tiene escenas, tamanos y desglose.
-    assert plan.scenes
     assert plan.image_model == "gpt-image-2.6-sunburst"
-    assert plan.cost["model_verified"] is False
+    assert plan.cost["model_verified"] is True
+    # Y factura por tokens, no por imagen.
+    assert plan.cost["billing"]["model"] == "tokens"
+
+
+def test_gpt_image_1_retirado_bloquea_el_plan_real(media_settings, media_inputs) -> None:
+    """El modelo apagado el 2026-10-23 no sirve para una peticion nueva."""
+    document, manifest = _cargar(media_inputs)
+    bible, seleccion = _contexto(media_settings, document)
+    media_settings.openai_image_model = "gpt-image-1"
+    media_settings.openai_api_key = SecretStr("sk-de-prueba-no-real")
+    timeline = build_visual_timeline(manifest, document)
+
+    plan = _plan(media_settings, document, timeline, bible, seleccion, simulation=False)
+
+    codigos = {i.code for i in plan.issues}
+    assert "modelo_de_imagen_retirado" in codigos
+    assert plan.blocked
+    mensaje = next(i.message for i in plan.issues if i.code == "modelo_de_imagen_retirado")
+    assert "2026-10-23" in mensaje
+    # No es "desconocido": el catalogo lo resuelve, para poder leer historial.
+    assert "modelo_de_imagen_desconocido" not in {i.code for i in plan.issues}
 
 
 def test_en_simulacion_el_modelo_sin_verificar_no_estorba(
@@ -247,19 +273,26 @@ def test_una_fidelidad_no_declarada_bloquea_el_plan(media_settings, media_inputs
     assert plan.blocked
 
 
-def test_una_fidelidad_fuera_de_los_valores_declarados_bloquea(
+def test_una_fidelidad_configurada_para_sunburst_bloquea(
     media_settings, media_inputs
 ) -> None:
+    """La guia de 2.6 dice omitirla, asi que configurarla es un error."""
     document, manifest = _cargar(media_inputs)
     bible, seleccion = _contexto(media_settings, document)
     media_settings.openai_image_model = "gpt-image-2.6-sunburst"
     media_settings.openai_api_key = SecretStr("sk-de-prueba-no-real")
-    media_settings.media_input_fidelity = "ultra"
+    media_settings.media_input_fidelity = "high"
     timeline = build_visual_timeline(manifest, document)
 
     plan = _plan(media_settings, document, timeline, bible, seleccion, simulation=False)
 
-    assert "input_fidelity_no_admitida" in {issue.code for issue in plan.issues}
+    codigos = {issue.code for issue in plan.issues}
+    # Codigo propio: la correccion es QUITARLA, no declararla.
+    assert "input_fidelity_prohibida" in codigos
+    assert "input_fidelity_no_declarada" not in codigos
+    assert plan.blocked
+    mensaje = next(i.message for i in plan.issues if i.code == "input_fidelity_prohibida")
+    assert "OMITIR" in mensaje
 
 
 def test_el_plan_separa_el_coste_de_los_limites(media_settings, media_inputs) -> None:
@@ -280,3 +313,18 @@ def test_el_plan_separa_el_coste_de_los_limites(media_settings, media_inputs) ->
     # Las unidades se cuentan con tamano y calidad explicitos.
     lineas = [l for l in coste["lines"] if l["concept"] == "imagen_de_escena"]
     assert lineas and all(l["size"] and l["quality"] for l in lineas)
+
+
+def test_sunburst_elige_el_vertical_9_16_nativo(media_settings, media_inputs) -> None:
+    """720x1280 es 9:16 exacto: la entrega vertical deja de necesitar adaptacion."""
+    document, manifest = _cargar(media_inputs)
+    bible, seleccion = _contexto(media_settings, document)
+    media_settings.openai_image_model = "gpt-image-2.6-sunburst"
+    media_settings.openai_api_key = SecretStr("sk-de-prueba-no-real")
+    timeline = build_visual_timeline(manifest, document)
+
+    plan = _plan(media_settings, document, timeline, bible, seleccion, simulation=False)
+
+    assert all(escena.image_size == "720x1280" for escena in plan.scenes)
+    # Y por tanto no hay aviso de proporcion inexacta que resolver despues.
+    assert "proporcion_no_exacta" not in {issue.code for issue in plan.issues}

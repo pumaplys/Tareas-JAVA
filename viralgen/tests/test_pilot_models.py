@@ -170,44 +170,86 @@ def test_el_modelo_entra_en_la_identidad_del_trabajo_de_guion(tmp_path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_construir_el_proveedor_real_con_sunburst_falla_antes_de_la_red(tmp_path) -> None:
-    """El bloqueo ocurre al construir: no hay cliente, no hay HTTP, no hay gasto."""
-    ajustes = Settings(
+def _ajustes_imagen(tmp_path: Path, modelo: str) -> Settings:
+    return Settings(
         _env_file=None,
         data_dir=tmp_path / "data",
         min_free_disk_mb=0,
         log_level="ERROR",
         openai_api_key=SecretStr("sk-de-prueba-no-real"),
-        openai_image_model=SUNBURST,
+        openai_image_model=modelo,
     )
+
+
+def test_construir_el_proveedor_real_con_gpt_image_1_falla_antes_de_la_red(
+    tmp_path,
+) -> None:
+    """Retirado el 2026-10-23: no se abre cliente, no hay HTTP, no hay gasto."""
     with pytest.raises(ConfigError) as excinfo:
-        OpenAIImageProvider(settings=ajustes)
+        OpenAIImageProvider(settings=_ajustes_imagen(tmp_path, "gpt-image-1"))
 
-    assert "VERIFICADO" in excinfo.value.message
-    assert excinfo.value.details["model"] == SUNBURST
-    assert "sunburst_endpoint" in excinfo.value.details["blocking_checks"]
+    assert "RETIRADO" in excinfo.value.message
+    assert excinfo.value.details["retired_on"] == "2026-10-23"
+    # Y el mensaje dice que el historial se sigue pudiendo leer.
+    assert excinfo.value.details["readable_for_history"] is True
 
 
-def test_con_gpt_image_1_el_proveedor_real_si_se_construye(tmp_path) -> None:
-    ajustes = Settings(
-        _env_file=None,
-        data_dir=tmp_path / "data",
-        min_free_disk_mb=0,
-        log_level="ERROR",
-        openai_api_key=SecretStr("sk-de-prueba-no-real"),
-        openai_image_model="gpt-image-1",
+def test_el_proveedor_real_con_sunburst_si_se_construye(tmp_path) -> None:
+    proveedor = OpenAIImageProvider(
+        settings=_ajustes_imagen(tmp_path, SUNBURST), client=object()
     )
-    proveedor = OpenAIImageProvider(settings=ajustes, client=object())
-    assert proveedor.model == "gpt-image-1"
+    assert proveedor.model == SUNBURST
     assert proveedor.capabilities.verified is True
+    assert proveedor.capabilities.retired is False
+
+
+def test_el_historial_generado_con_gpt_image_1_sigue_siendo_legible() -> None:
+    """Retirarlo no puede convertir lo ya generado en "modelo desconocido".
+
+    Un manifiesto, un ejemplo o una clave de cache de antes del 2026-10-23
+    citan `gpt-image-1`. El catalogo lo resuelve -con sus tamanos y calidades
+    de entonces- y la clave de cache de aquellos assets no cambia.
+    """
+    from viralgen.media.capabilities import image_capabilities
+
+    capacidades = image_capabilities("gpt-image-1")
+    assert capacidades.sizes == ("1024x1024", "1024x1536", "1536x1024")
+    assert "medium" in capacidades.qualities
+
+    escena = _escena()
+    escena.image_size = "1024x1536"
+    clave = image_cache_key(
+        plan=escena, model="gpt-image-1", reference_hashes=["aa"], simulation=False
+    )
+    # La misma identidad que antes de la retirada: no se regenera nada.
+    from viralgen.media.prompts import MEDIA_PROMPT_VERSION
+    from viralgen.textutil import sha256_json
+
+    assert clave == sha256_json(
+        {
+            "operation": "image_edit",
+            "prompt": escena.effective_prompt,
+            "prompt_version": MEDIA_PROMPT_VERSION,
+            "model": "gpt-image-1",
+            "size": "1024x1536",
+            "quality": escena.image_quality,
+            "output_format": escena.image_format,
+            "references": ["aa"],
+            "simulation": False,
+        }
+    )
 
 
 def test_la_edicion_envia_input_fidelity_solo_si_esta_configurada() -> None:
-    """Y solo en la edicion: en generacion el parametro no existe."""
+    """Y solo en la edicion: en generacion el parametro no existe.
+
+    Se usa el modelo simulado: en `gpt-image-2.6-sunburst` el parametro esta
+    PROHIBIDO por su documentacion, asi que alli no se envia nunca.
+    """
     base = {
         "operation_id": "op1",
         "prompt": "prompt",
-        "model": SUNBURST,
+        "model": "mock-image-1",
         "size": "1024x1536",
         "quality": "medium",
         "output_format": "jpeg",

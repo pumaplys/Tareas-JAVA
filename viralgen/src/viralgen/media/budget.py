@@ -32,7 +32,7 @@ Un coste desconocido sigue siendo desconocido.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -43,6 +43,84 @@ CONCEPT_SCENE_IMAGE = "imagen_de_escena"
 CONCEPT_REFERENCE_IMAGE = "imagen_de_referencia"
 CONCEPT_REFERENCE_INPUT = "referencia_enviada_en_edicion"
 CONCEPT_VIDEO_SECONDS = "segundos_de_video"
+
+
+@dataclass(frozen=True)
+class TokenRates:
+    """Tarifas por millon de tokens del modelo de imagen.
+
+    Es el modelo de facturacion de `gpt-image-2.6-sunburst`: cobra por tokens
+    y separa texto de entrada, imagen de entrada e imagen de salida. Las
+    referencias adjuntas a una edicion se cobran como imagen de ENTRADA.
+
+    Importante: la tarifa de salida NO es el precio de una imagen. Con 30 USD
+    por millon de tokens de salida, cargar 30 USD por imagen seria errar por
+    varios ordenes de magnitud.
+    """
+
+    text_input_per_1m: float | None = None
+    image_input_per_1m: float | None = None
+    image_output_per_1m: float | None = None
+
+    @property
+    def configured(self) -> bool:
+        return any(
+            r is not None
+            for r in (self.text_input_per_1m, self.image_input_per_1m, self.image_output_per_1m)
+        )
+
+    @property
+    def complete(self) -> bool:
+        return all(
+            r is not None
+            for r in (self.text_input_per_1m, self.image_input_per_1m, self.image_output_per_1m)
+        )
+
+    def price(self, tokens: dict[str, int]) -> float | None:
+        """Valora un consumo YA DECLARADO por el proveedor.
+
+        Usa los componentes (`input_tokens_text`, `input_tokens_image`,
+        `output_tokens`), nunca `total_tokens`: sumar el total a sus partes
+        duplicaria la cuenta. Si falta un componente con tarifa, devuelve None:
+        un consumo a medias no se presenta como el consumo.
+        """
+        if not self.complete:
+            return None
+        piezas = (
+            ("input_tokens_text", self.text_input_per_1m),
+            ("input_tokens_image", self.image_input_per_1m),
+            ("output_tokens", self.image_output_per_1m),
+        )
+        total = 0.0
+        for clave, tarifa in piezas:
+            valor = tokens.get(clave)
+            if valor is None:
+                return None
+            assert tarifa is not None
+            total += valor * tarifa / 1_000_000
+        return round(total, 6)
+
+    def describe(self) -> dict[str, Any]:
+        return {
+            "text_input_per_1m_usd": self.text_input_per_1m,
+            "image_input_per_1m_usd": self.image_input_per_1m,
+            "image_output_per_1m_usd": self.image_output_per_1m,
+            "formula": (
+                "(5 x tokens de texto de entrada + 8 x tokens de imagen de "
+                "entrada + 30 x tokens de imagen de salida) / 1 000 000, con las "
+                "tarifas configuradas. Las referencias adjuntas cuentan como "
+                "imagen de entrada. La tarifa de salida NO es el precio de una "
+                "imagen."
+            ),
+        }
+
+
+def load_token_rates(settings: Any) -> TokenRates:
+    return TokenRates(
+        text_input_per_1m=getattr(settings, "price_image_text_input_per_1m_usd", None),
+        image_input_per_1m=getattr(settings, "price_image_input_per_1m_usd", None),
+        image_output_per_1m=getattr(settings, "price_image_output_per_1m_usd", None),
+    )
 
 
 @dataclass(frozen=True)
@@ -213,8 +291,12 @@ class BudgetEstimate:
     request_limits: dict[str, int]
     planned_requests: dict[str, int]
     tariffs: ImageTariffs
+    token_rates: TokenRates
     model: str
     model_verified: bool
+    #: True si el modelo cobra por tokens. Entonces el coste a priori es
+    #: desconocido por falta de RECUENTOS, no por falta de tarifas.
+    bills_by_tokens: bool = False
 
     @property
     def retry_ceiling_exceeds_limit(self) -> bool:
@@ -237,6 +319,23 @@ class BudgetEstimate:
         return sorted({linea.concept for linea in self.lines if not linea.known and linea.units})
 
     @property
+    def unknown_reason(self) -> str | None:
+        """Por que no hay total, distinguiendo las dos causas posibles."""
+        if not self.unknown_concepts:
+            return None
+        if self.bills_by_tokens:
+            return (
+                "El modelo factura por TOKENS. Las tarifas pueden constar, pero "
+                "los tokens que consumira una imagen todavia no pedida no se "
+                "conocen: el total a priori es desconocido. Se valora a "
+                "posteriori con el consumo que declare cada respuesta."
+            )
+        return (
+            "Falta la tarifa de al menos un concepto que si se va a generar. "
+            "Sumar solo lo que tiene precio daria una cifra mas baja que la real."
+        )
+
+    @property
     def expected_usd(self) -> float | None:
         """Coste del camino nominal, o None si falta alguna tarifa."""
         if self.unknown_concepts:
@@ -255,10 +354,23 @@ class BudgetEstimate:
             "model": self.model,
             "model_verified": self.model_verified,
             "lines": [linea.describe() for linea in self.lines],
+            "billing": {
+                "model": "tokens" if self.bills_by_tokens else "per_image",
+                "token_rates": self.token_rates.describe(),
+                "note": (
+                    "Con facturacion por tokens, una tabla de tarifas por "
+                    "(tamano, calidad) NO aplica: las unidades de abajo siguen "
+                    "siendo utiles para contar solicitudes, pero su precio "
+                    "unitario no existe como tal."
+                    if self.bills_by_tokens
+                    else "El proveedor cobra por imagen: la tabla por (tamano, calidad) aplica."
+                ),
+            },
             "cost_estimate_usd": {
                 "expected": self.expected_usd,
                 "ceiling_with_retries": self.ceiling_usd,
                 "unknown_concepts": self.unknown_concepts,
+                "unknown_reason": self.unknown_reason,
                 "meaning": (
                     "`expected` es el camino nominal: una llamada por asset que "
                     "no esta en cache. `ceiling_with_retries` supone que cada "
@@ -430,13 +542,25 @@ def estimate_from_plan(
 
     modelo = getattr(plan, "image_model", "") or ""
     verificado = True
+    por_tokens = False
     if modelo:
         try:
             from .capabilities import image_capabilities
 
-            verificado = image_capabilities(modelo).verified
+            capacidades = image_capabilities(modelo)
+            verificado = capacidades.verified
+            por_tokens = capacidades.bills_by_tokens
         except ConfigError:
             verificado = False
+
+    if por_tokens:
+        # Las unidades siguen contando solicitudes, pero su "precio unitario"
+        # no existe: el proveedor cobra por tokens. Decir "precio desconocido"
+        # sin mas haria pensar que falta configurar una tarifa.
+        lineas = [
+            replace(linea, unit_price_usd=None, price_source="facturado_por_tokens")
+            for linea in lineas
+        ]
 
     return BudgetEstimate(
         lines=tuple(lineas),
@@ -453,8 +577,10 @@ def estimate_from_plan(
             "reference_inputs_sent": entradas_de_referencia,
         },
         tariffs=tariffs,
+        token_rates=load_token_rates(settings),
         model=modelo,
         model_verified=verificado,
+        bills_by_tokens=por_tokens,
     )
 
 

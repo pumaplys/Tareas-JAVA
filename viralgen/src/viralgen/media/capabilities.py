@@ -14,19 +14,26 @@ Consecuencias practicas:
 * Nunca se sustituye un modelo por otro en silencio.
 * Ampliar el catalogo es una decision explicita, no un efecto secundario.
 
-DECLARADO NO ES VERIFICADO
---------------------------
+DECLARADO NO ES VERIFICADO, Y DECLARADO NO ES VIGENTE
+-----------------------------------------------------
 
-Una entrada del catalogo puede estar DECLARADA con valores que todavia son un
-SUPUESTO. `gpt-image-2.6-sunburst` es ese caso: este entorno no alcanza la
-documentacion del proveedor (ver `model_checks.UNREACHABLE_REASON`), asi que
-sus tamanos, calidades y limite de referencias se declaran por continuidad con
-`gpt-image-1` y quedan marcados en `assumed_params`.
+Una entrada del catalogo puede estar en tres situaciones, y `describe()` las
+distingue:
 
-Un modelo asi se puede planificar y simular, pero NO despachar en real:
-`assert_verified_for_real` lo bloquea citando las entradas pendientes del
-registro. No hay interruptor para eludirlo; se levanta aportando los extractos
-al registro, que es donde consta quien los leyo y cuando.
+* **Vigente y verificada.** `gpt-image-2.6-sunburst`: sus parametros los
+  aporto el revisor el 2026-11-18 con las fuentes oficiales. Se despacha.
+* **Retirada.** `gpt-image-1` se apago el 2026-10-23. Se sigue RESOLVIENDO
+  -los manifiestos, ejemplos y claves de cache ya generados lo citan, y
+  borrarlo convertiria ese historial en "modelo desconocido"- pero
+  `assert_verified_for_real` rechaza cualquier solicitud nueva.
+* **Declarada con supuestos.** Ninguna hoy. Si volviera a haberla, se
+  planifica y se simula pero no se despacha, y el bloqueo se levanta
+  aportando extractos al registro, no con un interruptor.
+
+Lo que este modulo NO decide es si el modelo esta disponible en la cuenta:
+eso no se demuestra leyendo nada, solo con una llamada real, y por eso no
+bloquea aqui (seria un bucle). Vive en `model_checks` como pendiente
+declarada.
 """
 
 from __future__ import annotations
@@ -35,6 +42,57 @@ from dataclasses import dataclass, field
 from fractions import Fraction
 
 from ..errors import ConfigError
+
+
+@dataclass(frozen=True)
+class SizeRules:
+    """Limites de geometria documentados por el proveedor, como REGLA.
+
+    La ficha de 2.6 no enumera tamanos: publica condiciones. Implementarlas
+    como regla es mas fiel que inventar una lista, y permite comprobar un
+    tamano concreto -720x1280- contra lo que dice la fuente en vez de contra
+    una suposicion.
+    """
+
+    side_multiple: int
+    min_ratio: Fraction
+    max_ratio: Fraction
+    max_side: int
+    min_pixels: int
+    max_pixels: int
+    source_note: str
+
+    def problems(self, size: str) -> list[str]:
+        """Que incumple ese tamano. Lista vacia = lo admite la regla."""
+        ancho, alto = parse_size(size)
+        fallos: list[str] = []
+        if ancho % self.side_multiple or alto % self.side_multiple:
+            fallos.append(
+                f"{size}: los dos lados deben ser multiplos de {self.side_multiple}"
+            )
+        if max(ancho, alto) > self.max_side:
+            fallos.append(f"{size}: el lado mayor supera {self.max_side} px")
+        pixeles = ancho * alto
+        if pixeles < self.min_pixels:
+            fallos.append(f"{size}: {pixeles} px por debajo del minimo {self.min_pixels}")
+        if pixeles > self.max_pixels:
+            fallos.append(f"{size}: {pixeles} px por encima del maximo {self.max_pixels}")
+        proporcion = Fraction(ancho, alto)
+        if not (self.min_ratio <= proporcion <= self.max_ratio):
+            fallos.append(
+                f"{size}: proporcion {proporcion} fuera del rango "
+                f"{self.min_ratio}..{self.max_ratio}"
+            )
+        return fallos
+
+    def describe(self) -> dict:
+        return {
+            "side_multiple": self.side_multiple,
+            "ratio_range": [str(self.min_ratio), str(self.max_ratio)],
+            "max_side": self.max_side,
+            "pixel_range": [self.min_pixels, self.max_pixels],
+            "source": self.source_note,
+        }
 
 
 @dataclass(frozen=True)
@@ -59,6 +117,27 @@ class ImageModelCapabilities:
     assumed_params: tuple[str, ...] = ()
     #: Entradas de `model_checks` que hay que cerrar para verificarlo.
     pending_check_ids: tuple[str, ...] = ()
+    #: Limites de geometria documentados. Cuando existen, un tamano tiene que
+    #: estar en `sizes` (seleccion del proyecto) Y cumplir la regla.
+    size_rules: SizeRules | None = None
+    #: La documentacion del modelo dice OMITIR `input_fidelity`. Entonces
+    #: configurarlo es un error, no una opcion.
+    forbids_input_fidelity: bool = False
+    #: Maximo de referencias por peticion segun la documentacion. El proyecto
+    #: puede mantener un limite local mas estricto en `max_reference_images`.
+    documented_max_reference_images: int | None = None
+    #: True si el proveedor cobra por TOKENS y no por imagen. Entonces una
+    #: tabla de tarifas por (tamano, calidad) no aplica, y el coste a priori es
+    #: desconocido aunque las tarifas consten: faltan los recuentos.
+    bills_by_tokens: bool = False
+    #: Fecha de retirada anunciada. Un modelo retirado se sigue RESOLVIENDO
+    #: -los manifiestos, ejemplos y cachés historicos lo citan- pero no acepta
+    #: solicitudes reales nuevas.
+    retired_on: str | None = None
+
+    @property
+    def retired(self) -> bool:
+        return self.retired_on is not None
 
     @property
     def assumption_only(self) -> bool:
@@ -77,6 +156,12 @@ class ImageModelCapabilities:
             "verified": self.verified,
             "assumed_params": list(self.assumed_params),
             "pending_check_ids": list(self.pending_check_ids),
+            "size_rules": self.size_rules.describe() if self.size_rules else None,
+            "forbids_input_fidelity": self.forbids_input_fidelity,
+            "documented_max_reference_images": self.documented_max_reference_images,
+            "retired_on": self.retired_on,
+            "bills_by_tokens": self.bills_by_tokens,
+            "usable_for_new_real_requests": not self.retired and self.verified,
         }
 
     def vertical_sizes(self) -> list[str]:
@@ -146,8 +231,29 @@ def parse_ratio(ratio: str) -> tuple[int, int]:
 # Catalogo
 # ---------------------------------------------------------------------------
 
-#: Modelos de imagen declarados. `gpt-image-1` es el unico modelo real del MVP.
+#: Reglas de geometria de la familia GPT Image segun la guia de generacion de
+#: imagenes, aportadas por el revisor el 2026-11-18 (ver `model_checks`).
+GPT_IMAGE_SIZE_RULES = SizeRules(
+    side_multiple=16,
+    min_ratio=Fraction(1, 3),
+    max_ratio=Fraction(3, 1),
+    max_side=3840,
+    min_pixels=655_360,
+    max_pixels=8_294_400,
+    source_note=(
+        "Guia de generacion de imagenes, seccion Size and quality options; "
+        "evidencia aportada por el revisor el 2026-11-18."
+    ),
+)
+
+#: Modelos de imagen declarados. `gpt-image-2.6-sunburst` es el modelo real
+#: vigente; `gpt-image-1` sigue resolviendose solo para leer lo ya generado.
 IMAGE_MODELS: dict[str, ImageModelCapabilities] = {
+    # RETIRADO el 2026-10-23 segun la ficha del modelo (evidencia del revisor,
+    # 2026-11-18). Se conserva en el catalogo A PROPOSITO: los manifiestos, los
+    # ejemplos y las claves de cache ya generadas lo citan, y borrarlo
+    # convertiria ese historial en "modelo desconocido". Lo que no acepta son
+    # solicitudes reales NUEVAS.
     "gpt-image-1": ImageModelCapabilities(
         model_id="gpt-image-1",
         # 1024x1536 es 2:3. NO es 9:16 y no se presenta como tal.
@@ -156,49 +262,48 @@ IMAGE_MODELS: dict[str, ImageModelCapabilities] = {
         output_formats=("png", "jpeg", "webp"),
         supports_edit=True,
         max_reference_images=4,
+        retired_on="2026-10-23",
+        pending_check_ids=("gpt_image_1_retired",),
         notes=(
-            "Parametros comprobados contra el SDK instalado (size, quality, "
-            "output_format, n, edit con image[]). El tamano vertical 1024x1536 "
-            "es 2:3: la entrega 9:16 la resuelve el modulo 4 con el plan de "
-            "presentacion registrado."
+            "RETIRADO el 2026-10-23: no acepta solicitudes reales nuevas. Se "
+            "mantiene declarado para poder leer manifiestos, ejemplos y assets "
+            "en cache generados antes de esa fecha, que lo citan por su "
+            "identificador. El tamano vertical 1024x1536 es 2:3."
         ),
     ),
-    # DECLARADO, NO VERIFICADO. Los tamanos, calidades y el limite de
-    # referencias son un SUPUESTO por continuidad con gpt-image-1: este
-    # entorno no alcanzo la ficha del modelo. El envio real esta bloqueado
-    # hasta cerrar las entradas de `model_checks`.
+    # Parametros documentados por la evidencia del revisor (2026-11-18). Lo
+    # que sigue sin demostrar NO es el protocolo: es la disponibilidad en
+    # nuestra cuenta, y eso solo lo prueba una llamada real.
     "gpt-image-2.6-sunburst": ImageModelCapabilities(
         model_id="gpt-image-2.6-sunburst",
-        sizes=("1024x1024", "1024x1536", "1536x1024"),
-        qualities=("low", "medium", "high", "auto"),
+        # 720x1280 es 9:16 NATIVO y cumple la regla documentada: 45x16 y
+        # 80x16, proporcion dentro de 1:3..3:1, 921 600 px dentro del rango.
+        # Con el, la entrega vertical ya no necesita adaptacion del modulo 4.
+        sizes=("720x1280", "1024x1024", "1024x1536", "1536x1024"),
+        # La guia de 2.6 documenta `medium`. El resto de valores no consta, y
+        # el proyecto solo envia el que declara aqui.
+        qualities=("medium",),
         output_formats=("png", "jpeg", "webp"),
         supports_edit=True,
+        # Limite LOCAL, mas estricto que el publicado: ninguna escena de la
+        # biblia usa mas de tres personajes.
         max_reference_images=4,
-        input_fidelities=("low", "high"),
-        verified=False,
-        assumed_params=(
-            "sizes",
-            "qualities",
-            "output_formats",
-            "max_reference_images",
-            "input_fidelities",
-        ),
-        pending_check_ids=(
-            "sunburst_endpoint",
-            "sunburst_sizes",
-            "sunburst_qualities",
-            "sunburst_edit_references",
-            "sunburst_input_fidelity",
-            "sunburst_response_shape",
-            "sunburst_token_consumption",
-            "sunburst_account_availability",
-        ),
+        documented_max_reference_images=16,
+        size_rules=GPT_IMAGE_SIZE_RULES,
+        bills_by_tokens=True,
+        # "Omit `input_fidelity` on image edits": configurarlo es un error.
+        input_fidelities=(),
+        forbids_input_fidelity=True,
+        verified=True,
+        pending_check_ids=("sunburst_account_availability",),
         notes=(
-            "Soporte explicito preparado: generacion sin referencias por "
-            "images.generate y edicion con referencias de personaje por "
-            "images.edit, igual que gpt-image-1, mas `input_fidelity` opcional. "
-            "Los valores admitidos son un SUPUESTO sin confirmar y el envio real "
-            "esta bloqueado: ver model_checks.blocking_for('gpt-image-2.6-sunburst')."
+            "Generacion por images.generate (JSON) y edicion con referencias de "
+            "personaje por images.edit (multipart, un image[] por referencia), "
+            "n=1 y modelo explicito. `input_fidelity` se OMITE: la guia de 2.6 "
+            "lo indica expresamente. La respuesta se lee de data[0].b64_json; "
+            "`response_format` no se envia. Factura por tokens, no por imagen. "
+            "Parametros aportados por el revisor el 2026-11-18; la "
+            "disponibilidad en la cuenta sigue sin demostrar."
         ),
     ),
     "mock-image-1": ImageModelCapabilities(
@@ -273,6 +378,11 @@ def validate_image_request(
     problemas: list[str] = []
     if size not in capacidades.sizes:
         problemas.append(f"tamano {size!r} no declarado ({', '.join(capacidades.sizes)})")
+    if capacidades.size_rules is not None:
+        # La regla documentada manda sobre la seleccion: un tamano declarado
+        # por error que incumple los limites del proveedor se rechaza aqui, no
+        # en un 400 pagado.
+        problemas.extend(capacidades.size_rules.problems(size))
     if quality not in capacidades.qualities:
         problemas.append(
             f"calidad {quality!r} no declarada ({', '.join(capacidades.qualities)})"
@@ -284,7 +394,13 @@ def validate_image_request(
     if edit and not capacidades.supports_edit:
         problemas.append("el modelo no declara soporte de edicion con referencias")
     if input_fidelity is not None:
-        if not capacidades.input_fidelities:
+        if capacidades.forbids_input_fidelity:
+            problemas.append(
+                f"la documentacion de {capacidades.model_id!r} indica OMITIR "
+                "`input_fidelity` en las ediciones; quita VIRALGEN_MEDIA_INPUT_FIDELITY "
+                "(dejarlo vacio no envia el parametro; no se envia `null`)"
+            )
+        elif not capacidades.input_fidelities:
             problemas.append(
                 f"el modelo no declara `input_fidelity`; quita "
                 f"VIRALGEN_MEDIA_INPUT_FIDELITY o declaralo en el catalogo"
@@ -314,12 +430,34 @@ def validate_image_request(
 
 
 def assert_verified_for_real(capacidades: ImageModelCapabilities) -> None:
-    """Impide el despacho REAL de un modelo cuyos valores son supuestos.
+    """Impide el despacho REAL de un modelo que no puede atenderlo.
 
-    No es un limite del proveedor: es la consecuencia de no haber podido leer
-    su documentacion. Se levanta aportando los extractos al registro de
-    `model_checks`, no con un interruptor.
+    Dos motivos distintos, con mensajes distintos:
+
+    * **Retirado.** El proveedor lo apago. Ninguna peticion nueva va a
+      funcionar, asi que no se emite. Seguir resolviendolo en el catalogo es
+      otra cosa: hace falta para leer lo ya generado.
+    * **Sin verificar.** Sus parametros son un supuesto porque no se pudo
+      leer su documentacion. Se puede planificar y simular, no despachar.
+
+    Lo que esta puerta NO comprueba es la disponibilidad en la cuenta: eso no
+    se puede demostrar sin hacer la primera llamada real, y bloquear por ello
+    seria un bucle. Esa condicion vive en `model_checks` como pendiente
+    declarada, y la gobierna el presupuesto acordado del piloto.
     """
+    if capacidades.retired:
+        raise ConfigError(
+            f"El modelo de imagen {capacidades.model_id!r} fue RETIRADO el "
+            f"{capacidades.retired_on} y no acepta solicitudes nuevas. Sigue "
+            "declarado en el catalogo para poder leer manifiestos, ejemplos y "
+            "assets en cache que lo citan, pero no se puede generar con el. "
+            "Declara otro modelo en OPENAI_IMAGE_MODEL.",
+            details={
+                "model": capacidades.model_id,
+                "retired_on": capacidades.retired_on,
+                "readable_for_history": True,
+            },
+        )
     if capacidades.verified:
         return
     from .model_checks import blocking_for

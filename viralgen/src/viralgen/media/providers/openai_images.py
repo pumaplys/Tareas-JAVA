@@ -163,6 +163,10 @@ class OpenAIImageProvider(ImageProvider):
     # -- Interno -----------------------------------------------------------
 
     def _call(self, request: ImageRequest) -> Any:
+        # `response_format` NO aparece aqui a proposito: es un parametro
+        # heredado que GPT Image no admite, y la imagen llega siempre en
+        # `data[0].b64_json`. `output_format` es el que elige el formato de
+        # archivo. Ver model_checks: sunburst_response_shape.
         comun: dict[str, Any] = {
             "model": self.model,
             "prompt": request.prompt,
@@ -279,12 +283,24 @@ class OpenAIImageProvider(ImageProvider):
                 f"{self.settings.media_max_image_response_mib} MiB."
             )
 
+        # `usage` es OPCIONAL (evidencia del revisor, sunburst_usage_schema).
+        # Un campo ausente NO vale cero: simplemente no se anota. Y el total no
+        # se deriva de las partes ni las partes del total: cada uno se guarda
+        # solo si viene, para no duplicar la cuenta.
         uso = getattr(respuesta, "usage", None)
         informado: dict[str, int] = {}
         for campo in ("input_tokens", "output_tokens", "total_tokens"):
             valor = getattr(uso, campo, None) if uso is not None else None
-            if isinstance(valor, int):
+            if isinstance(valor, int) and not isinstance(valor, bool):
                 informado[campo] = valor
+        detalles = getattr(uso, "input_tokens_details", None) if uso is not None else None
+        for campo, clave in (
+            ("text_tokens", "input_tokens_text"),
+            ("image_tokens", "input_tokens_image"),
+        ):
+            valor = getattr(detalles, campo, None) if detalles is not None else None
+            if isinstance(valor, int) and not isinstance(valor, bool):
+                informado[clave] = valor
 
         return ImageResult(
             image_bytes=contenido,

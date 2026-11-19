@@ -148,12 +148,15 @@ def test_media_models_informa_del_catalogo_sin_llamar_a_nadie(cli) -> None:
     assert codigo == int(ExitCode.OK)
     modelos = resumen["models"]
     assert set(modelos) == {"gpt-image-1", "gpt-image-2.6-sunburst", "mock-image-1"}
-    # El informe distingue lo verificado de lo supuesto, modelo a modelo.
-    assert modelos["gpt-image-1"]["verified"] is True
-    assert modelos["gpt-image-1"]["assumed_params"] == []
-    assert modelos["gpt-image-2.6-sunburst"]["verified"] is False
-    assert modelos["gpt-image-2.6-sunburst"]["assumed_params"]
-    assert modelos["gpt-image-2.6-sunburst"]["blocking_checks"]
+    # El informe distingue vigente, retirado y supuesto, modelo a modelo.
+    assert modelos["gpt-image-2.6-sunburst"]["verified"] is True
+    assert modelos["gpt-image-2.6-sunburst"]["retired_on"] is None
+    assert modelos["gpt-image-2.6-sunburst"]["usable_for_new_real_requests"] is True
+    assert modelos["gpt-image-2.6-sunburst"]["bills_by_tokens"] is True
+
+    # gpt-image-1 sigue listado -el historial lo cita- y marcado como retirado.
+    assert modelos["gpt-image-1"]["retired_on"] == "2026-10-23"
+    assert modelos["gpt-image-1"]["usable_for_new_real_requests"] is False
 
 
 def test_media_models_lleva_el_registro_y_sus_recuentos(cli) -> None:
@@ -167,8 +170,11 @@ def test_media_models_lleva_el_registro_y_sus_recuentos(cli) -> None:
     )
     # Y el informe dice por que no hay evidencia propia de la documentacion.
     assert "developers.openai.com" in verificacion["reason"]
-    assert verificacion["reviewer_consulted_on"] == "2026-11-17"
-    assert "gpt-image-2.6-sunburst" in verificacion["blocked_models"]
+    assert verificacion["reviewer_consulted_on"] == ["2026-11-17", "2026-11-18"]
+    # `blocked_models` vacio no implica que cualquier modelo sirva: lo que de
+    # verdad esta rechazado se nombra aparte.
+    assert verificacion["blocked_models"] == []
+    assert "gpt-image-1" in verificacion["refused_for_new_real_requests"]
 
 
 def test_media_models_filtra_por_modelo(cli) -> None:
