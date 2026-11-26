@@ -170,6 +170,28 @@ export OPENAI_MODEL="<modelo que admita Structured Outputs>"
 viralgen generate --profile curiosidades_largo --source-pack facts.json --job-key curiosidad-001
 ```
 
+### Revisión editorial local
+
+Un guion en `needs_review` por un aviso editorial no necesita otra llamada al
+proveedor: necesita tres frases arregladas. `viralgen revise` las aplica **sin
+red y sin proveedores**, recalcula con las funciones del proyecto
+(`count_words`, `build_timeline`, `validate_document`) y deja el original
+intacto, con la revisión en un archivo aparte enlazado por SHA-256.
+
+```bash
+# Previsualizar: no escribe nada.
+viralgen revise --job-key <clave> --edits <ediciones.json>
+
+# Aplicar: escribe script.revision-N.json y su fila en script_revisions.
+viralgen revise --job-key <clave> --edits <ediciones.json> --apply
+```
+
+Sólo admite campos editoriales (`narration_text`, `captions.emphasis_words`,
+`captions.overlay_text`). `control.production_status` y `control.warnings`
+**no se pueden editar**: los deriva la validación, y borrarlos no resolvería lo
+que avisan. Detalle y órdenes exactas en
+[`docs/revision_editorial.md`](docs/revision_editorial.md).
+
 ### Otros comandos
 
 ```bash
@@ -639,6 +661,7 @@ viralgen/
 ├── docs/piloto_youtube.md              # guia ejecutable del primer piloto privado
 ├── docs/verificacion_modelos_openai.md # que falta verificar de cada modelo y quien puede aportarlo
 ├── docs/marca_y_series.md              # marca publica (canal) vs serie de contenido (biblia)
+├── docs/revision_editorial.md          # revision editorial local de un script.json
 ├── tools/diagnostico_piloto.py         # presencia de configuracion, dependencias y rutas
 ├── deploy/systemd/                     # unidades PREPARADAS, no instaladas
 ├── tools/demo_publicacion.sh           # recorrido completo simulado del modulo 5
@@ -655,6 +678,7 @@ viralgen/
 │   ├── prompts/v1/             # plantillas versionadas
 │   ├── assembly.py validation.py
 │   ├── storage.py diskutil.py  # SQLite, bloqueo, escritura atómica
+│   ├── revision.py             # revision editorial local: recalculo y trazabilidad
 │   ├── pipeline.py cli.py
 │   ├── data/                   # profiles.json, series_bible.json, facts_demo.json
 │   ├── voice/                  # MODULO 2

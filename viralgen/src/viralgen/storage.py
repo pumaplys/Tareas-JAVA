@@ -103,6 +103,23 @@ CREATE TABLE IF NOT EXISTS usage_events (
 );
 CREATE INDEX IF NOT EXISTS idx_usage_job ON usage_events(job_id);
 
+CREATE TABLE IF NOT EXISTS script_revisions (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_id            TEXT NOT NULL REFERENCES jobs(job_id) ON DELETE CASCADE,
+    revision_no       INTEGER NOT NULL,
+    edits_sha256      TEXT NOT NULL,
+    revision_of_sha256 TEXT NOT NULL,
+    production_status TEXT NOT NULL,
+    document_json     TEXT NOT NULL,
+    path              TEXT NOT NULL,
+    sha256            TEXT NOT NULL,
+    created_at        TEXT NOT NULL,
+    -- Identidad de la revision: el mismo conjunto de ediciones sobre el mismo
+    -- original NO crea una segunda fila.
+    UNIQUE(job_id, edits_sha256, revision_of_sha256)
+);
+CREATE INDEX IF NOT EXISTS idx_revisions_job ON script_revisions(job_id, revision_no);
+
 CREATE TABLE IF NOT EXISTS exports (
     job_id      TEXT PRIMARY KEY REFERENCES jobs(job_id) ON DELETE CASCADE,
     path        TEXT NOT NULL,
@@ -421,6 +438,66 @@ class Storage:
                 "status = excluded.status, exported_at = excluded.exported_at",
                 (job_id, path, sha256, status, iso(utcnow())),
             )
+
+    # -- Revisiones editoriales -------------------------------------------
+
+    def find_revision(
+        self, job_id: str, *, edits_sha256: str, revision_of_sha256: str
+    ) -> dict | None:
+        """La revision ya aplicada para ese conjunto de ediciones, si existe."""
+        fila = self.connect().execute(
+            "SELECT * FROM script_revisions WHERE job_id = ? AND edits_sha256 = ? "
+            "AND revision_of_sha256 = ?",
+            (job_id, edits_sha256, revision_of_sha256),
+        ).fetchone()
+        return dict(fila) if fila else None
+
+    def next_revision_no(self, job_id: str) -> int:
+        fila = self.connect().execute(
+            "SELECT COALESCE(MAX(revision_no), 0) AS ultimo FROM script_revisions "
+            "WHERE job_id = ?",
+            (job_id,),
+        ).fetchone()
+        return int(fila["ultimo"]) + 1
+
+    def list_revisions(self, job_id: str) -> list[dict]:
+        filas = self.connect().execute(
+            "SELECT * FROM script_revisions WHERE job_id = ? ORDER BY revision_no",
+            (job_id,),
+        ).fetchall()
+        return [dict(fila) for fila in filas]
+
+    def save_revision(self, job_id: str, revision: dict) -> dict:
+        """Guarda la revision sin tocar `scripts` ni `exports`.
+
+        El original se conserva donde estaba: esta tabla es aparte a proposito.
+        `INSERT OR IGNORE` sobre la clave unica hace que repetir sea un no-op.
+        """
+        with self.write() as conexion:
+            conexion.execute(
+                "INSERT OR IGNORE INTO script_revisions "
+                "(job_id, revision_no, edits_sha256, revision_of_sha256, "
+                "production_status, document_json, path, sha256, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    job_id,
+                    int(revision["revision_no"]),
+                    revision["edits_sha256"],
+                    revision["revision_of_sha256"],
+                    revision["production_status"],
+                    json.dumps(revision["document"], ensure_ascii=False),
+                    str(revision["path"]),
+                    revision["sha256"],
+                    iso(utcnow()),
+                ),
+            )
+        guardada = self.find_revision(
+            job_id,
+            edits_sha256=revision["edits_sha256"],
+            revision_of_sha256=revision["revision_of_sha256"],
+        )
+        assert guardada is not None
+        return guardada
 
     def get_export(self, job_id: str) -> dict | None:
         row = self.connect().execute(

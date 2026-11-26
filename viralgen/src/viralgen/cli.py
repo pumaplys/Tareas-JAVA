@@ -76,6 +76,36 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("profiles", help="Lista los perfiles editoriales disponibles.")
 
+    revise = subparsers.add_parser(
+        "revise",
+        help=(
+            "Aplica una revision EDITORIAL local a un script.json ya generado. "
+            "Sin red y sin proveedores. Por defecto solo previsualiza."
+        ),
+    )
+    revise.add_argument(
+        "--job-key", required=True, help="Clave de idempotencia del trabajo a revisar."
+    )
+    revise.add_argument(
+        "--edits",
+        type=Path,
+        required=True,
+        help="Archivo JSON con la lista `edits`. Son datos, no codigo.",
+    )
+    revise.add_argument(
+        "--apply",
+        action="store_true",
+        help=(
+            "Escribe la revision. Sin esta opcion no se escribe NADA: ni archivo "
+            "ni SQLite."
+        ),
+    )
+    revise.add_argument(
+        "--revised-by",
+        default="operador_local",
+        help="Quien aplica la revision. Queda registrado; no es un proveedor.",
+    )
+
     _add_voice_parser(subparsers)
     _add_media_parser(subparsers)
     _add_render_parser(subparsers)
@@ -423,6 +453,50 @@ def _run_schema(args: argparse.Namespace) -> int:
         }
     )
     return int(ExitCode.OK)
+
+
+def _run_revise(args: argparse.Namespace, settings: Settings) -> int:
+    """`revise`: revision editorial local. No llama a ningun proveedor."""
+    from . import revision as rev
+    from .storage import ProcessLock, Storage
+
+    ediciones, nota = rev.load_edits(args.edits)
+    data_dir = settings.effective_data_dir(simulation=False)
+    herramienta = "viralgen revise"
+
+    lock_path = data_dir / "worker.lock"
+    with ProcessLock(lock_path), Storage(data_dir) as storage:
+        plan = rev.build_plan(
+            settings=settings,
+            storage=storage,
+            job_key=args.job_key,
+            edits=ediciones,
+            note=nota,
+            revised_by=args.revised_by,
+            tool=herramienta,
+        )
+        if args.apply:
+            resumen = rev.apply(
+                plan,
+                storage=storage,
+                note=nota,
+                revised_by=args.revised_by,
+                tool=herramienta,
+            )
+        else:
+            resumen = rev.describe(plan, applied=False)
+            resumen["written"] = []
+            resumen["preview_note"] = (
+                "Previsualizacion: no se ha escrito nada. Repite con --apply para "
+                "guardar la revision."
+            )
+
+    # El codigo de salida dice si el documento revisado sigue con avisos. No se
+    # fuerza un cero: un `needs_review` que persiste es informacion.
+    codigo = ExitCode.OK if not resumen["issues"] else ExitCode.NEEDS_REVIEW
+    resumen["exit_code"] = int(codigo)
+    _emit(resumen)
+    return int(codigo)
 
 
 def _run_voice(args: argparse.Namespace, settings: Settings) -> int:
@@ -773,6 +847,8 @@ def main(argv: list[str] | None = None) -> int:
             return _run_schema(args)
         if args.command == "profiles":
             return _run_profiles(settings)
+        if args.command == "revise":
+            return _run_revise(args, settings)
         if args.command == "voice":
             return _run_voice(args, settings)
         if args.command == "media":

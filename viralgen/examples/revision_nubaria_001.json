@@ -1,0 +1,23 @@
+{
+  "note": "Revision editorial del operador: tres cambios de texto en escena_2 y escena_7.",
+  "edits": [
+    {
+      "scene_id": "escena_2",
+      "field": "narration_text",
+      "value": "Al pisar la hierba, Lumi levantó las orejas. ¡Otro toc!"
+    },
+    {
+      "scene_id": "escena_7",
+      "field": "narration_text",
+      "value": "Metió la bellota otra vez. ¡Toc! «¡Era mi mochila! Sin bellota, una taza. Con bellota… ¡una maraca!»"
+    },
+    {
+      "scene_id": "escena_7",
+      "field": "captions.emphasis_words",
+      "value": [
+        "mochila",
+        "maraca"
+      ]
+    }
+  ]
+}

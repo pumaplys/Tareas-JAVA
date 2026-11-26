@@ -385,6 +385,66 @@ class Provenance(StrictModel):
 
 
 # ---------------------------------------------------------------------------
+# Revision editorial
+# ---------------------------------------------------------------------------
+
+
+class EditorialChange(StrictModel):
+    """Un cambio editorial concreto, con el antes y el despues por hash.
+
+    Se guardan HASHES y un recorte legible, no el valor anterior completo: el
+    original intacto sigue existiendo como archivo y como fila de `scripts`, y
+    duplicarlo aqui invitaria a que las dos copias se separaran.
+    """
+
+    scene_id: Identifier
+    field: ShortText = Field(
+        description="Campo editado, p. ej. `narration_text` o `captions.emphasis_words`."
+    )
+    before_sha256: HexHash
+    after_sha256: HexHash
+    before_preview: ShortText
+    after_preview: ShortText
+
+
+class EditorialRevision(StrictModel):
+    """Marca de que este documento es una REVISION de otro, hecha en local.
+
+    Distingue lo que escribio el proveedor de lo que cambio despues una persona:
+    `provenance` sigue describiendo la generacion inicial y no se toca; esto
+    describe los cambios posteriores. `provider_calls` es 0 por contrato, asi
+    que un documento revisado nunca puede presentar una llamada nueva como
+    parte de la revision.
+    """
+
+    revision_no: int = Field(ge=1, le=99)
+    revision_of_sha256: HexHash = Field(
+        description="SHA-256 de los BYTES del script.json original exportado."
+    )
+    revision_of_content_sha256: HexHash = Field(
+        description=(
+            "SHA-256 del contenido canonico del original, el mismo que guarda la "
+            "tabla `exports`. Se registran los dos porque no son el mismo numero."
+        )
+    )
+    revised_at: UtcDatetime
+    revised_by: ShortText = Field(description="Quien aplico la revision. No es un proveedor.")
+    tool: ShortText = Field(description="Comando que la aplico, para poder repetirla.")
+    provider_calls: Literal[0] = Field(
+        default=0,
+        description="Siempre 0: una revision editorial no llama a ningun proveedor.",
+    )
+    edits_sha256: HexHash = Field(
+        description=(
+            "SHA-256 del conjunto de ediciones pedidas. Es la identidad de la "
+            "revision: repetir la misma peticion no crea otra."
+        )
+    )
+    note: MediumText | None = None
+    changes: list[EditorialChange] = Field(min_length=1, max_length=50)
+
+
+# ---------------------------------------------------------------------------
 # Documento
 # ---------------------------------------------------------------------------
 
@@ -412,4 +472,9 @@ class ScriptDocument(StrictModel):
     loop: Loop
     evidence: Evidence
     publishing: list[PublishingPlan] = Field(min_length=1, max_length=3)
-    provenance: Provenance
+    provenance: Provenance = Field(
+        description="Uso del proveedor en la GENERACION inicial. Una revision no lo altera."
+    )
+    #: Ausente en un documento recien generado. Presente solo si una persona
+    #: aplico despues una revision editorial local.
+    editorial_revision: EditorialRevision | None = None

@@ -137,6 +137,149 @@
       "title": "Control",
       "type": "object"
     },
+    "EditorialChange": {
+      "additionalProperties": false,
+      "description": "Un cambio editorial concreto, con el antes y el despues por hash.\n\nSe guardan HASHES y un recorte legible, no el valor anterior completo: el\noriginal intacto sigue existiendo como archivo y como fila de `scripts`, y\nduplicarlo aqui invitaria a que las dos copias se separaran.",
+      "properties": {
+        "scene_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_\\-]*$",
+          "title": "Scene Id",
+          "type": "string"
+        },
+        "field": {
+          "description": "Campo editado, p. ej. `narration_text` o `captions.emphasis_words`.",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Field",
+          "type": "string"
+        },
+        "before_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Before Sha256",
+          "type": "string"
+        },
+        "after_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "After Sha256",
+          "type": "string"
+        },
+        "before_preview": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Before Preview",
+          "type": "string"
+        },
+        "after_preview": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "After Preview",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scene_id",
+        "field",
+        "before_sha256",
+        "after_sha256",
+        "before_preview",
+        "after_preview"
+      ],
+      "title": "EditorialChange",
+      "type": "object"
+    },
+    "EditorialRevision": {
+      "additionalProperties": false,
+      "description": "Marca de que este documento es una REVISION de otro, hecha en local.\n\nDistingue lo que escribio el proveedor de lo que cambio despues una persona:\n`provenance` sigue describiendo la generacion inicial y no se toca; esto\ndescribe los cambios posteriores. `provider_calls` es 0 por contrato, asi\nque un documento revisado nunca puede presentar una llamada nueva como\nparte de la revision.",
+      "properties": {
+        "revision_no": {
+          "maximum": 99,
+          "minimum": 1,
+          "title": "Revision No",
+          "type": "integer"
+        },
+        "revision_of_sha256": {
+          "description": "SHA-256 de los BYTES del script.json original exportado.",
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Revision Of Sha256",
+          "type": "string"
+        },
+        "revision_of_content_sha256": {
+          "description": "SHA-256 del contenido canonico del original, el mismo que guarda la tabla `exports`. Se registran los dos porque no son el mismo numero.",
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Revision Of Content Sha256",
+          "type": "string"
+        },
+        "revised_at": {
+          "format": "date-time",
+          "title": "Revised At",
+          "type": "string"
+        },
+        "revised_by": {
+          "description": "Quien aplico la revision. No es un proveedor.",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Revised By",
+          "type": "string"
+        },
+        "tool": {
+          "description": "Comando que la aplico, para poder repetirla.",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Tool",
+          "type": "string"
+        },
+        "provider_calls": {
+          "const": 0,
+          "default": 0,
+          "description": "Siempre 0: una revision editorial no llama a ningun proveedor.",
+          "title": "Provider Calls",
+          "type": "integer"
+        },
+        "edits_sha256": {
+          "description": "SHA-256 del conjunto de ediciones pedidas. Es la identidad de la revision: repetir la misma peticion no crea otra.",
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Edits Sha256",
+          "type": "string"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 600,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "changes": {
+          "items": {
+            "$ref": "#/$defs/EditorialChange"
+          },
+          "maxItems": 50,
+          "minItems": 1,
+          "title": "Changes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "revision_no",
+        "revision_of_sha256",
+        "revision_of_content_sha256",
+        "revised_at",
+        "revised_by",
+        "tool",
+        "edits_sha256",
+        "changes"
+      ],
+      "title": "EditorialRevision",
+      "type": "object"
+    },
     "Evidence": {
       "additionalProperties": false,
       "properties": {
@@ -1120,7 +1263,19 @@
       "type": "array"
     },
     "provenance": {
-      "$ref": "#/$defs/Provenance"
+      "$ref": "#/$defs/Provenance",
+      "description": "Uso del proveedor en la GENERACION inicial. Una revision no lo altera."
+    },
+    "editorial_revision": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/EditorialRevision"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     }
   },
   "required": [
